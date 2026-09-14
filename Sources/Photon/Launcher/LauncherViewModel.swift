@@ -275,6 +275,7 @@ final class LauncherViewModel: ObservableObject {
       self.query = query
     }
     mode.activate(query: query)
+    updateContent()
   }
 
   func exitMode(clearingQuery: Bool = true) {
