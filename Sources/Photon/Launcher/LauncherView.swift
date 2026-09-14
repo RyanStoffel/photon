@@ -41,7 +41,8 @@ struct LauncherView: View {
         }
       }
     }
-    .frame(width: model.panelWidth, height: LauncherLayout.height(for: model.content))
+    .frame(width: model.panelWidth, height: LauncherLayout.height(for: model.content), alignment: .top)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .overlay(
       RoundedRectangle(cornerRadius: LauncherLayout.cornerRadius, style: .continuous)
         .strokeBorder(Color.primary.opacity(0.1), lineWidth: LauncherLayout.hairline)
@@ -66,6 +67,14 @@ struct LauncherView: View {
         .font(.system(size: 20))
         .onSubmit {
           Task { await run() }
+        }
+        .onKeyPress(.downArrow) {
+          model.moveSelection(1)
+          return .handled
+        }
+        .onKeyPress(.upArrow) {
+          model.moveSelection(-1)
+          return .handled
         }
     }
     .padding(.horizontal, 20)
