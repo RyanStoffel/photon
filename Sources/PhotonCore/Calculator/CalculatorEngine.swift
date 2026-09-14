@@ -413,7 +413,7 @@ private enum UnitConversion {
     switch unit {
     case .s, .sec, .secs, .second, .seconds: value
     case .min, .mins, .minute, .minutes: value * 60
-    case .h, .hr, .hrs, .hour, .hours: value * 3600
+    case .h, .hr, .hrs, .hour, .hours: value * 3_600
     case .d, .day, .days: value * 86_400
     case .wk, .week, .weeks: value * 604_800
     }
@@ -427,20 +427,20 @@ private enum UnitConversion {
     case .mb: value * 1_000_000
     case .gb: value * 1_000_000_000
     case .tb: value * 1_000_000_000_000
-    case .kib: value * 1024
-    case .mib: value * 1024 * 1024
-    case .gib: value * 1024 * 1024 * 1024
-    case .tib: value * 1024 * 1024 * 1024 * 1024
+    case .kib: value * 1_024
+    case .mib: value * 1_024 * 1_024
+    case .gib: value * 1_024 * 1_024 * 1_024
+    case .tib: value * 1_024 * 1_024 * 1_024 * 1_024
     }
   }
 
-  private static func convertTemperature(_ value: Double, from: TemperatureUnit, to: TemperatureUnit) -> Double? {
+  private static func convertTemperature(_ value: Double, from: TemperatureUnit, to: TemperatureUnit) -> Double {
     let celsius: Double = switch from {
     case .c, .cel, .celsius: value
     case .f, .fah, .fahrenheit: (value - 32) * 5 / 9
     case .k, .kelvin: value - 273.15
     }
-    switch to {
+    return switch to {
     case .c, .cel, .celsius:
       celsius
     case .f, .fah, .fahrenheit:
