@@ -10,6 +10,9 @@ Set `PHOTON_UI_SCENARIO` (or pass `--ui-scenario <name>`) at launch:
 | --- | --- |
 | `launcher-empty` | Launcher open, empty query, results loaded |
 | `launcher-query:saf` | Launcher with query `saf` (Safari and related rows) |
+| `launcher-query:wallpaper` | Launcher with query `wallpaper` (System Settings pane matches) |
+| `launcher-query:1+1` | Launcher with query `1+1` (inline calculator result row) |
+| `files-empty` | Launcher in file-search mode with an empty query (home-scoped empty state) |
 | `settings:appearance` | Settings window; selects **Appearance** when that tab exists, otherwise **General** |
 | `notes` | Notes window with a seeded sample note in an isolated data directory |
 

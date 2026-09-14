@@ -6,6 +6,7 @@ enum UIScenario: Equatable, Sendable {
   case launcherEmpty
   case launcherQuery(String)
   case clipboardEmpty
+  case filesEmpty
   case settings(SettingsPaneID)
   case notes
 
@@ -61,6 +62,9 @@ enum UIScenario: Equatable, Sendable {
     }
     if raw == "clipboard-empty" {
       return .clipboardEmpty
+    }
+    if raw == "files-empty" {
+      return .filesEmpty
     }
     if raw.hasPrefix("settings:") {
       let pane = String(raw.dropFirst("settings:".count))
