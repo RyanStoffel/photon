@@ -1,0 +1,100 @@
+import AppKit
+
+// MARK: Keys
+
+extension LauncherPanelController {
+  func startMonitor() {
+    stopMonitor()
+    localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+      guard let self else {
+        return event
+      }
+      switch model.session {
+      case .clipboard:
+        return handleClipboardKey(event)
+      case .commands:
+        return handle(event) ? nil : event
+      }
+    }
+  }
+
+  /// Returns true when the launcher consumed the key event.
+  func handle(_ event: NSEvent) -> Bool {
+    if let mode = model.activeMode, mode.handle(event) {
+      return true
+    }
+    switch event.keyCode {
+    case 53:
+      escape()
+      return true
+    case 51:
+      return deleteOnEmptyQuery()
+    case 126:
+      model.moveSelection(-1)
+      return true
+    case 125:
+      model.moveSelection(1)
+      return true
+    case 36, 76:
+      runSelection()
+      return true
+    default:
+      return false
+    }
+  }
+
+  /// Escape leaves the active mode first and hides the launcher second.
+  func escape() {
+    if model.activeMode != nil {
+      model.exitMode()
+    } else {
+      hide()
+    }
+  }
+
+  /// Backspace on an empty query leaves the active mode, like deleting a token.
+  func deleteOnEmptyQuery() -> Bool {
+    guard model.activeMode != nil, model.query.isEmpty else {
+      return false
+    }
+    model.exitMode()
+    return true
+  }
+
+  func runSelection() {
+    Task {
+      if await model.runSelection() {
+        hide()
+      }
+    }
+  }
+
+  /// Clipboard session: the clipboard view model owns navigation and actions.
+  /// Esc, or Delete on an empty query, returns to the command list.
+  func handleClipboardKey(_ event: NSEvent) -> NSEvent? {
+    guard let clipboard = model.clipboard else {
+      return handle(event) ? nil : event
+    }
+    if clipboard.handleKeyDown(event) {
+      return nil
+    }
+    let command = event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command)
+    switch event.keyCode {
+    case 53:
+      model.exitClipboard()
+      return nil
+    case 51 where !command && model.query.isEmpty:
+      model.exitClipboard()
+      return nil
+    default:
+      return event
+    }
+  }
+
+  func stopMonitor() {
+    if let localMonitor {
+      NSEvent.removeMonitor(localMonitor)
+      self.localMonitor = nil
+    }
+  }
+}

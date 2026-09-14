@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Launcher: inline calculator and unit conversions. Type a math expression (`30/5`, `(2+3)*4`, `2^10`) or a conversion (`10 km to mi`, `32 f to c`) to see a result row; Enter copies the result to the clipboard. Local parser only, no AI.
+- Launcher: hold your launcher shortcut and drag the search bar to move the panel vertically; dotted guides mark the horizontal center and the panel snaps to center when dropped between them. Position is remembered across sessions. Settings > Appearance includes **Reset launcher position to center**.
 
 ### Changed
 

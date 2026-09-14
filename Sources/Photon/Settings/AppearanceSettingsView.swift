@@ -20,6 +20,15 @@ struct AppearanceSettingsView: View {
           }
         }
         .pickerStyle(.segmented)
+        Button("Reset launcher position to center") {
+          settings.resetLauncherPositionToCenter()
+        }
+        Text(
+          "Hold your launcher shortcut and drag the search bar to move the panel. "
+            + "Vertical dotted guides mark the horizontal center for snapping."
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
       }
 
       Section("Appearance") {
