@@ -32,9 +32,11 @@ final class NotesWindow: NSObject {
   init(controller: NotesController) {
     self.controller = controller
     styler = MarkdownTextStyler(baseSize: CGFloat(controller.preferences.fontSize))
+    // `.fullSizeContentView` is what lets the sidebar run under the title bar and the tracking
+    // separator follow the divider; the scroll views inset themselves below the toolbar.
     panel = NotesPanel(
       contentRect: NSRect(origin: .zero, size: Self.defaultSize),
-      styleMask: [.titled, .closable, .resizable, .nonactivatingPanel],
+      styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel],
       backing: .buffered,
       defer: false
     )
