@@ -156,6 +156,13 @@ public final class NotesController: NSObject {
     updatePreferences(next)
   }
 
+  /// Toolbar "Float on Top". Round-trips through `onPreferencesChange` like the font size does.
+  public func setFloatsAboveOtherWindows(_ floats: Bool) {
+    var next = preferences
+    next.floatsAboveOtherWindows = floats
+    updatePreferences(next)
+  }
+
   /// Writes any pending edit immediately.
   public func flush() {
     debouncer.flush()
@@ -184,6 +191,7 @@ public final class NotesController: NSObject {
       untouchedNoteIDs.remove(id)
     }
     window?.updateTitle(NoteTitle.extract(from: content))
+    window?.notesDidChange()
     debouncer.schedule { [weak self] in
       self?.save(id: id, content: content)
     }
@@ -197,9 +205,9 @@ public final class NotesController: NSObject {
     flush()
   }
 
-  func switcherDidSelect(_ id: String) {
+  /// Sidebar selection. Focus stays in the list so arrow keys keep switching notes.
+  func sidebarDidSelect(_ id: String) {
     switchTo(id)
-    window?.focusEditor(atEnd: false)
   }
 
   // MARK: Private
@@ -353,9 +361,9 @@ enum WelcomeNote {
 
   Notes are plain markdown files that save as you type.
 
-  - Press ⌘N for a new note and ⌘P to switch between notes
+  - Press ⌘N for a new note and ⌘P to jump to the sidebar (⌃⌘S hides or shows it)
   - Type `notes` or `n <title>` in the launcher to jump straight to a note
-  - ⌘+ and ⌘- change the text size; the window remembers its size and position
+  - ⌘+ and ⌘- change the text size; the window remembers its size, position, and sidebar
 
   ## Formatting
 

@@ -1,14 +1,14 @@
 import AppKit
-import SwiftUI
 
 extension NSToolbarItem.Identifier {
-  static let notesList = NSToolbarItem.Identifier("photon.notes.list")
   static let newNote = NSToolbarItem.Identifier("photon.notes.new")
   static let noteActions = NSToolbarItem.Identifier("photon.notes.actions")
 }
 
 // MARK: - Toolbar
 
+/// Unified toolbar laid out like Notes: the standard sidebar toggle and "New Note" over the sidebar,
+/// a tracking separator on the sidebar's edge, then the window title and the actions menu.
 extension NotesWindow: NSToolbarDelegate {
   func configureToolbar() {
     let toolbar = NSToolbar(identifier: "photon.notes.toolbar")
@@ -19,7 +19,7 @@ extension NotesWindow: NSToolbarDelegate {
   }
 
   func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
-    [.notesList, .flexibleSpace, .newNote, .noteActions]
+    [.toggleSidebar, .newNote, .sidebarTrackingSeparator, .flexibleSpace, .noteActions]
   }
 
   func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -32,12 +32,6 @@ extension NotesWindow: NSToolbarDelegate {
     willBeInsertedIntoToolbar _: Bool
   ) -> NSToolbarItem? {
     switch identifier {
-    case .notesList:
-      let item = makeItem(identifier, symbol: "list.bullet", label: "Notes", action: #selector(showSwitcherFromToolbar))
-      item.toolTip = "Switch notes (⌘P)"
-      item.isNavigational = true
-      listToolbarItem = item
-      return item
     case .newNote:
       let item = makeItem(
         identifier,
@@ -55,6 +49,23 @@ extension NotesWindow: NSToolbarDelegate {
       item.showsIndicator = false
       item.menu = actionsMenu()
       return item
+    case .toggleSidebar:
+      // AppKit normally supplies the standard item; this is the equivalent if it asks.
+      let item = makeItem(
+        identifier,
+        symbol: "sidebar.left",
+        label: "Toggle Sidebar",
+        action: #selector(NSSplitViewController.toggleSidebar(_:))
+      )
+      item.target = nil
+      item.toolTip = "Hide or show the sidebar (⌃⌘S)"
+      return item
+    case .sidebarTrackingSeparator:
+      return NSTrackingSeparatorToolbarItem(
+        identifier: identifier,
+        splitView: splitViewController.splitView,
+        dividerIndex: 0
+      )
     default:
       return nil
     }
@@ -78,25 +89,29 @@ extension NotesWindow: NSToolbarDelegate {
 
   private func actionsMenu() -> NSMenu {
     let menu = NSMenu()
-    addMenuItem(to: menu, title: "Reveal in Finder", action: #selector(revealInFinder))
+    let float = addMenuItem(to: menu, title: "Float on Top", action: #selector(toggleFloatOnTop))
+    float.state = controller.preferences.floatsAboveOtherWindows ? .on : .off
+    floatOnTopItem = float
     menu.addItem(.separator())
-    addMenuItem(to: menu, title: "Bigger Text", action: #selector(increaseTextSize), key: "+")
-    addMenuItem(to: menu, title: "Smaller Text", action: #selector(decreaseTextSize), key: "-")
-    addMenuItem(to: menu, title: "Reset Text Size", action: #selector(resetTextSize), key: "0")
+    addMenuItem(to: menu, title: "Reveal in Finder", action: #selector(revealInFinder))
     menu.addItem(.separator())
     addMenuItem(to: menu, title: "Delete Note…", action: #selector(deleteNote))
     return menu
   }
 
-  private func addMenuItem(to menu: NSMenu, title: String, action: Selector, key: String = "") {
-    let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+  @discardableResult
+  private func addMenuItem(to menu: NSMenu, title: String, action: Selector) -> NSMenuItem {
+    let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
     item.target = self
     menu.addItem(item)
+    return item
   }
 
+  /// Fallback target for the standard `toggleSidebar:` action when nothing inside the split view
+  /// is the first responder (the window delegate sits in the action chain after the window).
   @objc
-  private func showSwitcherFromToolbar(_: Any?) {
-    toggleSwitcher()
+  func toggleSidebar(_: Any?) {
+    toggleSidebarVisibility()
   }
 
   @objc
@@ -105,114 +120,17 @@ extension NotesWindow: NSToolbarDelegate {
   }
 
   @objc
+  private func toggleFloatOnTop(_: Any?) {
+    controller.setFloatsAboveOtherWindows(!controller.preferences.floatsAboveOtherWindows)
+  }
+
+  @objc
   private func revealInFinder(_: Any?) {
     controller.revealInFinder()
   }
 
   @objc
-  private func increaseTextSize(_: Any?) {
-    controller.adjustFontSize(by: 1)
-  }
-
-  @objc
-  private func decreaseTextSize(_: Any?) {
-    controller.adjustFontSize(by: -1)
-  }
-
-  @objc
-  private func resetTextSize(_: Any?) {
-    controller.resetFontSize()
-  }
-
-  @objc
   private func deleteNote(_: Any?) {
     controller.deleteCurrentNote()
-  }
-}
-
-// MARK: - Switcher popover
-
-extension NotesWindow: NSPopoverDelegate {
-  func configureSwitcher() {
-    switcherModel.onOpen = { [weak self] id in
-      self?.popover?.close()
-      self?.controller.switcherDidSelect(id)
-    }
-    switcherModel.onCreate = { [weak self] title in
-      self?.popover?.close()
-      self?.controller.createNote(content: "# \(title)\n\n")
-    }
-  }
-
-  func toggleSwitcher() {
-    if let popover, popover.isShown {
-      popover.close()
-    } else {
-      showSwitcher()
-    }
-  }
-
-  func showSwitcher() {
-    controller.flush()
-    switcherModel.update(notes: controller.orderedNotes())
-    switcherModel.query = ""
-    switcherModel.selectedID = controller.currentNoteID
-    let popover = popover ?? makePopover()
-    self.popover = popover
-    if let listToolbarItem {
-      popover.show(relativeTo: listToolbarItem)
-    } else if let contentView = panel.contentView {
-      let anchor = NSRect(x: 12, y: contentView.bounds.maxY - 1, width: 1, height: 1)
-      popover.show(relativeTo: anchor, of: contentView, preferredEdge: .maxY)
-    }
-    installSwitcherMonitor()
-  }
-
-  func popoverDidClose(_: Notification) {
-    removeSwitcherMonitor()
-    if panel.isKeyWindow {
-      panel.makeFirstResponder(textView)
-    }
-  }
-
-  private func makePopover() -> NSPopover {
-    let popover = NSPopover()
-    popover.behavior = .transient
-    popover.animates = true
-    popover.delegate = self
-    popover.contentViewController = NSHostingController(rootView: NoteSwitcherView(model: switcherModel))
-    return popover
-  }
-
-  private func installSwitcherMonitor() {
-    removeSwitcherMonitor()
-    switcherMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-      guard let self, let popover, popover.isShown else {
-        return event
-      }
-      switch event.keyCode {
-      case 125:
-        switcherModel.moveSelection(1)
-        return nil
-      case 126:
-        switcherModel.moveSelection(-1)
-        return nil
-      case 36, 76:
-        switcherModel.openSelection()
-        return nil
-      case 53:
-        popover.close()
-        return nil
-      default:
-        return event
-      }
-    }
-  }
-
-  private func removeSwitcherMonitor() {
-    if let switcherMonitor {
-      NSEvent.removeMonitor(switcherMonitor)
-      self.switcherMonitor = nil
-    }
   }
 }
