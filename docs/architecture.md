@@ -165,11 +165,12 @@ Safety: the HID remap is only installed after the event tap exists, is removed o
 | `branch-name` | ubuntu-latest | Enforces `feature/GH-<n>-*`, `bug/GH-<n>-*`, `chore/*`, `docs/*`, `release/*` (passes for `develop`/`main` themselves). |
 | `lint` | macos-latest | `swiftformat --lint` and `swiftlint lint --strict`. |
 | `test` | macos-latest | `swift test` (PhotonCoreTests, PhotonClipboardTests, PhotonNotesTests, PhotonFilesTests, PhotonKeybindsTests). |
-| `build` | macos-latest | `Scripts/package_app.sh`, uploads `Photon.app`. |
+| `build` | macos-latest | `Scripts/package_app.sh`, uploads `Photon.app` (as a `ditto` zip so permissions and the signature survive). |
+| `smoke` | macos-latest | Downloads that zip and runs `Scripts/smoke-test.sh`: `open` the app, wait 8 s, fail on exit, crash report, or fatal log. |
 
-Those four job names are the required status checks. SwiftPM `.build` is cached per job.
+`branch-name`, `lint`, `build`, `test`, and `smoke` are the required status checks. SwiftPM `.build` is cached per job.
 
-`.github/workflows/release.yml` runs on `v*.*.*` tags. See [releasing.md](releasing.md).
+`.github/workflows/release.yml` runs on `v*.*.*` tags and, as a dry run, on `workflow_dispatch`. See [releasing.md](releasing.md).
 
 ## Local build
 

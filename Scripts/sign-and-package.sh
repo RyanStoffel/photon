@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Re-sign Photon.app (Developer ID + notarize when secrets exist; otherwise keep ad-hoc)
 # and write dist/Photon-<version>.zip, dist/Photon-<version>.dmg, dist/SHA256SUMS.
+#
+# Outputs `signing=adhoc|developer-id|developer-id-notarized` (also to $GITHUB_OUTPUT).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -55,13 +57,16 @@ if [[ -n "${MACOS_CERTIFICATE_P12:-}" && -n "${MACOS_CERTIFICATE_PASSWORD:-}" ]]
       --wait
     xcrun stapler staple "$APP"
     rm -f "$ZIP"
+    SIGNING="developer-id-notarized"
   else
-    echo "Developer ID cert present but Apple notarization secrets are missing; signed without notarizing."
+    echo "::warning::Developer ID certificate present but APPLE_ID / APPLE_TEAM_ID / APPLE_APP_SPECIFIC_PASSWORD are missing; signed without notarizing."
   fi
 else
-  echo "Signing secrets not set; leaving the ad-hoc signature from package_app.sh."
+  echo "::notice::MACOS_CERTIFICATE_P12 / MACOS_CERTIFICATE_PASSWORD are not set; ad-hoc signing Photon.app. The release notes will say so."
   codesign --force --deep --sign - "$APP"
 fi
+
+codesign --verify --deep --strict "$APP"
 
 ZIP="$DIST/Photon-${VERSION}.zip"
 DMG="$DIST/Photon-${VERSION}.dmg"

@@ -8,7 +8,7 @@ Closes #
 
 ## Testing
 
-- [ ] CI is green (`branch-name`, `lint`, `build`, `test`)
+- [ ] CI is green (`branch-name`, `lint`, `build`, `test`, `smoke`)
 - [ ] Manual check on macOS (describe what you ran, or "CI-only; no Mac available")
 
 ## Notes

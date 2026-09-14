@@ -40,10 +40,10 @@ Keep commits small and scoped to one concern.
 1. Branch from the latest `develop`.
 2. Open the PR against `develop` (never `main`, except release PRs).
 3. Fill in the PR template. Link the issue with `Closes #N`.
-4. Wait for CI: `branch-name`, `lint`, `build`, `test`.
+4. Wait for CI: `branch-name`, `lint`, `build`, `test`, `smoke`.
 5. Squash-merge once checks are green.
 
-Workers cannot compile macOS code locally. GitHub Actions `macos-latest` is the compiler: push, watch the run, read failed logs, fix, repeat. Do not claim a change builds until CI is green.
+Workers cannot compile macOS code locally. GitHub Actions `macos-latest` is the compiler: push, watch the run, read failed logs, fix, repeat. Do not claim a change builds until CI is green. The `smoke` job launches the built app on the runner for eight seconds and fails on a crash; it is the only runtime check, so treat a red `smoke` as a real bug, not flakiness, until the log says otherwise.
 
 ## Local development
 

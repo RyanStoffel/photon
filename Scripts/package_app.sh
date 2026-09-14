@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Build Photon.app from the Swift package. Ad-hoc signs the bundle.
+#
+# Set PHOTON_ARCHS="arm64 x86_64" to build a universal binary (the release
+# workflow does). By default SwiftPM builds for the host architecture only.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -9,8 +12,13 @@ VERSION="$(tr -d '[:space:]' < VERSION)"
 APP="$ROOT/build/Photon.app"
 CONTENTS="$APP/Contents"
 
-swift build -c release --package-path "$ROOT"
-BIN_DIR="$(swift build -c release --package-path "$ROOT" --show-bin-path)"
+BUILD_ARGS=(-c release --package-path "$ROOT")
+for arch in ${PHOTON_ARCHS:-}; do
+  BUILD_ARGS+=(--arch "$arch")
+done
+
+swift build "${BUILD_ARGS[@]}"
+BIN_DIR="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
