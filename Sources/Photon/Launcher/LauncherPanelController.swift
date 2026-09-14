@@ -136,6 +136,21 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   }
 
   /// Shows the launcher in a fixed position with an optional query (UI screenshot harness).
+  /// Opens clipboard mode for UI screenshots (empty history in isolated data).
+  func showClipboardForScreenshot() {
+    preload()
+    guard let panel else {
+      return
+    }
+    panel.title = "Photon Launcher"
+    model.resetForShow()
+    UIScenarioWindowLayout.position(panel, size: panel.frame.size)
+    panel.orderFrontRegardless()
+    panel.makeKey()
+    startMonitor()
+    model.enterClipboard(query: "")
+  }
+
   func showForScreenshot(query: String) {
     preload()
     guard let panel else {

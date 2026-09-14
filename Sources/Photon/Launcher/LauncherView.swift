@@ -18,15 +18,23 @@ struct LauncherView: View {
         EmptyView()
       case .rows:
         Hairline()
-        resultsList
+        if model.session == .clipboard {
+          clipboardResultsList
+        } else {
+          resultsList
+        }
       case .fullHeight:
         Hairline()
         featureContent
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
-      if model.showsCommandList {
+      if model.showsCommandList || model.session == .clipboard {
         Hairline()
-        footer
+        if model.session == .clipboard, let clipboard = model.clipboard {
+          ClipboardLauncherFooter(model: clipboard)
+        } else {
+          footer
+        }
       }
     }
     .frame(width: model.panelWidth, height: LauncherLayout.height(for: model.content))
@@ -57,9 +65,7 @@ struct LauncherView: View {
 
   @ViewBuilder
   private var sessionBadge: some View {
-    if model.session == .clipboard {
-      badge("Clipboard")
-    } else if let mode = model.activeMode {
+    if let mode = model.activeMode {
       badge(mode.title)
     }
   }
@@ -75,7 +81,7 @@ struct LauncherView: View {
 
   private var placeholder: String {
     if model.session == .clipboard {
-      "Search clipboard history"
+      "Search clipboard history\u{2026}"
     } else if let mode = model.activeMode {
       mode.placeholder
     } else {
@@ -83,20 +89,95 @@ struct LauncherView: View {
     }
   }
 
-  // MARK: Feature views (clipboard history, file search)
+  // MARK: Feature views (file search and other modes)
 
   @ViewBuilder
   private var featureContent: some View {
-    switch model.session {
-    case .clipboard:
-      if let clipboard = model.clipboard {
-        ClipboardHistoryView(model: clipboard)
+    if let mode = model.activeMode {
+      mode.makeResultsView()
+    }
+  }
+
+  // MARK: Clipboard list
+
+  private var clipboardResultsList: some View {
+    ScrollViewReader { proxy in
+      ScrollView(.vertical) {
+        LazyVStack(spacing: 0) {
+          if let clipboard = model.clipboard {
+            if clipboard.results.isEmpty, clipboard.showsCompactEmptyRow {
+              clipboardMessageRow(clipboard.compactEmptyMessage)
+            } else {
+              ForEach(clipboard.results) { item in
+                clipboardResultRow(item)
+                  .id(item.id)
+              }
+            }
+          }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, LauncherLayout.listInset)
       }
-    case .commands:
-      if let mode = model.activeMode {
-        mode.makeResultsView()
+      .onChange(of: model.clipboard?.selectedID) { _, newValue in
+        if let newValue {
+          proxy.scrollTo(newValue)
+        }
       }
     }
+    .frame(height: LauncherLayout.listHeight(rowCount: clipboardVisibleRowCount))
+  }
+
+  private var clipboardVisibleRowCount: Int {
+    guard let clipboard = model.clipboard else {
+      return 1
+    }
+    if !clipboard.results.isEmpty {
+      return clipboard.results.count
+    }
+    if clipboard.showsCompactEmptyRow {
+      return 1
+    }
+    return 1
+  }
+
+  private func clipboardMessageRow(_ message: String) -> some View {
+    HStack {
+      Text(message)
+        .font(.system(size: 13))
+        .foregroundStyle(.secondary)
+      Spacer()
+    }
+    .padding(.horizontal, 10)
+    .frame(height: LauncherLayout.rowHeight)
+  }
+
+  @ViewBuilder
+  private func clipboardResultRow(_ item: ClipboardItem) -> some View {
+    let selected = item.id == model.clipboard?.selectedID
+    ClipboardLauncherRow(item: item, isSelected: selected)
+      .contextMenu {
+        if let clipboard = model.clipboard {
+          Button(clipboard.manager.settings.pasteBehavior == .paste ? "Paste" : "Copy") {
+            clipboard.paste(item)
+          }
+          Button("Copy Only") {
+            clipboard.copy(item)
+          }
+          Divider()
+          Button(item.isPinned ? "Unpin" : "Pin") {
+            clipboard.togglePin(item)
+          }
+          Button("Delete", role: .destructive) {
+            clipboard.delete(item)
+          }
+        }
+      }
+      .onTapGesture(count: 2) {
+        model.clipboard?.paste(item)
+      }
+      .onTapGesture {
+        model.clipboard?.selectedID = item.id
+      }
   }
 
   // MARK: Command list
