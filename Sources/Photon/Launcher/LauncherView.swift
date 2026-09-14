@@ -201,6 +201,7 @@ struct LauncherView: View {
     case "clipboard": "clipboard"
     case "files": "doc"
     case "notes": "note.text"
+    case "calculator": "function"
     default: "circle.grid.3x3"
     }
   }
