@@ -26,7 +26,7 @@ enum MdfindInvocation: Sendable {
     var start = data.startIndex
     while start < data.endIndex, paths.count < limit {
       if let zero = data[start...].firstIndex(of: 0) {
-        if zero > start, let path = String(data: data[start..<zero], encoding: .utf8), !path.isEmpty {
+        if zero > start, let path = String(data: data[start ..< zero], encoding: .utf8), !path.isEmpty {
           paths.append(path)
         }
         start = data.index(after: zero)

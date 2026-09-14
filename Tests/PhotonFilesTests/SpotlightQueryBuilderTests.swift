@@ -63,11 +63,11 @@ final class SpotlightQueryBuilderTests: XCTestCase {
     XCTAssertEqual(SpotlightQueryBuilder.escape("a\"b"), "a\\\"b")
     XCTAssertEqual(SpotlightQueryBuilder.escape("a\\b"), "a\\\\b")
     XCTAssertEqual(SpotlightQueryBuilder.escape("a*b?"), "a\\*b\\?")
-    let query = SpotlightQueryBuilder.queryString(for: "say \"hi\"", searchContents: false)
+    let query = SpotlightQueryBuilder.queryString(for: "say \"hello\"", searchContents: false)
     XCTAssertEqual(
       query,
       "(kMDItemDisplayName == \"*say*\"cd || kMDItemFSName == \"*say*\"cd)"
-        + " && (kMDItemDisplayName == \"*hi*\"cd || kMDItemFSName == \"*hi*\"cd)"
+        + " && (kMDItemDisplayName == \"*hello*\"cd || kMDItemFSName == \"*hello*\"cd)"
     )
   }
 }

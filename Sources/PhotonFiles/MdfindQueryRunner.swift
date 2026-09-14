@@ -40,11 +40,10 @@ final class MdfindQueryRunner: @unchecked Sendable {
     lock.unlock()
 
     process.terminationHandler = { [weak self] finished in
-      let data: Data
-      if let pipe = finished.standardOutput as? Pipe {
-        data = (try? pipe.fileHandleForReading.readToEnd()) ?? Data()
+      let data: Data = if let pipe = finished.standardOutput as? Pipe {
+        (try? pipe.fileHandleForReading.readToEnd()) ?? Data()
       } else {
-        data = Data()
+        Data()
       }
       self?.processFinished(finished, data: data, scanLimit: request.scanLimit)
     }
