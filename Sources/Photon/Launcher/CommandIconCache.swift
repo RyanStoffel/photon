@@ -23,9 +23,9 @@ final class CommandIconCache: @unchecked Sendable {
     misses.countLimit = 1200
   }
 
-  /// The command's own icon when it resolves, otherwise `fallbackSymbol`.
-  func resolve(_ command: Command, fallbackSymbol: String) -> ResolvedCommandIcon {
-    if let icon = command.icon {
+  /// The declared icon when it resolves, otherwise `fallbackSymbol`.
+  func resolve(_ icon: CommandIcon?, fallbackSymbol: String) -> ResolvedCommandIcon {
+    if let icon {
       switch icon {
       case let .symbol(name):
         if image(for: icon) != nil {

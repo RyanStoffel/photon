@@ -103,10 +103,11 @@ public final class ApplicationIndex: @unchecked Sendable {
       return nil
     }
     let identifier = bundle?.bundleIdentifier ?? url.path
+    // The launcher shows the name and icon only; the path adds nothing a user needs.
     return IndexedApplication(
       id: "app:\(identifier)",
       name: name,
-      subtitle: url.path,
+      subtitle: "",
       url: url,
       keywords: [identifier, url.lastPathComponent],
       icon: .fileIcon(path: url.path)
