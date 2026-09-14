@@ -1,0 +1,56 @@
+- name: type/feature
+  color: "1d76db"
+  description: New capability
+- name: type/bug
+  color: "d73a4a"
+  description: Something is broken
+- name: type/infra
+  color: "5319e7"
+  description: CI, release, repo automation
+- name: type/docs
+  color: "0075ca"
+  description: Documentation only
+- name: type/chore
+  color: "c5def5"
+  description: Maintenance, deps, tidy-up
+
+- name: area/launcher
+  color: "fbca04"
+  description: Hotkey, panel, search, providers
+- name: area/clipboard
+  color: "c2e0c6"
+  description: Clipboard history
+- name: area/notes
+  color: "bfdadc"
+  description: Notes
+- name: area/files
+  color: "d4c5f9"
+  description: File search
+- name: area/keybinds
+  color: "f9d0c4"
+  description: Hyper key and app hotkeys
+- name: area/windows
+  color: "fef2c0"
+  description: Window management
+- name: area/settings
+  color: "bfd4f2"
+  description: Settings window
+- name: area/ci
+  color: "e6e6e6"
+  description: GitHub Actions
+- name: area/release
+  color: "0e8a16"
+  description: Signing, packaging, Homebrew
+
+- name: priority/p0
+  color: "b60205"
+  description: Blocks a release
+- name: priority/p1
+  color: "ff7619"
+  description: Needed for v1
+- name: priority/p2
+  color: "fbca04"
+  description: Should have
+- name: priority/p3
+  color: "0e8a16"
+  description: Nice to have

@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  branch-name:
+    name: branch-name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+      - name: Check branch name
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            Scripts/check-branch-name.sh "$HEAD_REF"
+          else
+            Scripts/check-branch-name.sh "$REF_NAME"
+          fi
+
+  lint:
+    name: lint
+    runs-on: macos-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+      - name: SwiftFormat
+        run: swiftformat --lint --config .swiftformat .
+      - name: SwiftLint
+        run: swiftlint lint --strict --config .swiftlint.yml
+
+  test:
+    name: test
+    runs-on: macos-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: test-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift', 'Sources/**/*.swift', 'Tests/**/*.swift') }}
+          restore-keys: |
+            test-${{ runner.os }}-${{ runner.arch }}-
+      - name: Run unit tests
+        run: swift test --package-path .
+
+  build:
+    name: build
+    runs-on: macos-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift', 'Sources/**/*.swift') }}
+          restore-keys: |
+            build-${{ runner.os }}-${{ runner.arch }}-
+      - name: Release build
+        run: Scripts/package_app.sh
+      - name: Upload Photon.app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Photon.app
+          path: build/Photon.app
+          if-no-files-found: error

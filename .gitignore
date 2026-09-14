@@ -1,0 +1,17 @@
+.build/
+.swiftpm/
+build/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+.DS_Store
+.env
+.env.*
+!.env.example
+agent-tools/
+*.pem
+*.p12
+*.mobileprovision
+Package.resolved

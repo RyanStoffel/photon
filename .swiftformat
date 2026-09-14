@@ -1,0 +1,14 @@
+--swiftversion 6.0
+--indent 2
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--ifdef no-indent
+--self remove
+--importgrouping testable-bottom
+--trimwhitespace always
+--insertlines enabled
+--commas inline
+--hexliteralcase lowercase
+--exclude .build,.swiftpm,build
