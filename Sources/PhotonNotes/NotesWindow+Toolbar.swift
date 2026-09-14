@@ -49,24 +49,9 @@ extension NotesWindow: NSToolbarDelegate {
       item.showsIndicator = false
       item.menu = actionsMenu()
       return item
-    case .toggleSidebar:
-      // AppKit normally supplies the standard item; this is the equivalent if it asks.
-      let item = makeItem(
-        identifier,
-        symbol: "sidebar.left",
-        label: "Toggle Sidebar",
-        action: #selector(NSSplitViewController.toggleSidebar(_:))
-      )
-      item.target = nil
-      item.toolTip = "Hide or show the sidebar (⌃⌘S)"
-      return item
-    case .sidebarTrackingSeparator:
-      return NSTrackingSeparatorToolbarItem(
-        identifier: identifier,
-        splitView: splitViewController.splitView,
-        dividerIndex: 0
-      )
     default:
+      // `.toggleSidebar` and `.sidebarTrackingSeparator` are standard items AppKit builds and links
+      // to the split view controller itself.
       return nil
     }
   }
