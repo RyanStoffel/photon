@@ -13,6 +13,8 @@ public enum MarkdownSpanKind: Equatable, Sendable {
   case checkbox(checked: Bool)
   case completedItem
   case syntax
+  /// The note's first non-blank line, shown as its title. Layered over the line's other spans.
+  case title
 }
 
 /// A styled region of markdown source. Ranges are UTF-16 offsets into the full text.
@@ -57,6 +59,38 @@ public enum MarkdownStyler {
   /// Fenced code blocks depend on earlier lines, so a paragraph-only restyle is not safe.
   public static func requiresFullPass(_ text: String) -> Bool {
     text.contains("```") || text.contains("~~~")
+  }
+
+  /// The first non-blank line, which the editor shows as the title. `nil` when the text is blank or
+  /// that line opens a code fence.
+  public static func titleLineRange(in text: String) -> NSRange? {
+    let source = Source(text)
+    var location = 0
+    while location < source.length {
+      let (line, lineEnd) = source.line(at: location)
+      if source.substring(line).contains(where: { !$0.isWhitespace }) {
+        return fence.firstMatch(in: source, range: line) == nil ? line : nil
+      }
+      if lineEnd <= location {
+        break
+      }
+      location = lineEnd
+    }
+    return nil
+  }
+
+  /// `.title` for the first non-blank line, to be appended after `spans(in:range:)` so it wins.
+  public static func titleSpan(in text: String) -> MarkdownSpan? {
+    titleLineRange(in: text).map { MarkdownSpan(range: $0, kind: .title) }
+  }
+
+  /// Whether an edit inside `editedRange` can change which line is the title. Edits at or before the
+  /// end of the title line can promote or demote lines, so the caller should restyle everything.
+  public static func editAffectsTitle(_ editedRange: NSRange, in text: String) -> Bool {
+    guard let title = titleLineRange(in: text) else {
+      return true
+    }
+    return editedRange.location <= title.upperBound
   }
 
   private static let fence = Pattern("^ {0,3}(?:```|~~~)")

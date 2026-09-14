@@ -2,70 +2,75 @@ import PhotonClipboard
 import PhotonCore
 import SwiftUI
 
+/// The launcher panel: search field, the command list (or a feature view), and a footer.
+/// Sizes come from `LauncherLayout` so the AppKit window and this view always agree.
 struct LauncherView: View {
   @ObservedObject var model: LauncherViewModel
   var onRun: () -> Void
 
+  static let defaultPlaceholder = "Search apps, files, notes and more\u{2026}"
+
   var body: some View {
     VStack(spacing: 0) {
       searchField
-      Divider()
-      content
-      if let lastError = model.lastError {
-        Text(lastError)
-          .font(.caption)
-          .foregroundStyle(.red)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.horizontal, 16)
-          .padding(.vertical, 8)
+      switch model.content {
+      case .searchOnly:
+        EmptyView()
+      case .rows:
+        Hairline()
+        resultsList
+      case .fullHeight:
+        Hairline()
+        featureContent
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      }
+      if model.showsCommandList {
+        Hairline()
+        footer
       }
     }
-    .frame(width: 640, height: 420)
-    .background(.ultraThinMaterial)
-    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .frame(width: model.panelWidth, height: LauncherLayout.height(for: model.content))
     .overlay(
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+      RoundedRectangle(cornerRadius: LauncherLayout.cornerRadius, style: .continuous)
+        .strokeBorder(Color.primary.opacity(0.1), lineWidth: LauncherLayout.hairline)
     )
     .onAppear {
       Task { await model.refresh() }
     }
   }
 
+  // MARK: Search field
+
   private var searchField: some View {
-    HStack(spacing: 10) {
+    HStack(spacing: 12) {
       sessionBadge
       TextField(placeholder, text: $model.query)
         .textFieldStyle(.plain)
-        .font(.system(size: 22, weight: .medium))
+        .font(.system(size: 20))
         .onSubmit {
           Task { await run() }
         }
     }
-    .padding(.horizontal, 18)
-    .padding(.vertical, 16)
+    .padding(.horizontal, 20)
+    .frame(height: LauncherLayout.searchFieldHeight)
   }
 
   @ViewBuilder
   private var sessionBadge: some View {
     if model.session == .clipboard {
-      Label("Clipboard", systemImage: "clipboard")
-        .font(.callout.weight(.medium))
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+      badge("Clipboard")
     } else if let mode = model.activeMode {
-      Text(mode.title)
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Capsule().fill(Color.accentColor.opacity(0.18)))
-        .foregroundStyle(Color.accentColor)
-    } else {
-      Image(systemName: "magnifyingglass")
-        .foregroundStyle(.secondary)
+      badge(mode.title)
     }
+  }
+
+  private func badge(_ title: String) -> some View {
+    Text(title)
+      .font(.system(size: 12, weight: .semibold))
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
+      .background(Capsule().fill(Color.accentColor.opacity(0.18)))
+      .foregroundStyle(Color.accentColor)
   }
 
   private var placeholder: String {
@@ -74,101 +79,159 @@ struct LauncherView: View {
     } else if let mode = model.activeMode {
       mode.placeholder
     } else {
-      "Search applications"
+      Self.defaultPlaceholder
     }
   }
 
+  // MARK: Feature views (clipboard history, file search)
+
   @ViewBuilder
-  private var content: some View {
+  private var featureContent: some View {
     switch model.session {
     case .clipboard:
       if let clipboard = model.clipboard {
         ClipboardHistoryView(model: clipboard)
-      } else {
-        results
       }
     case .commands:
       if let mode = model.activeMode {
         mode.makeResultsView()
-      } else {
-        results
       }
     }
   }
 
-  @ViewBuilder
-  private var results: some View {
-    if model.isLoading, model.results.isEmpty {
-      ProgressView("Scanning…")
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    } else if model.results.isEmpty {
-      Text(model.query.isEmpty ? "No applications indexed yet" : "No results")
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    } else {
-      ScrollViewReader { proxy in
-        List(model.results, selection: $model.selectedID) { item in
-          resultRow(item)
-            .tag(item.id)
-            .id(item.id)
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .onChange(of: model.selectedID) { _, newValue in
-          if let newValue {
-            proxy.scrollTo(newValue, anchor: .center)
+  // MARK: Command list
+
+  private var resultsList: some View {
+    ScrollViewReader { proxy in
+      ScrollView(.vertical) {
+        LazyVStack(spacing: 0) {
+          if model.rows.isEmpty {
+            messageRow
+          } else {
+            ForEach(model.rows) { row in
+              resultRow(row)
+                .id(row.id)
+            }
           }
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, LauncherLayout.listInset)
+      }
+      .onChange(of: model.selectedID) { _, newValue in
+        if let newValue {
+          proxy.scrollTo(newValue)
+        }
       }
     }
+    .frame(height: LauncherLayout.listHeight(rowCount: model.rows.count))
   }
 
-  private func resultRow(_ item: RankedCommand) -> some View {
-    HStack(spacing: 12) {
-      resultIcon(for: item.command)
-        .frame(width: 24)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(item.command.title)
-          .font(.body.weight(.medium))
-        if !item.command.subtitle.isEmpty {
-          Text(item.command.subtitle)
-            .font(.caption)
+  private var messageRow: some View {
+    HStack {
+      Text(model.isLoading ? "Indexing applications\u{2026}" : "No results")
+        .font(.system(size: 13))
+        .foregroundStyle(.secondary)
+      Spacer()
+    }
+    .padding(.horizontal, 10)
+    .frame(height: LauncherLayout.rowHeight)
+  }
+
+  private func resultRow(_ row: LauncherRow) -> some View {
+    let selected = row.id == model.selectedID
+    return HStack(spacing: 12) {
+      rowIcon(for: row)
+        .frame(width: LauncherLayout.iconSize, height: LauncherLayout.iconSize)
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Text(row.title)
+          .font(.system(size: 14, weight: .medium))
+          .lineLimit(1)
+          .layoutPriority(1)
+        if let detail = row.detail {
+          Text(detail)
+            .font(.system(size: 12))
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .truncationMode(.middle)
         }
       }
-      Spacer()
+      Spacer(minLength: 0)
     }
-    .padding(.vertical, 4)
+    .padding(.horizontal, 10)
+    .frame(height: LauncherLayout.rowHeight)
+    .background(
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
+        .fill(selected ? Color.primary.opacity(0.09) : Color.clear)
+    )
     .contentShape(Rectangle())
     .onTapGesture {
-      model.selectedID = item.id
+      model.selectedID = row.id
       Task { await run() }
     }
   }
 
   @ViewBuilder
-  private func resultIcon(for command: Command) -> some View {
-    if let icon = model.mode(forInlineProvider: command.providerID)?.icon(for: command) {
-      Image(nsImage: icon)
+  private func rowIcon(for row: LauncherRow) -> some View {
+    switch CommandIconCache.shared.resolve(row.icon, fallbackSymbol: symbolName(forProvider: row.providerID)) {
+    case let .image(image):
+      Image(nsImage: image)
         .resizable()
         .interpolation(.high)
-        .frame(width: 24, height: 24)
-    } else {
-      Image(systemName: symbolName(for: command))
-        .foregroundStyle(.secondary)
+        .frame(width: LauncherLayout.iconSize, height: LauncherLayout.iconSize)
+    case let .symbol(name):
+      symbolTile(name)
     }
   }
 
-  private func symbolName(for command: Command) -> String {
-    switch command.providerID {
+  /// Commands without an app icon get a quiet tile so every row lines up.
+  private func symbolTile(_ name: String) -> some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: 7, style: .continuous)
+        .fill(Color.primary.opacity(0.08))
+      Image(systemName: name)
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(.secondary)
+    }
+    .frame(width: LauncherLayout.iconSize - 2, height: LauncherLayout.iconSize - 2)
+  }
+
+  private func symbolName(forProvider providerID: String) -> String {
+    switch providerID {
     case "apps": "app.fill"
     case "clipboard": "clipboard"
     case "files": "doc"
     case "notes": "note.text"
     default: "circle.grid.3x3"
     }
+  }
+
+  // MARK: Footer
+
+  private var footer: some View {
+    HStack(spacing: 12) {
+      if let lastError = model.lastError {
+        Image(systemName: "exclamationmark.triangle.fill")
+          .foregroundStyle(.orange)
+        Text(lastError)
+          .lineLimit(1)
+          .truncationMode(.tail)
+      } else {
+        Image(nsImage: NSApp.applicationIconImage)
+          .resizable()
+          .interpolation(.high)
+          .frame(width: 16, height: 16)
+        Text("Photon")
+          .fontWeight(.medium)
+      }
+      Spacer(minLength: 12)
+      if let row = model.selectedRow {
+        FooterKeyHint(label: row.actionVerb, key: "\u{21B5}")
+      }
+    }
+    .font(.system(size: 12))
+    .foregroundStyle(.secondary)
+    .padding(.horizontal, 14)
+    .frame(height: LauncherLayout.footerHeight)
   }
 
   private func run() async {
@@ -179,6 +242,33 @@ struct LauncherView: View {
       if await model.runSelection() {
         onRun()
       }
+    }
+  }
+}
+
+/// One-point separator that reads on both the light and the dark material.
+private struct Hairline: View {
+  var body: some View {
+    Rectangle()
+      .fill(Color.primary.opacity(0.08))
+      .frame(height: LauncherLayout.hairline)
+  }
+}
+
+/// "Open ↵": the label first, then the key in a small cap.
+private struct FooterKeyHint: View {
+  let label: String
+  let key: String
+
+  var body: some View {
+    HStack(spacing: 6) {
+      Text(label)
+      Text(key)
+        .font(.system(size: 11, weight: .semibold))
+        .frame(minWidth: 14)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+        .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Color.primary.opacity(0.08)))
     }
   }
 }

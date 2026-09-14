@@ -8,7 +8,7 @@ Deployment target: macOS 14.
 
 ```
 Sources/
-  PhotonCore/           Fuzzy matching, frecency, Command, CommandRegistry
+  PhotonCore/           Fuzzy matching, frecency, Command, CommandRegistry, launcher layout and row rules
   Photon/               App process: hotkey, launcher panel, settings, wiring
   PhotonApps/           Application + System Settings pane provider
   PhotonClipboard/      Clipboard history: monitor, store, search, panel view
@@ -16,9 +16,10 @@ Sources/
   PhotonFiles/          Spotlight file search: provider, launcher file mode, Quick Look
   PhotonKeybinds/       Hyper key, app hotkeys, window management
 Tests/
-  PhotonCoreTests/      FuzzyMatcher + FrecencyStore
+  PhotonCoreTests/      FuzzyMatcher, FrecencyStore, Command icons, launcher layout and rows
+  PhotonAppsTests/      System Settings pane icon policy
   PhotonClipboardTests/ History rules (dedupe, retention), search ranking, store round trip
-  PhotonNotesTests/     Title extraction, markdown spans, store, debounce, query parsing
+  PhotonNotesTests/     Title extraction, markdown spans, store, debounce, query parsing, sidebar rows
   PhotonFilesTests/     Spotlight query strings, ranking, path truncation
   PhotonKeybindsTests/  Frame math, shortcut parsing, conflicts, hidutil mapping format
 ```
@@ -30,7 +31,7 @@ Tests/
 | PhotonCore | -- | no |
 | PhotonApps | PhotonCore | yes |
 | PhotonClipboard | PhotonCore | partly (guarded) |
-| PhotonNotes | PhotonCore | yes (AppKit panel, SwiftUI switcher) |
+| PhotonNotes | PhotonCore | yes (AppKit panel and split view, SwiftUI sidebar list) |
 | PhotonFiles | PhotonCore | yes (plus QuickLookUI) |
 | PhotonKeybinds | PhotonCore | yes (plus ApplicationServices, CoreGraphics, IOKit) |
 | Photon | all of the above | yes |
@@ -49,7 +50,9 @@ public protocol CommandProvider: Sendable {
 }
 ```
 
-`Command` is a value type (`id`, `title`, `subtitle`, `keywords`, `providerID`). Providers own how they find and run things. The launcher only searches and dispatches.
+`Command` is a value type (`id`, `title`, `subtitle`, `keywords`, `providerID`, optional `icon`). Providers own how they find and run things. The launcher only searches and dispatches.
+
+`icon` is a `CommandIcon`: the Finder icon of a path (`.fileIcon`), an image file (`.imageFile`), an application by bundle id (`.application`), a named image in a bundle or its asset catalog (`.bundleResource`), or an SF Symbol (`.symbol`). It stays a plain value so `PhotonCore` needs no AppKit; `Sources/Photon/Launcher/CommandIconCache.swift` resolves and caches the `NSImage`s (`NSWorkspace.icon(forFile:)`, `NSImage(contentsOfFile:)`, `urlForApplication(withBundleIdentifier:)`) and is warmed in the background once the providers have loaded. Apps use their bundle's Finder icon; System Settings panes go through `PaneIconPolicy` (`PhotonApps`), which reads the pane's declared icon (`NSPrefPaneIconFile`, `CFBundleIconFile`, or an asset catalog entry) and falls back to the System Settings app icon.
 
 To add a Phase 2 feature:
 
@@ -101,10 +104,11 @@ Raycast-Notes-style floating notes. One markdown file per note in
 | --- | --- |
 | `NotesController` (public) | Facade the app uses: show / toggle / hide, create, open, delete, preferences, `noteSummaries()` for the launcher. Owns the store, the current note, and autosave. |
 | `NoteStore` | Directory-backed CRUD. Files are named after creation time (`Note 2026-09-14 at 03.12.45.md`) and never renamed, so launcher frecency stays stable. Writes are atomic; `rescan()` diffs modification date + size so external edits are picked up when the window becomes key. Delete moves to the Trash. |
-| `NotesWindow` / `NotesPanel` | Non-activating `NSPanel` (titled, closable, resizable, `.unifiedCompact` toolbar, `NSVisualEffectView` background). Floats at `.floating` level when the preference is on. Frame is autosaved under `PhotonNotesWindow`. The panel handles ⌘N / ⌘P / ⌘W / ⌘F / ⌘+ / ⌘- / ⌘0 / Esc and routes copy / paste / undo itself because an agent app may have no Edit menu. |
-| `MarkdownTextView` + `MarkdownTextStyler` | `NSTextView` (TextKit 1, plain text) styled from `MarkdownStyler` spans inside `NSTextStorageDelegate.didProcessEditing`. Content stays plain markdown; only attributes change. Clicking `[ ]` toggles it, Return continues lists. |
-| `MarkdownStyler` (pure) | Line-based span computation: headings, bold / italic, inline code, fenced code, bullet and numbered lists, checkboxes. Paragraph-local restyle unless the document contains a fence. |
-| `NoteSwitcherModel` / `NoteSwitcherView` | ⌘P popover anchored to the toolbar: fuzzy filter over titles (`FuzzyMatcher`), arrow keys, Return opens, "Create" when nothing matches. |
+| `NotesWindow` / `NotesPanel` | Non-activating `NSPanel` (titled, closable, resizable, `.unified` toolbar) whose `contentViewController` is an `NSSplitViewController`: a sidebar item (`NSSplitViewItem(sidebarWithViewController:)`, system sidebar material, full-height layout, 180–340 pt) hosting the SwiftUI list, and the editor column on `textBackgroundColor`. Floats at `.floating` level when the preference is on. Frame is autosaved under `PhotonNotesWindow.sidebar`; sidebar width and collapsed state are stored in `PhotonNotesSidebarWidth` / `PhotonNotesSidebarCollapsed` (`NotesWindow+Sidebar.swift`). The panel handles ⌘N / ⌘P (list ⇄ editor) / ⌃⌘S (toggle sidebar) / ⌘W / ⌘F / ⌘+ / ⌘- / ⌘0 / Esc and Return (list → editor), and routes copy / paste / undo itself because an agent app may have no Edit menu. The window title is the current note's title. |
+| `NotesWindow+Toolbar` | Standard toolbar items only: `.toggleSidebar`, "New Note" (`square.and.pencil`) in the sidebar's toolbar area, `.sidebarTrackingSeparator`, flexible space, and an `NSMenuToolbarItem` (`ellipsis.circle`) with Float on Top, Reveal in Finder, Delete Note. SF Symbols at the default toolbar size, no tinting. |
+| `MarkdownTextView` + `MarkdownTextStyler` | `NSTextView` (TextKit 1, plain text) styled from `MarkdownStyler` spans inside `NSTextStorageDelegate.didProcessEditing` (`NotesWindow+Editor.swift`). Content stays plain markdown; only attributes change. The first non-blank line gets the `.title` look (1.7× the body size, bold, extra paragraph spacing) layered over its markdown spans. 18 pt container insets. Clicking `[ ]` toggles it, Return continues lists. |
+| `MarkdownStyler` (pure) | Line-based span computation: headings, bold / italic, inline code, fenced code, bullet and numbered lists, checkboxes. `titleSpan(in:)` marks the first non-blank line; `editAffectsTitle(_:in:)` tells the editor when an edit near the top needs a full pass. Otherwise restyling is paragraph-local unless the document contains a fence. |
+| `NoteSidebarRow` (pure) / `NoteSidebarModel` / `NoteSidebarView` | Sidebar rows (title, snippet or "No additional text", Notes-style date: time today, "Yesterday", weekday within a week, else numeric) sorted newest first; the model bridges the SwiftUI `List(selection:)` to the controller and distinguishes user selection from programmatic updates. |
 | `Debouncer` (pure) | Autosave coalescing (0.6 s) with an injectable scheduler for tests. Flushes on note switch, hide, resign key, and termination. |
 | `NoteQuery` (pure) | Launcher grammar: `notes`, `note`, `n <text>`, `note <text>`, `notes <text>` list notes; anything else only matches the fixed "Notes" and "New Note" commands. |
 | `NotesProvider` | `CommandProvider`: `notes.open`, `notes.new`, and `note:<id>` results. |
@@ -116,9 +120,10 @@ App-side wiring lives in `Sources/Photon/Notes/NotesIntegration.swift`: it maps 
 - `PhotonApp` is a SwiftUI `@main` app with `NSApplicationDelegateAdaptor`.
 - `LSUIElement` keeps it out of the Dock. A `MenuBarExtra` is the visible affordance.
 - `HotkeyManager` wraps Carbon `RegisterEventHotKey`. The default shortcut is `Cmd+Space`. First launch compares that shortcut to Spotlight (`com.apple.symbolichotkeys`, id 64) and shows guidance if they collide.
-- `LauncherPanelController` owns a non-activating floating `NSPanel` (native material, centered). The panel is created at launch so the hotkey only has to order it front. Esc and losing key focus hide it. The panel has a command list, a clipboard session (`LauncherSession.clipboard`), and protocol-based feature modes (`LauncherMode`; file search today).
+- `LauncherPanelController` owns a non-activating floating `NSPanel`. Its content view is an `NSVisualEffectView` (`.popover`, `.behindWindow`, always active) clipped to a 12 pt continuous corner radius, with the SwiftUI `LauncherView` on top. The panel is created at launch so the hotkey only has to order it front. Esc and losing key focus hide it. The panel has a command list, a clipboard session (`LauncherSession.clipboard`), and protocol-based feature modes (`LauncherMode`; file search today).
+- Panel size: `LauncherLayout` (PhotonCore) is the single source of the metrics (56 pt search field, 40 pt rows, at most 8 visible, 32 pt footer, width presets 620 / 740 / 860). `LauncherViewModel` publishes a `LauncherContent` (`.searchOnly` for an empty query in compact mode, `.rows(n)`, or `.fullHeight` for clipboard and file mode); the controller resizes the window from it with the top edge fixed, and `LauncherView` sizes itself from the same value, so the two never disagree. `LauncherRow` maps a `Command` to what a row shows (title, optional secondary detail, icon). Settings > Appearance (`launcherShowsSuggestions`, `launcherPanelWidth`, `appearance`) reach the launcher as a `LauncherPreferences` value; `appearance` is applied to `NSApp.appearance`.
 - `HotkeyManager` registers several Carbon hotkeys keyed by id: `1` is the launcher, `2` opens clipboard history, `3` toggles the notes window (off by default), and `add(combo:handler:)` hands out ids from `1000` for features with a dynamic number of shortcuts (app hotkeys, window commands).
-- Settings is a regular SwiftUI `Settings` scene: General, Clipboard, Notes, Files, Keybinds, and About are all implemented and bound to `SettingsStore`.
+- Settings is a regular SwiftUI `Settings` scene: General, Appearance, Clipboard, Notes, Files, Keybinds, and About are all implemented and bound to `SettingsStore`.
 
 ## Clipboard history (`PhotonClipboard`)
 
@@ -164,7 +169,7 @@ Safety: the HID remap is only installed after the event tap exists, is removed o
 | --- | --- | --- |
 | `branch-name` | ubuntu-latest | Enforces `feature/GH-<n>-*`, `bug/GH-<n>-*`, `chore/*`, `docs/*`, `release/*` (passes for `develop`/`main` themselves). |
 | `lint` | macos-latest | `swiftformat --lint` and `swiftlint lint --strict`. |
-| `test` | macos-latest | `swift test` (PhotonCoreTests, PhotonClipboardTests, PhotonNotesTests, PhotonFilesTests, PhotonKeybindsTests). |
+| `test` | macos-latest | `swift test` (PhotonCoreTests, PhotonAppsTests, PhotonClipboardTests, PhotonNotesTests, PhotonFilesTests, PhotonKeybindsTests). |
 | `build` | macos-latest | `Scripts/package_app.sh`, uploads `Photon.app` (as a `ditto` zip so permissions and the signature survive). |
 | `smoke` | macos-latest | Downloads that zip and runs `Scripts/smoke-test.sh`: `open` the app, wait 8 s, fail on exit, crash report, or fatal log. |
 

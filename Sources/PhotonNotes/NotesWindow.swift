@@ -1,28 +1,39 @@
 import AppKit
 import SwiftUI
 
-/// The floating notes panel: toolbar, markdown editor, and the ⌘P switcher popover.
+/// The floating notes panel: a collapsible sidebar listing every note beside the markdown editor,
+/// under a unified toolbar. Built on `NSSplitViewController` so the sidebar gets the system material,
+/// the standard toggle, and the full-height layout.
 @MainActor
 final class NotesWindow: NSObject {
-  static let frameAutosaveName = "PhotonNotesWindow"
-  static let defaultSize = NSSize(width: 380, height: 460)
-  static let minimumSize = NSSize(width: 280, height: 220)
+  static let frameAutosaveName = "PhotonNotesWindow.sidebar"
+  static let sidebarWidthKey = "PhotonNotesSidebarWidth"
+  static let sidebarCollapsedKey = "PhotonNotesSidebarCollapsed"
+  static let defaultSize = NSSize(width: 720, height: 480)
+  static let minimumSize = NSSize(width: 420, height: 260)
+  static let defaultSidebarWidth: CGFloat = 220
+  static let sidebarWidthRange: ClosedRange<CGFloat> = 180 ... 340
+  static let minimumEditorWidth: CGFloat = 240
 
   unowned let controller: NotesController
   let panel: NotesPanel
   let textView: MarkdownTextView
   let scrollView: NSScrollView
-  weak var listToolbarItem: NSToolbarItem?
+  let splitViewController = NSSplitViewController()
+  let sidebarItem: NSSplitViewItem
+  let sidebarController: NSHostingController<NoteSidebarView>
+  let sidebarModel: NoteSidebarModel
+  let defaults = UserDefaults.standard
+  weak var floatOnTopItem: NSMenuItem?
 
   private(set) var styler: MarkdownTextStyler
-  let switcherModel = NoteSwitcherModel()
-  var popover: NSPopover?
-  var switcherMonitor: Any?
-  private var editorWasEmpty = true
+  var editorWasEmpty = true
 
   init(controller: NotesController) {
     self.controller = controller
     styler = MarkdownTextStyler(baseSize: CGFloat(controller.preferences.fontSize))
+    // `.fullSizeContentView` is what lets the sidebar run under the title bar and the tracking
+    // separator follow the divider; the scroll views inset themselves below the toolbar.
     panel = NotesPanel(
       contentRect: NSRect(origin: .zero, size: Self.defaultSize),
       styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel],
@@ -32,11 +43,17 @@ final class NotesWindow: NSObject {
     let editor = Self.makeEditor(size: Self.defaultSize)
     scrollView = editor.scrollView
     textView = editor.textView
+    let model = NoteSidebarModel()
+    let hosting = NSHostingController(rootView: NoteSidebarView(model: model))
+    sidebarModel = model
+    sidebarController = hosting
+    sidebarItem = NSSplitViewItem(sidebarWithViewController: hosting)
     super.init()
+    configureSplitView()
     configurePanel()
     configureEditor()
     configureToolbar()
-    configureSwitcher()
+    configureSidebar()
   }
 
   var isVisible: Bool {
@@ -56,7 +73,6 @@ final class NotesWindow: NSObject {
   }
 
   func hide() {
-    popover?.close()
     panel.orderOut(nil)
   }
 
@@ -89,15 +105,15 @@ final class NotesWindow: NSObject {
     panel.title = title
   }
 
+  /// Refreshes the sidebar rows and selection from the controller.
   func notesDidChange() {
-    if popover?.isShown == true {
-      switcherModel.update(notes: controller.orderedNotes())
-    }
+    sidebarModel.update(notes: controller.orderedNotes(), selectedID: controller.currentNoteID)
   }
 
   func apply(_ preferences: NotesPreferences) {
     panel.isFloatingPanel = preferences.floatsAboveOtherWindows
     panel.level = preferences.floatsAboveOtherWindows ? .floating : .normal
+    floatOnTopItem?.state = preferences.floatsAboveOtherWindows ? .on : .off
     let size = CGFloat(preferences.fontSize)
     if styler.baseSize != size {
       styler = MarkdownTextStyler(baseSize: size)
@@ -120,10 +136,34 @@ final class NotesWindow: NSObject {
 
   // MARK: Setup
 
+  private func configureSplitView() {
+    sidebarItem.minimumThickness = Self.sidebarWidthRange.lowerBound
+    sidebarItem.maximumThickness = Self.sidebarWidthRange.upperBound
+    sidebarItem.canCollapse = true
+    sidebarItem.allowsFullHeightLayout = true
+    sidebarController.sizingOptions = []
+
+    let container = NSView()
+    container.addSubview(scrollView)
+    NSLayoutConstraint.activate([
+      scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+      scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+      scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+      scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+    ])
+    let editorController = NSViewController()
+    editorController.view = container
+    let editorItem = NSSplitViewItem(viewController: editorController)
+    editorItem.minimumThickness = Self.minimumEditorWidth
+
+    splitViewController.addSplitViewItem(sidebarItem)
+    splitViewController.addSplitViewItem(editorItem)
+  }
+
   private func configurePanel() {
     panel.title = "Notes"
     panel.titleVisibility = .visible
-    panel.toolbarStyle = .unifiedCompact
+    panel.toolbarStyle = .unified
     panel.hidesOnDeactivate = false
     panel.becomesKeyOnlyIfNeeded = false
     panel.isReleasedWhenClosed = false
@@ -137,19 +177,7 @@ final class NotesWindow: NSObject {
     panel.shortcutHandler = { [weak self] event in
       self?.handleShortcut(event) ?? false
     }
-
-    let background = NSVisualEffectView()
-    background.material = .underWindowBackground
-    background.blendingMode = .behindWindow
-    background.state = .followsWindowActiveState
-    background.addSubview(scrollView)
-    NSLayoutConstraint.activate([
-      scrollView.leadingAnchor.constraint(equalTo: background.leadingAnchor),
-      scrollView.trailingAnchor.constraint(equalTo: background.trailingAnchor),
-      scrollView.topAnchor.constraint(equalTo: background.topAnchor),
-      scrollView.bottomAnchor.constraint(equalTo: background.bottomAnchor)
-    ])
-    panel.contentView = background
+    panel.contentViewController = splitViewController
 
     if !panel.setFrameUsingName(Self.frameAutosaveName) {
       panel.setContentSize(Self.defaultSize)
@@ -165,80 +193,16 @@ final class NotesWindow: NSObject {
     textView.typingAttributes = styler.baseAttributes
   }
 
-  private static func makeEditor(size: NSSize) -> (scrollView: NSScrollView, textView: MarkdownTextView) {
-    let scrollView = NSScrollView(frame: NSRect(origin: .zero, size: size))
-    scrollView.hasVerticalScroller = true
-    scrollView.hasHorizontalScroller = false
-    scrollView.autohidesScrollers = true
-    scrollView.drawsBackground = false
-    scrollView.borderType = .noBorder
-    scrollView.translatesAutoresizingMaskIntoConstraints = false
-
-    let storage = NSTextStorage()
-    let layoutManager = NSLayoutManager()
-    storage.addLayoutManager(layoutManager)
-    let container = NSTextContainer(size: NSSize(width: size.width, height: CGFloat.greatestFiniteMagnitude))
-    container.widthTracksTextView = true
-    container.lineFragmentPadding = 4
-    layoutManager.addTextContainer(container)
-
-    let textView = MarkdownTextView(
-      frame: NSRect(origin: .zero, size: scrollView.contentSize),
-      textContainer: container
-    )
-    textView.minSize = NSSize(width: 0, height: scrollView.contentSize.height)
-    textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-    textView.isVerticallyResizable = true
-    textView.isHorizontallyResizable = false
-    textView.autoresizingMask = [.width]
-    textView.textContainerInset = NSSize(width: 14, height: 14)
-    textView.drawsBackground = false
-    textView.isRichText = false
-    textView.importsGraphics = false
-    textView.allowsUndo = true
-    textView.usesFindBar = true
-    textView.isIncrementalSearchingEnabled = true
-    textView.isAutomaticQuoteSubstitutionEnabled = false
-    textView.isAutomaticDashSubstitutionEnabled = false
-    textView.isAutomaticTextReplacementEnabled = false
-    textView.isAutomaticSpellingCorrectionEnabled = false
-    textView.isContinuousSpellCheckingEnabled = true
-    textView.isGrammarCheckingEnabled = false
-    textView.smartInsertDeleteEnabled = false
-    scrollView.documentView = textView
-    return (scrollView, textView)
-  }
-
-  // MARK: Styling
-
-  func restyleWholeDocument() {
-    guard let storage = textView.textStorage else {
-      return
-    }
-    let text = storage.string
-    let range = NSRange(location: 0, length: storage.length)
-    styler.apply(MarkdownStyler.spans(in: text, range: range), to: storage, in: range)
-  }
-
-  private func restyle(around editedRange: NSRange) {
-    guard let storage = textView.textStorage else {
-      return
-    }
-    let text = storage.string
-    if MarkdownStyler.requiresFullPass(text) {
-      restyleWholeDocument()
-      return
-    }
-    let range = (text as NSString).paragraphRange(for: editedRange)
-    styler.apply(MarkdownStyler.spans(in: text, range: range), to: storage, in: range)
-  }
-
   // MARK: Shortcuts
 
   private func handleShortcut(_ event: NSEvent) -> Bool {
     let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-    if event.keyCode == 53, flags.isEmpty {
-      return handleEscape()
+    if flags.isEmpty {
+      return handleUnmodifiedKey(event)
+    }
+    if flags == [.command, .control], event.charactersIgnoringModifiers?.lowercased() == "s" {
+      toggleSidebarVisibility()
+      return true
     }
     guard flags.contains(.command), !flags.contains(.option), !flags.contains(.control),
           let key = event.charactersIgnoringModifiers
@@ -248,9 +212,25 @@ final class NotesWindow: NSObject {
     return runShortcut(key)
   }
 
+  private func handleUnmodifiedKey(_ event: NSEvent) -> Bool {
+    switch event.keyCode {
+    case 53:
+      return handleEscape()
+    case 36, 76:
+      // Return in the sidebar list hands focus to the editor, like opening the selected note.
+      guard isSidebarFocused else {
+        return false
+      }
+      focusEditor(atEnd: false)
+      return true
+    default:
+      return false
+    }
+  }
+
   private func handleEscape() -> Bool {
-    if let popover, popover.isShown {
-      popover.close()
+    if isSidebarFocused {
+      focusEditor(atEnd: false)
       return true
     }
     if textView.hasMarkedText() {
@@ -265,7 +245,7 @@ final class NotesWindow: NSObject {
     case "n":
       controller.createNote()
     case "p":
-      toggleSwitcher()
+      toggleSidebarFocus()
     case "w":
       controller.hide()
     case "f":
@@ -289,7 +269,7 @@ final class NotesWindow: NSObject {
   }
 }
 
-// MARK: - Delegates
+// MARK: - Window delegate
 
 extension NotesWindow: NSWindowDelegate {
   func windowShouldClose(_: NSWindow) -> Bool {
@@ -303,33 +283,5 @@ extension NotesWindow: NSWindowDelegate {
 
   func windowDidResignKey(_: Notification) {
     controller.windowDidResignKey()
-  }
-}
-
-extension NotesWindow: NSTextViewDelegate {
-  func textDidChange(_: Notification) {
-    let text = textView.string
-    if text.isEmpty != editorWasEmpty {
-      editorWasEmpty = text.isEmpty
-      textView.needsDisplay = true
-    }
-    controller.editorDidChange(text)
-  }
-}
-
-extension NotesWindow: NSTextStorageDelegate {
-  /// `NSTextStorageDelegate` is nonisolated in the SDK; the storage is only ever edited on the main thread.
-  nonisolated func textStorage(
-    _: NSTextStorage,
-    didProcessEditing editedMask: NSTextStorageEditActions,
-    range editedRange: NSRange,
-    changeInLength _: Int
-  ) {
-    guard editedMask.contains(.editedCharacters) else {
-      return
-    }
-    MainActor.assumeIsolated {
-      restyle(around: editedRange)
-    }
   }
 }

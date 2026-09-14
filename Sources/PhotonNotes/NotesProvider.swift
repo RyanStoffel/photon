@@ -55,7 +55,8 @@ public final class NotesProvider: CommandProvider, @unchecked Sendable {
       title: "Notes",
       subtitle: "Open the notes window",
       keywords: ["note", "notes", "n"],
-      providerID: id
+      providerID: id,
+      icon: .symbol(name: "note.text")
     )
   }
 
@@ -65,7 +66,8 @@ public final class NotesProvider: CommandProvider, @unchecked Sendable {
       title: "New Note",
       subtitle: "Create and open a blank note",
       keywords: ["note", "notes", "create note"],
-      providerID: id
+      providerID: id,
+      icon: .symbol(name: "square.and.pencil")
     )
   }
 
@@ -75,7 +77,8 @@ public final class NotesProvider: CommandProvider, @unchecked Sendable {
       title: note.title,
       subtitle: note.preview.isEmpty ? "Note" : note.preview,
       keywords: NoteQuery.keywords(forTitle: note.title),
-      providerID: id
+      providerID: id,
+      icon: .symbol(name: "doc.text")
     )
   }
 }

@@ -10,10 +10,10 @@ It is not an extension platform. There is no AI, no account, no cloud sync, and 
 
 ## Features
 
-- **Launcher** — `Cmd+Space` opens a floating search panel. Configurable hotkey.
+- **Launcher** — `Cmd+Space` opens a compact floating search field that expands into results as you type; turn on suggestions under **Settings > Appearance** to see your most used apps and commands before typing. Configurable hotkey, panel width, and light/dark appearance.
 - **Applications** — fuzzy search over `/Applications`, `/System/Applications`, `~/Applications`, and System Settings panes, ranked by frecency.
 - **Clipboard history** — `Cmd+Shift+V`, or type `cb ` in the launcher. Text (with rich text), links, images, and files; searchable, pin, paste back or copy. Retention of 1/7/30 days or forever, an item limit, and excluded apps (password managers by default).
-- **Notes** — a compact floating window with live markdown styling, one `.md` file per note in `~/Library/Application Support/Photon/Notes`, autosave, and a `⌘P` switcher. Type `notes` or `n <title>` in the launcher to open a note; an optional hotkey toggles the window.
+- **Notes** — a floating window with a collapsible sidebar of notes, live markdown styling, one `.md` file per note in `~/Library/Application Support/Photon/Notes`, and autosave. `⌘P` jumps to the sidebar. Type `notes` or `n <title>` in the launcher to open a note; an optional hotkey toggles the window.
 - **File search** — type `/` or `f ` (or run *Search Files*) to search the whole Mac through Spotlight. Enter opens, `Cmd+Enter` reveals in Finder, Space or `Cmd+Y` toggles Quick Look, `Cmd+C` copies the path, `Cmd+I` shows size and dates. Strong file matches also appear below applications in the main list.
 - **Keybinds** — a Hyper key (Caps Lock held = `⌃⌥⇧⌘`, shown as `✦`; tap = nothing, Escape, or Caps Lock), shortcuts that launch, focus, or hide an app, and window management: halves, quarters, thirds, two-thirds, maximize, almost maximize, center, next/previous display, restore. Defaults: `✦←` `✦→` `✦↑` `✦↓` halves, `✦Return` maximize, `✦C` center, `✦[` / `✦]` displays. Every command is also searchable in the launcher.
 
@@ -23,6 +23,8 @@ It is not an extension platform. There is no AI, no account, no cloud sync, and 
 brew tap ryanstoffel/taps
 brew install --cask ryanstoffel/taps/photon
 ```
+
+Homebrew 7 and later only load casks from third-party taps that you have trusted, unless you spell out the full name as above. Run `brew trust ryanstoffel/taps` once so that `brew upgrade` and the short name `photon` work too.
 
 Or download `Photon-<version>.zip` or `.dmg` from the [latest release](https://github.com/RyanStoffel/photon/releases) and move `Photon.app` to `/Applications`. Requires macOS 14 or later; the binary is universal (Apple silicon and Intel).
 

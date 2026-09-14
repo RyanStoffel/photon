@@ -31,7 +31,8 @@ public final class AppsProvider: CommandProvider, @unchecked Sendable {
         title: app.name,
         subtitle: app.subtitle,
         keywords: app.keywords,
-        providerID: id
+        providerID: id,
+        icon: app.icon
       )
     }
   }

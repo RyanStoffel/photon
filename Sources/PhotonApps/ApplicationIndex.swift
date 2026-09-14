@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import PhotonCore
 
 public struct IndexedApplication: Hashable, Sendable {
   public let id: String
@@ -7,6 +8,7 @@ public struct IndexedApplication: Hashable, Sendable {
   public let subtitle: String
   public let url: URL
   public let keywords: [String]
+  public let icon: CommandIcon
 }
 
 public final class ApplicationIndex: @unchecked Sendable {
@@ -33,6 +35,11 @@ public final class ApplicationIndex: @unchecked Sendable {
     ]
     for root in roots {
       collectApps(at: root, depth: 2, into: &found)
+    }
+    if let extra = ProcessInfo.processInfo.environment["PHOTON_APPLICATIONS_EXTRA"] {
+      for segment in extra.split(separator: ":") where !segment.isEmpty {
+        collectApps(at: URL(fileURLWithPath: String(segment), isDirectory: true), depth: 2, into: &found)
+      }
     }
 
     let paneRoots = [
@@ -96,12 +103,14 @@ public final class ApplicationIndex: @unchecked Sendable {
       return nil
     }
     let identifier = bundle?.bundleIdentifier ?? url.path
+    // The launcher shows the name and icon only; the path adds nothing a user needs.
     return IndexedApplication(
       id: "app:\(identifier)",
       name: name,
-      subtitle: url.path,
+      subtitle: "",
       url: url,
-      keywords: [identifier, url.lastPathComponent]
+      keywords: [identifier, url.lastPathComponent],
+      icon: .fileIcon(path: url.path)
     )
   }
 
@@ -109,12 +118,18 @@ public final class ApplicationIndex: @unchecked Sendable {
     let bundle = Bundle(url: url)
     let name = displayName(in: bundle, fallback: url.deletingPathExtension().lastPathComponent)
     let identifier = bundle?.bundleIdentifier ?? url.path
+    let icon = PaneIconPolicy.icon(
+      forPaneAt: url,
+      info: bundle?.infoDictionary ?? [:],
+      fileExists: { FileManager.default.fileExists(atPath: $0) }
+    )
     return IndexedApplication(
       id: "pane:\(identifier)",
       name: name,
       subtitle: "System Settings",
       url: url,
-      keywords: [identifier, "settings", "preferences"]
+      keywords: [identifier, "settings", "preferences"],
+      icon: icon
     )
   }
 

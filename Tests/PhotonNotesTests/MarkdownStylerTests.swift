@@ -86,6 +86,38 @@ final class MarkdownStylerTests: XCTestCase {
     XCTAssertTrue(MarkdownStyler.spans(in: "").isEmpty)
   }
 
+  func testTitleIsTheFirstNonBlankLine() {
+    XCTAssertEqual(MarkdownStyler.titleLineRange(in: "# Plan\nbody"), NSRange(location: 0, length: 6))
+    XCTAssertEqual(MarkdownStyler.titleLineRange(in: "\n  \n  Late start\nmore"), NSRange(location: 4, length: 12))
+    XCTAssertEqual(MarkdownStyler.titleLineRange(in: "Only"), NSRange(location: 0, length: 4))
+    let span = MarkdownStyler.titleSpan(in: "Hi\nthere")
+    XCTAssertEqual(span, MarkdownSpan(range: NSRange(location: 0, length: 2), kind: .title))
+  }
+
+  func testBlankTextAndFencesHaveNoTitle() {
+    XCTAssertNil(MarkdownStyler.titleLineRange(in: ""))
+    XCTAssertNil(MarkdownStyler.titleLineRange(in: " \n\t\n"))
+    XCTAssertNil(MarkdownStyler.titleLineRange(in: "```\ncode\n```"))
+    XCTAssertNil(MarkdownStyler.titleSpan(in: "\n\n"))
+  }
+
+  func testTitleSpanDoesNotChangeTheOtherSpans() {
+    let text = "# Plan\n**bold**"
+    XCTAssertEqual(spans(text, .headingMarker(level: 1)), ["# "])
+    XCTAssertEqual(spans(text, .heading(level: 1)), ["Plan"])
+    XCTAssertTrue(spans(text, .title).isEmpty, "the title is a separate pass")
+  }
+
+  func testEditsAtOrBeforeTheTitleLineNeedAFullPass() {
+    let text = "Title\nbody\nmore"
+    XCTAssertTrue(MarkdownStyler.editAffectsTitle(NSRange(location: 0, length: 6), in: text))
+    XCTAssertTrue(MarkdownStyler.editAffectsTitle(NSRange(location: 5, length: 0), in: text), "the title's newline")
+    XCTAssertFalse(MarkdownStyler.editAffectsTitle(NSRange(location: 6, length: 5), in: text))
+    XCTAssertFalse(MarkdownStyler.editAffectsTitle(NSRange(location: 11, length: 4), in: text))
+    XCTAssertTrue(MarkdownStyler.editAffectsTitle(NSRange(location: 0, length: 0), in: ""), "blank notes restyle fully")
+    XCTAssertTrue(MarkdownStyler.editAffectsTitle(NSRange(location: 4, length: 0), in: "\n\n\nLate\nbody"))
+  }
+
   func testCheckboxToggleOnAndAroundBrackets() {
     let text = "- [ ] task"
     let toggle = MarkdownCheckbox.toggle(in: text, at: 3)

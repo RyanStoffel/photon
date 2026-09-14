@@ -86,4 +86,8 @@ brew install --cask ryanstoffel/taps/photon
 
 The cask token is `photon`. The tap repository is [RyanStoffel/homebrew-taps](https://github.com/RyanStoffel/homebrew-taps) (`brew tap ryanstoffel/taps`).
 
+Homebrew 7 introduced tap trust: casks from third-party taps load only when the tap (or cask) has been trusted with `brew trust`, or when the fully qualified name is on the command line. The install line above therefore works untrusted, while `brew install --cask photon` and `brew upgrade` need `brew trust ryanstoffel/taps` first. `brew tap` itself succeeds untrusted on macOS.
+
+Checks that work without a Mac (Homebrew on Linux cannot install casks): `brew readall ryanstoffel/taps`, `brew style ryanstoffel/taps`, and `brew audit --cask --strict --online ryanstoffel/taps/photon` (the audit needs a `plutil` on `PATH`; on Linux a small `plistlib` shim is enough). The strict audit reports that the version is a GitHub pre-release; that rule is written for homebrew/cask and is expected here while releases are `0.y.z`.
+
 To bump by hand after a release: take the zip line from `SHA256SUMS` on the GitHub Release, then edit `version` and `sha256` in `Casks/photon.rb` and push (or let `Scripts/update-homebrew-cask.sh` do it with `HOMEBREW_TAP_TOKEN=<pat> VERSION=<x.y.z>` and `dist/SHA256SUMS` present).

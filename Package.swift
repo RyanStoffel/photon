@@ -22,6 +22,7 @@ let package = Package(
 package.products.append(.executable(name: "Photon", targets: ["Photon"]))
 package.targets.append(contentsOf: [
   .target(name: "PhotonApps", dependencies: ["PhotonCore"]),
+  .testTarget(name: "PhotonAppsTests", dependencies: ["PhotonApps", "PhotonCore"]),
   .target(name: "PhotonNotes", dependencies: ["PhotonCore"]),
   .testTarget(name: "PhotonNotesTests", dependencies: ["PhotonNotes"]),
   .target(name: "PhotonFiles", dependencies: ["PhotonCore"]),

@@ -20,11 +20,10 @@ final class AppRuntime: ObservableObject {
   private var fileSearch: FileSearchIntegration?
 
   init() {
-    let settings = SettingsStore()
+    let defaults = Self.userDefaultsForLaunch()
+    let settings = SettingsStore(defaults: defaults)
     self.settings = settings
-    let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-      ?? URL(fileURLWithPath: NSTemporaryDirectory())
-    let dir = support.appendingPathComponent("Photon", isDirectory: true)
+    let dir = Self.applicationSupportDirectory()
     frecencyURL = dir.appendingPathComponent("frecency.json")
     launcher = LauncherPanelController(settings: settings, registry: registry, frecencyURL: frecencyURL)
     clipboard = ClipboardManager(
@@ -32,35 +31,64 @@ final class AppRuntime: ObservableObject {
       directory: dir.appendingPathComponent("Clipboard", isDirectory: true)
     )
     launcher.attachClipboard(clipboard)
-    notes = NotesIntegration(settings: settings)
+    let notesDirectory = dir.appendingPathComponent("Notes", isDirectory: true)
+    notes = NotesIntegration(settings: settings, notesDirectory: notesDirectory)
     keybinds = KeybindsController(hotkeys: hotkey)
     registerProviders()
   }
 
   func start() {
+    applyAppearance()
+    settings.onAppearanceChange = { [weak self] in
+      self?.applyAppearance()
+    }
     launcher.preload()
-    clipboard.start()
+    if UIScenario.current == nil {
+      clipboard.start()
+    }
     Task {
       await registry.reloadAll()
+      launcher.warmIcons()
     }
-    applyHotkey()
-    applyClipboardHotkey()
-    settings.onHotkeyChange = { [weak self] in
-      self?.applyHotkey()
-    }
-    settings.onClipboardChange = { [weak self] in
-      self?.applyClipboardSettings()
-    }
-    notes.start()
-    keybinds.apply(settings.keybinds)
-    settings.onKeybindsChange = { [weak self] in
-      guard let self else {
-        return
+    if UIScenario.current == nil {
+      applyHotkey()
+      applyClipboardHotkey()
+      settings.onHotkeyChange = { [weak self] in
+        self?.applyHotkey()
       }
+      settings.onClipboardChange = { [weak self] in
+        self?.applyClipboardSettings()
+      }
+      notes.start()
       keybinds.apply(settings.keybinds)
+      settings.onKeybindsChange = { [weak self] in
+        guard let self else {
+          return
+        }
+        keybinds.apply(settings.keybinds)
+      }
+      SpotlightConflict.adviseIfNeeded(current: settings.hotkey)
+      keybinds.adviseAccessibilityIfNeeded()
+    } else {
+      notes.startWithoutOpenOnLaunch()
     }
-    SpotlightConflict.adviseIfNeeded(current: settings.hotkey)
-    keybinds.adviseAccessibilityIfNeeded()
+  }
+
+  private static func applicationSupportDirectory() -> URL {
+    if let root = UIScenario.isolatedDataRoot {
+      return root.appendingPathComponent("Photon", isDirectory: true)
+    }
+    let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+      ?? URL(fileURLWithPath: NSTemporaryDirectory())
+    return support.appendingPathComponent("Photon", isDirectory: true)
+  }
+
+  private static func userDefaultsForLaunch() -> UserDefaults {
+    if let root = UIScenario.isolatedDataRoot {
+      let suite = "photon-ui-scenario-" + root.path.replacingOccurrences(of: "/", with: "-")
+      return UserDefaults(suiteName: suite) ?? .standard
+    }
+    return .standard
   }
 
   func stop() {
@@ -72,6 +100,12 @@ final class AppRuntime: ObservableObject {
     settings.onHotkeyChange = nil
     settings.onClipboardChange = nil
     settings.onKeybindsChange = nil
+    settings.onAppearanceChange = nil
+  }
+
+  /// Settings > Appearance applies to every Photon window, including the launcher panel.
+  private func applyAppearance() {
+    NSApp.appearance = settings.appearance.nsAppearance
   }
 
   func toggleLauncher() {

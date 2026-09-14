@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import PhotonClipboard
 import PhotonCore
 import QuickLookUI
@@ -12,6 +13,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   private let model: LauncherViewModel
   private var panel: LauncherPanel?
   private var localMonitor: Any?
+  private var cancellables: Set<AnyCancellable> = []
   /// App that was frontmost before a mode asked us to activate; restored on hide.
   private var previousApplication: NSRunningApplication?
 
@@ -20,10 +22,51 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     self.registry = registry
     self.frecencyURL = frecencyURL
     model = LauncherViewModel(registry: registry, frecency: FrecencyStore.load(from: frecencyURL))
+    super.init()
+    model.preferences = settings.launcherPreferences
+    observe()
+  }
+
+  /// The window follows the model: `content` decides the height, the width preset the width.
+  /// `@Published` emits from `willSet`, so the sinks use the incoming value, never the model's.
+  private func observe() {
+    model.$content
+      .removeDuplicates()
+      .sink { [weak self] content in
+        guard let self else {
+          return
+        }
+        resize(width: model.panelWidth, content: content)
+      }
+      .store(in: &cancellables)
+    model.$preferences
+      .map(\.width)
+      .removeDuplicates()
+      .sink { [weak self] width in
+        guard let self else {
+          return
+        }
+        resize(width: width.points, content: model.content)
+      }
+      .store(in: &cancellables)
+    // objectWillChange fires before the write lands; hop once through the run loop to read the new values.
+    settings.objectWillChange
+      .receive(on: RunLoop.main)
+      .sink { [weak self] _ in
+        guard let self else {
+          return
+        }
+        model.preferences = settings.launcherPreferences
+      }
+      .store(in: &cancellables)
   }
 
   func currentFrecency() -> FrecencyStore {
     model.frecency
+  }
+
+  var panelWindowForScreenshot: NSWindow? {
+    panel
   }
 
   /// Enables clipboard mode. Call once at startup, before the panel is shown.
@@ -55,6 +98,15 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     }
   }
 
+  /// Resolves every provider's icons in the background so the first list draws without a stall.
+  func warmIcons() {
+    let frecency = model.frecency
+    Task.detached(priority: .utility) { [registry] in
+      let ranked = await registry.search("", frecency: frecency)
+      CommandIconCache.shared.prefetch(ranked.compactMap(\.command.icon))
+    }
+  }
+
   func toggle() {
     preload()
     guard let panel else {
@@ -73,7 +125,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       return
     }
     model.resetForShow()
-    center(panel)
+    position(panel)
     panel.orderFrontRegardless()
     panel.makeKey()
     startMonitor()
@@ -81,6 +133,45 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       await registry.reloadAll()
       await model.refresh()
     }
+  }
+
+  /// Shows the launcher in a fixed position with an optional query (UI screenshot harness).
+  func showForScreenshot(query: String) {
+    preload()
+    guard let panel else {
+      return
+    }
+    panel.title = "Photon Launcher"
+    model.resetForShow()
+    UIScenarioWindowLayout.position(panel, size: panel.frame.size)
+    panel.orderFrontRegardless()
+    panel.makeKey()
+    startMonitor()
+    if !query.isEmpty {
+      model.query = query
+    }
+  }
+
+  @MainActor
+  func prepareForScreenshot(query: String) async {
+    await registry.reloadAll()
+    showForScreenshot(query: query)
+    await model.refresh()
+    let deadline = Date().addingTimeInterval(10)
+    while Date() < deadline, model.results.isEmpty {
+      try? await Task.sleep(nanoseconds: 100_000_000)
+      await model.refresh()
+    }
+    prefetchVisibleIcons()
+    try? await Task.sleep(nanoseconds: 500_000_000)
+  }
+
+  private func prefetchVisibleIcons() {
+    let icons = model.results.compactMap(\.command.icon)
+    guard !icons.isEmpty else {
+      return
+    }
+    CommandIconCache.shared.prefetch(icons)
   }
 
   /// Opens the panel straight into clipboard history; toggles it closed when
@@ -96,7 +187,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     }
     if !panel.isVisible {
       model.resetForShow()
-      center(panel)
+      position(panel)
       panel.orderFrontRegardless()
       panel.makeKey()
       startMonitor()
@@ -144,8 +235,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   }
 
   private func makePanel() -> LauncherPanel {
+    let size = NSSize(width: model.panelWidth, height: LauncherLayout.height(for: model.content))
     let panel = LauncherPanel(
-      contentRect: NSRect(x: 0, y: 0, width: 640, height: 420),
+      contentRect: NSRect(origin: .zero, size: size),
       styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
       backing: .buffered,
       defer: false
@@ -168,27 +260,66 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       self?.model.activeMode
     }
 
+    // System material behind the whole panel, clipped to the rounded shape. The window
+    // shadow follows the opaque region, so the corners stay clean.
+    let background = NSVisualEffectView(frame: NSRect(origin: .zero, size: size))
+    background.material = .popover
+    background.blendingMode = .behindWindow
+    background.state = .active
+    background.wantsLayer = true
+    background.layer?.cornerRadius = LauncherLayout.cornerRadius
+    background.layer?.cornerCurve = .continuous
+    background.layer?.masksToBounds = true
+    background.autoresizingMask = [.width, .height]
+
     let host = NSHostingView(rootView: LauncherView(model: model, onRun: { [weak self] in
       self?.hide()
     }))
     host.safeAreaRegions = []
-    panel.contentView = host
+    host.frame = background.bounds
+    host.autoresizingMask = [.width, .height]
+    background.addSubview(host)
+    panel.contentView = background
     return panel
   }
 
-  private func center(_ panel: NSPanel) {
+  /// Keeps the top edge where it is (so the search field never jumps) and the panel centred.
+  private func resize(width: Double, content: LauncherContent) {
+    guard let panel else {
+      return
+    }
+    let size = NSSize(width: width, height: LauncherLayout.height(for: content))
+    var frame = panel.frame
+    guard frame.size != size else {
+      return
+    }
+    frame.origin.x = frame.midX - size.width / 2
+    frame.origin.y = frame.maxY - size.height
+    frame.size = size
+    // No animation: the resize and SwiftUI's relayout land in the same display cycle.
+    panel.setFrame(frame, display: false, animate: false)
+    panel.invalidateShadow()
+  }
+
+  /// Centred horizontally, top edge a little above the middle of the screen, like Spotlight.
+  private func position(_ panel: NSPanel) {
     guard let screen = NSScreen.main ?? NSScreen.screens.first else {
       return
     }
     let visible = screen.visibleFrame
     let size = panel.frame.size
+    let top = min(visible.minY + visible.height * 0.74, visible.maxY - 8)
     let origin = NSPoint(
       x: visible.midX - size.width / 2,
-      y: visible.midY - size.height / 2 + 40
+      y: top - size.height
     )
     panel.setFrameOrigin(origin)
   }
+}
 
+// MARK: Keys
+
+extension LauncherPanelController {
   private func startMonitor() {
     stopMonitor()
     localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
