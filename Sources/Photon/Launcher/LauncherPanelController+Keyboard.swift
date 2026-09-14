@@ -114,9 +114,13 @@ extension LauncherPanelController {
     }
     let control = flags.contains(.control)
     switch event.keyCode {
-    case 125, 45 where control:
+    case 125:
       return 1
-    case 126, 35 where control:
+    case 45 where control:
+      return 1
+    case 126:
+      return -1
+    case 35 where control:
       return -1
     case 121:
       return LauncherLayout.maxVisibleRows
