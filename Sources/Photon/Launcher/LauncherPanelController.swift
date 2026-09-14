@@ -307,7 +307,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     return panel
   }
 
-  /// Keeps the top edge where it is (so the search field never jumps). Recentres horizontally only when snapped to center.
+  /// Keeps the top edge fixed so the search field never jumps.
+  /// Recentres horizontally only when snapped to center.
   private func resize(width: Double, content: LauncherContent) {
     guard let panel else {
       return
@@ -338,7 +339,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     )
   }
 
-  /// Centred horizontally by default; uses a stored origin when the user has repositioned the panel.
+  /// Centred horizontally by default.
+  /// Uses a stored origin when the user has repositioned the panel.
   private func position(_ panel: NSPanel) {
     guard panel.screen != nil || NSScreen.main != nil || !NSScreen.screens.isEmpty else {
       return
