@@ -72,6 +72,35 @@ public final class ClipboardHistoryViewModel: ObservableObject {
     return results.firstIndex { $0.id == selectedID }
   }
 
+  /// One-line empty state when history is off or a filter has no matches.
+  public var showsCompactEmptyRow: Bool {
+    if !manager.isEnabled {
+      return true
+    }
+    if manager.items.isEmpty {
+      return false
+    }
+    return !query.isEmpty
+  }
+
+  public var compactEmptyMessage: String {
+    if !manager.isEnabled {
+      return "Clipboard history is off"
+    }
+    return "No matches"
+  }
+
+  /// Short hint for the footer when the list is collapsed.
+  public var footerEmptyHint: String? {
+    if !manager.isEnabled {
+      return "Turn on in Settings \u{203A} Clipboard"
+    }
+    if manager.items.isEmpty {
+      return "Copy something in any app"
+    }
+    return nil
+  }
+
   public func moveSelection(_ delta: Int) {
     guard !results.isEmpty else {
       return

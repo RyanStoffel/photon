@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Launcher: inline calculator and unit conversions. Type a math expression (`30/5`, `(2+3)*4`, `2^10`) or a conversion (`10 km to mi`, `32 f to c`) to see a result row; Enter copies the result to the clipboard. Local parser only, no AI.
 
+### Changed
+
+- Clipboard mode: matches the compact launcher layout. The panel stays search-field height until history items appear, then grows row by row. The mode is labeled in the footer instead of a pill beside the search field. Rows use the same icon, title, and secondary relative-time styling as launcher commands; pin, delete, paste, and keyboard shortcuts are unchanged.
+- File search: default scope is your home folder instead of the whole Mac. Settings still offers This Mac, plus extra and excluded folders.
+- File search: fuzzy matching on file names and home-relative paths (case-insensitive; spaces, underscores, and punctuation are ignored), aligned with the app launcher.
+- Files mode: result rows and the empty state match the redesigned launcher (40 pt rows, icon and name with a truncated `~/…` path on the same line).
+
+### Fixed
+
+- Launcher: System Settings panes are indexed and shown by their human-facing titles (localized bundle names and common pane labels), with searchable aliases such as `wallpaper`, `privacy`, `bluetooth`, and `battery`, instead of internal `.prefPane` bundle filenames.
+
 ## [0.1.1] - 2026-09-14
 
 UI polish release: redesigned launcher, Appearance settings, real app icons, Notes sidebar, and a screenshot harness for visual QA on macOS.

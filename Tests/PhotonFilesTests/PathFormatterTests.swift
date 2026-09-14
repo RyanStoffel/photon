@@ -4,6 +4,17 @@ import XCTest
 final class PathFormatterTests: XCTestCase {
   private let home = "/Users/ryan"
 
+  func testFirmlinkPrefixIsResolvedBeforeAbbreviating() {
+    XCTAssertEqual(
+      PathFormatter.abbreviatingHome("/System/Volumes/Data/Users/ryan/Pictures/wallpapers", home: home),
+      "~/Pictures/wallpapers"
+    )
+    XCTAssertEqual(
+      PathFormatter.relativeToHome("/System/Volumes/Data/Users/ryan/Documents/a.pdf", home: home),
+      "Documents/a.pdf"
+    )
+  }
+
   func testHomeIsAbbreviated() {
     XCTAssertEqual(PathFormatter.abbreviatingHome("/Users/ryan/Documents/a.txt", home: home), "~/Documents/a.txt")
     XCTAssertEqual(PathFormatter.abbreviatingHome("/Users/ryan", home: home), "~")
