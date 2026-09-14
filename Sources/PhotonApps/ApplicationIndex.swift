@@ -116,11 +116,26 @@ public final class ApplicationIndex: @unchecked Sendable {
 
   private func readPane(at url: URL) -> IndexedApplication? {
     let bundle = Bundle(url: url)
-    let name = displayName(in: bundle, fallback: url.deletingPathExtension().lastPathComponent)
+    let stem = url.deletingPathExtension().lastPathComponent
+    let info = bundle?.infoDictionary ?? [:]
+    let name = SystemSettingsPaneMetadata.displayName(
+      info: info,
+      localizedInfo: bundle?.localizedInfoDictionary,
+      fallbackStem: stem
+    )
+    guard !name.isEmpty else {
+      return nil
+    }
     let identifier = bundle?.bundleIdentifier ?? url.path
+    var keywords = SystemSettingsPaneMetadata.searchKeywords(
+      displayName: name,
+      bundleIdentifier: identifier,
+      fallbackStem: stem
+    )
+    keywords.append(contentsOf: ["settings", "preferences", "system settings"])
     let icon = PaneIconPolicy.icon(
       forPaneAt: url,
-      info: bundle?.infoDictionary ?? [:],
+      info: info,
       fileExists: { FileManager.default.fileExists(atPath: $0) }
     )
     return IndexedApplication(
@@ -128,7 +143,7 @@ public final class ApplicationIndex: @unchecked Sendable {
       name: name,
       subtitle: "System Settings",
       url: url,
-      keywords: [identifier, "settings", "preferences"],
+      keywords: keywords,
       icon: icon
     )
   }
