@@ -58,12 +58,12 @@ public final class CalculatorProvider: CommandProvider, @unchecked Sendable {
     try await CalculatorPasteboard.copy(result.copyValue)
   }
 
-  static func commandID(for query: String) -> String {
+  public static func commandID(for query: String) -> String {
     let encoded = Data(query.utf8).base64EncodedString()
     return idPrefix + encoded
   }
 
-  static func query(fromCommandID id: String) -> String? {
+  public static func query(fromCommandID id: String) -> String? {
     guard id.hasPrefix(idPrefix) else {
       return nil
     }
