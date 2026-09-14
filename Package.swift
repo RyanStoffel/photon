@@ -27,6 +27,7 @@ package.targets.append(contentsOf: [
   .target(name: "PhotonFiles", dependencies: ["PhotonCore"]),
   .testTarget(name: "PhotonFilesTests", dependencies: ["PhotonFiles"]),
   .target(name: "PhotonKeybinds", dependencies: ["PhotonCore"]),
+  .testTarget(name: "PhotonKeybindsTests", dependencies: ["PhotonKeybinds"]),
   .executableTarget(
     name: "Photon",
     dependencies: [
