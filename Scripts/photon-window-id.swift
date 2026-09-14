@@ -66,7 +66,7 @@ func bounds(from entry: [String: Any]) -> (CGFloat, CGFloat)? {
 
 func matchesScenario(_ candidate: WindowCandidate, scenario: String) -> Bool {
   switch scenario {
-  case "launcher-empty", "launcher-query", "clipboard-empty":
+  case "launcher-empty", "launcher-query", "clipboard-empty", "files-empty":
     if candidate.title == "Photon Launcher" {
       return true
     }
@@ -89,7 +89,7 @@ func matchesScenario(_ candidate: WindowCandidate, scenario: String) -> Bool {
 func score(_ candidate: WindowCandidate, scenario: String) -> Int {
   var score = Int(candidate.width * candidate.height)
   switch scenario {
-  case "launcher-empty", "launcher-query", "clipboard-empty":
+  case "launcher-empty", "launcher-query", "clipboard-empty", "files-empty":
     if candidate.title == "Photon Launcher" {
       score += 1_000_000
     }

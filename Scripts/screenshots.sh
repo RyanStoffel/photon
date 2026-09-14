@@ -18,7 +18,7 @@ SCENARIOS=(
   launcher-query:saf
   launcher-query:wallpaper
   launcher-query:1+1
-  launcher-query:/
+  files-empty
   clipboard-empty
   settings:appearance
   notes

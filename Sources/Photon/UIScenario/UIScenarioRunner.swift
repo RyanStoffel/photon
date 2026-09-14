@@ -22,6 +22,8 @@ extension AppRuntime {
       await showLauncherForScreenshot(query: query)
     case .clipboardEmpty:
       await showClipboardForScreenshot()
+    case .filesEmpty:
+      await showFilesForScreenshot()
     case let .settings(pane):
       settings.selectedPane = pane
       openSettings()
@@ -49,7 +51,7 @@ extension AppRuntime {
   @MainActor
   private func keptWindows(for scenario: UIScenario) -> [NSWindow] {
     switch scenario {
-    case .launcherEmpty, .launcherQuery, .clipboardEmpty:
+    case .launcherEmpty, .launcherQuery, .clipboardEmpty, .filesEmpty:
       if let panel = launcher.panelWindowForScreenshot {
         return [panel]
       }
@@ -76,6 +78,12 @@ extension AppRuntime {
   @MainActor
   private func showClipboardForScreenshot() async {
     launcher.showClipboardForScreenshot()
+    try? await Task.sleep(nanoseconds: 800_000_000)
+  }
+
+  @MainActor
+  private func showFilesForScreenshot() async {
+    await launcher.prepareForScreenshot(query: "/")
     try? await Task.sleep(nanoseconds: 800_000_000)
   }
 
