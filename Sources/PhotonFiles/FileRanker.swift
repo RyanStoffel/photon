@@ -83,7 +83,7 @@ public enum FileRanker: Sendable {
       return 0
     }
     let averaged = perTerm.reduce(0, +) / Double(perTerm.count)
-    return max(whole * 0.95, averaged)
+    return max(whole, averaged)
   }
 
   private static func score(query: String, stem: String, fileName: String, relativePath: String) -> Double {

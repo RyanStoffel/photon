@@ -76,10 +76,10 @@ final class FileRankerTests: XCTestCase {
 
   func testModifiedDateThenNameBreakRemainingTies() {
     let now = Date()
-    let touched = file("/a/Beta.txt", modified: now)
-    let stale = file("/a/Alpha.txt", modified: now.addingTimeInterval(-60))
-    let undated = file("/a/Gamma.txt")
-    let ranked = FileRanker.rank([undated, stale, touched], query: "txt", limit: 10)
+    let touched = file("/a/Beta/Item.txt", displayName: "Item.txt", modified: now)
+    let stale = file("/a/Alpha/Item.txt", displayName: "Item.txt", modified: now.addingTimeInterval(-60))
+    let undated = file("/a/Gamma/Item.txt", displayName: "Item.txt")
+    let ranked = FileRanker.rank([undated, stale, touched], query: "item", limit: 10)
     XCTAssertEqual(ranked.map(\.file.path), [touched.path, stale.path, undated.path])
   }
 
