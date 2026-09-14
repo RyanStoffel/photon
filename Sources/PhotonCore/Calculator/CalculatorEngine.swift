@@ -423,7 +423,7 @@ private enum UnitConversion {
     switch unit {
     case .b, .bit, .bits: value / 8
     case .byte, .bytes: value
-    case .kb: value * 1_000
+    case .kb: value * 1000
     case .mb: value * 1_000_000
     case .gb: value * 1_000_000_000
     case .tb: value * 1_000_000_000_000
