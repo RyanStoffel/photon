@@ -5,6 +5,7 @@ import Foundation
 enum UIScenario: Equatable, Sendable {
   case launcherEmpty
   case launcherQuery(String)
+  case launcherRecs
   case clipboardEmpty
   case filesEmpty
   case filesQuery(String)
@@ -56,6 +57,9 @@ enum UIScenario: Equatable, Sendable {
   private static func parse(_ raw: String) -> UIScenario? {
     if raw == "launcher-empty" {
       return .launcherEmpty
+    }
+    if raw == "launcher-recs" {
+      return .launcherRecs
     }
     if raw.hasPrefix("launcher-query:") {
       let query = String(raw.dropFirst("launcher-query:".count))

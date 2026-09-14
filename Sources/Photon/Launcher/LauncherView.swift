@@ -19,14 +19,14 @@ struct LauncherView: View {
       case .searchOnly:
         EmptyView()
       case .rows:
-        Hairline()
+        Hairline(emphasized: true)
         if model.session == .clipboard {
           LauncherClipboardResultsSection(model: model)
         } else {
           resultsList
         }
       case .fullHeight:
-        Hairline()
+        Hairline(emphasized: true)
         featureContent
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
@@ -265,12 +265,26 @@ struct LauncherView: View {
   }
 }
 
-/// One-point separator that reads on both the light and the dark material.
+/// One-point separator. The hairline under the search field is slightly darker on top.
 private struct Hairline: View {
+  var emphasized = false
+
   var body: some View {
-    Rectangle()
-      .fill(Color.primary.opacity(0.08))
+    if emphasized {
+      VStack(spacing: 0) {
+        Rectangle()
+          .fill(Color.primary.opacity(0.16))
+          .frame(height: 0.5)
+        Rectangle()
+          .fill(Color.primary.opacity(0.06))
+          .frame(height: 0.5)
+      }
       .frame(height: LauncherLayout.hairline)
+    } else {
+      Rectangle()
+        .fill(Color.primary.opacity(0.08))
+        .frame(height: LauncherLayout.hairline)
+    }
   }
 }
 
