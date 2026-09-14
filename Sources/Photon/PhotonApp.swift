@@ -10,6 +10,7 @@ struct PhotonApp: App {
       SettingsRootView()
         .environmentObject(appDelegate.runtime.settings)
         .environmentObject(appDelegate.runtime.clipboard)
+        .environmentObject(appDelegate.runtime.keybinds)
         .frame(minWidth: 560, minHeight: 400)
     }
 

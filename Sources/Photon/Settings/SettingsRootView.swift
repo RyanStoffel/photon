@@ -13,12 +13,8 @@ struct SettingsRootView: View {
         .tabItem { Label("Notes", systemImage: "note.text") }
       FilesSettingsView()
         .tabItem { Label("Files", systemImage: "folder") }
-      PlaceholderSettingsView(
-        title: "Keybinds",
-        detail: "Hyper key, app hotkeys, and window management land in Phase 2.",
-        content: { KeybindsSettingsPlaceholder() }
-      )
-      .tabItem { Label("Keybinds", systemImage: "keyboard") }
+      KeybindsSettingsView()
+        .tabItem { Label("Keybinds", systemImage: "keyboard") }
       AboutSettingsView()
         .tabItem { Label("About", systemImage: "info.circle") }
     }
@@ -43,16 +39,5 @@ struct PlaceholderSettingsView<Content: View>: View {
     .formStyle(.grouped)
     .navigationTitle(title)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-  }
-}
-
-private struct KeybindsSettingsPlaceholder: View {
-  @EnvironmentObject private var settings: SettingsStore
-
-  var body: some View {
-    Section("Hyper key") {
-      Toggle("Caps Lock → Control + Option + Shift + Command", isOn: $settings.hyperKeyEnabled)
-        .disabled(true)
-    }
   }
 }

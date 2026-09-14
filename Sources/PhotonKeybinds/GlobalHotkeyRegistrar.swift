@@ -10,8 +10,9 @@ public struct GlobalHotkeyToken: Hashable, Sendable {
 
 /// Registers system-wide shortcuts for plain modifier combinations. The app supplies an
 /// implementation backed by Carbon `RegisterEventHotKey` (its `HotkeyManager`).
+/// Actions are invoked on the main actor.
 @MainActor
 public protocol GlobalHotkeyRegistrar: AnyObject {
-  func register(_ shortcut: KeyShortcut, action: @escaping @MainActor () -> Void) throws -> GlobalHotkeyToken
+  func register(_ shortcut: KeyShortcut, action: @escaping () -> Void) throws -> GlobalHotkeyToken
   func unregister(_ token: GlobalHotkeyToken)
 }
