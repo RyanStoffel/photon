@@ -6,6 +6,8 @@ enum UIScenario: Equatable, Sendable {
   case launcherEmpty
   case launcherQuery(String)
   case clipboardEmpty
+  case filesEmpty
+  case filesQuery(String)
   case settings(SettingsPaneID)
   case notes
 
@@ -61,6 +63,13 @@ enum UIScenario: Equatable, Sendable {
     }
     if raw == "clipboard-empty" {
       return .clipboardEmpty
+    }
+    if raw == "files-empty" {
+      return .filesEmpty
+    }
+    if raw.hasPrefix("files-query:") {
+      let query = String(raw.dropFirst("files-query:".count))
+      return .filesQuery(query)
     }
     if raw.hasPrefix("settings:") {
       let pane = String(raw.dropFirst("settings:".count))

@@ -25,6 +25,10 @@ final class FileSearchMode: LauncherMode {
     controller.holdsFocus
   }
 
+  var prefersCompactLauncherLayout: Bool {
+    controller.prefersCompactLauncherLayout
+  }
+
   func attach(host: any LauncherModeHost) {
     self.host = host
     controller.onRequestFocus = { [weak host] in

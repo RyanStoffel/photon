@@ -34,6 +34,7 @@ struct LauncherCalculatorHeroSection: View {
       }
     }
     .padding(.horizontal, 4)
+    .padding(.top, LauncherLayout.listInset)
     .padding(.bottom, LauncherLayout.listInset)
   }
 

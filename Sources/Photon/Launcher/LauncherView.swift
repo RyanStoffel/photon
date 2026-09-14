@@ -63,12 +63,14 @@ struct LauncherView: View {
     }
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
-    .launcherSearchBarDrag(hotkey: settings.hotkey, onSearchBarDrag: onSearchBarDrag)
+    .launcherSearchBarDrag(onSearchBarDrag: onSearchBarDrag)
   }
 
   @ViewBuilder
   private var sessionBadge: some View {
-    if let mode = model.activeMode {
+    if model.session == .clipboard {
+      badge("Clipboard")
+    } else if let mode = model.activeMode {
       badge(mode.title)
     }
   }

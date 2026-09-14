@@ -37,7 +37,10 @@ extension LauncherPanelController {
       isDraggingLauncher = true
       searchBarDragInitialOrigin = panel.frame.origin
       let visible = visibleFrame(for: panel)
-      let guides = LauncherPosition.snapGuideXPositions(visible: visible)
+      let guides = LauncherPosition.snapGuideXPositions(
+        visible: visible,
+        panelWidth: panel.frame.width
+      )
       let screen = panel.screen ?? NSScreen.main ?? NSScreen.screens.first
       if let screen {
         centerGuides.show(

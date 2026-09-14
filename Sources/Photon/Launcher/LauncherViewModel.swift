@@ -20,6 +20,9 @@ final class LauncherViewModel: ObservableObject {
       }
       switch session {
       case .clipboard:
+        if !query.isEmpty {
+          clipboardShowsResults = true
+        }
         clipboard?.query = query
       case .commands:
         if clipboard != nil, let sub = ClipboardProvider.historyQuery(fromLauncherQuery: query) {
@@ -47,6 +50,11 @@ final class LauncherViewModel: ObservableObject {
   @Published var isLoading = false
   @Published var lastError: String?
   @Published private(set) var session: LauncherSession = .commands {
+    didSet { updateContent() }
+  }
+
+  /// Clipboard list stays collapsed until the user types or presses Down (like compact launcher rows).
+  @Published private(set) var clipboardShowsResults = false {
     didSet { updateContent() }
   }
 
@@ -166,11 +174,16 @@ final class LauncherViewModel: ObservableObject {
 
   func moveSelection(_ delta: Int) {
     if session == .clipboard {
+      if delta > 0, !clipboardShowsResults, let clipboard, !clipboard.results.isEmpty {
+        clipboardShowsResults = true
+        return
+      }
       clipboard?.moveSelection(delta)
       return
     }
     if let activeMode {
       activeMode.moveSelection(delta)
+      updateContent()
       return
     }
     guard !results.isEmpty else {
@@ -226,6 +239,7 @@ final class LauncherViewModel: ObservableObject {
     exitMode(clearingQuery: false)
     lastError = nil
     session = .clipboard
+    clipboardShowsResults = !initialQuery.isEmpty
     clipboard.reset()
     if query != initialQuery {
       query = initialQuery
@@ -261,6 +275,7 @@ final class LauncherViewModel: ObservableObject {
       self.query = query
     }
     mode.activate(query: query)
+    updateContent()
   }
 
   func exitMode(clearingQuery: Bool = true) {
@@ -322,8 +337,12 @@ final class LauncherViewModel: ObservableObject {
     case .clipboard:
       clipboardContent()
     case .commands:
-      if activeMode != nil {
-        .fullHeight
+      if let activeMode {
+        if activeMode.prefersCompactLauncherLayout {
+          .searchOnly
+        } else {
+          .fullHeight
+        }
       } else if query.isEmpty, !preferences.showsSuggestions {
         .searchOnly
       } else {
@@ -337,6 +356,9 @@ final class LauncherViewModel: ObservableObject {
 
   private func clipboardContent() -> LauncherContent {
     guard let clipboard else {
+      return .searchOnly
+    }
+    if !clipboardShowsResults, query.isEmpty, !clipboard.showsCompactEmptyRow {
       return .searchOnly
     }
     if !clipboard.results.isEmpty {
