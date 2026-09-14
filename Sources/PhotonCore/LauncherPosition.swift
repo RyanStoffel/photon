@@ -121,6 +121,19 @@ public enum LauncherPosition {
     return (panelMidX - panelWidth / 2, false)
   }
 
+  /// Live drag origin from screen-space mouse movement. AppKit and `NSEvent.mouseLocation`
+  /// share a bottom-left origin, so the deltas apply directly (no Y flip).
+  public static func originByMouseDelta(
+    initialOrigin: PanelOrigin,
+    startMouse: PanelOrigin,
+    currentMouse: PanelOrigin
+  ) -> PanelOrigin {
+    PanelOrigin(
+      x: initialOrigin.x + (currentMouse.x - startMouse.x),
+      y: initialOrigin.y + (currentMouse.y - startMouse.y)
+    )
+  }
+
   public static func storedPosition(
     origin: PanelOrigin,
     panelWidth: Double,
