@@ -31,8 +31,8 @@ public final class NoteStore {
 
   public let directory: URL
   public private(set) var notes: [Note] = []
+  public private(set) var isLoaded = false
   private var fingerprints: [String: FileFingerprint] = [:]
-  private var loaded = false
 
   public init(directory: URL) {
     self.directory = directory
@@ -54,7 +54,7 @@ public final class NoteStore {
   /// Reads every note from disk. Safe to call repeatedly; later calls behave like `rescan()`.
   @discardableResult
   public func load() throws -> [Note] {
-    if loaded {
+    if isLoaded {
       try rescan()
       return notes
     }
@@ -70,14 +70,14 @@ public final class NoteStore {
     }
     notes = Self.sorted(found)
     fingerprints = prints
-    loaded = true
+    isLoaded = true
     return notes
   }
 
   /// Diffs the directory against the last scan and reloads changed files.
   @discardableResult
   public func rescan() throws -> NoteStoreChanges {
-    guard loaded else {
+    guard isLoaded else {
       try load()
       return NoteStoreChanges(added: notes.map(\.id))
     }

@@ -30,6 +30,8 @@ public final class NotesController: NSObject {
   private let debouncer: Debouncer
   private var window: NotesWindow?
   private var pendingContent: String?
+  /// Notes created blank in this session that have never received text. Only these are pruned.
+  private var untouchedNoteIDs: Set<String> = []
 
   public init(directory: URL = NoteStore.defaultDirectory(), preferences: NotesPreferences = NotesPreferences()) {
     self.directory = directory
@@ -109,6 +111,9 @@ public final class NotesController: NSObject {
     pruneBlankCurrentNote()
     do {
       let note = try store.create(content: content)
+      if note.isBlank {
+        untouchedNoteIDs.insert(note.id)
+      }
       switchTo(note.id)
       let window = presentWindow()
       window.show(focus: true)
@@ -175,6 +180,9 @@ public final class NotesController: NSObject {
       return
     }
     pendingContent = content
+    if !content.allSatisfy(\.isWhitespace) {
+      untouchedNoteIDs.remove(id)
+    }
     window?.updateTitle(NoteTitle.extract(from: content))
     debouncer.schedule { [weak self] in
       self?.save(id: id, content: content)
@@ -210,6 +218,9 @@ public final class NotesController: NSObject {
   }
 
   private func loadIfNeeded() {
+    guard !store.isLoaded else {
+      return
+    }
     do {
       try store.load()
     } catch {
@@ -234,10 +245,11 @@ public final class NotesController: NSObject {
   }
 
   private func switchTo(_ id: String) {
-    if id != currentNoteID {
-      flush()
-      pruneBlankCurrentNote()
+    guard id != currentNoteID else {
+      return
     }
+    flush()
+    pruneBlankCurrentNote()
     guard let note = store.note(id: id) else {
       return
     }
@@ -259,15 +271,17 @@ public final class NotesController: NSObject {
 
   /// Drops an untouched new note so ⌘N never litters the folder with empty files.
   private func pruneBlankCurrentNote() {
-    guard let id = currentNoteID, let note = store.note(id: id), store.notes.count > 1 else {
+    guard let id = currentNoteID, untouchedNoteIDs.contains(id), store.notes.count > 1 else {
       return
     }
-    let content = pendingContent ?? note.content
+    let content = pendingContent ?? store.note(id: id)?.content ?? ""
     guard content.allSatisfy(\.isWhitespace) else {
+      untouchedNoteIDs.remove(id)
       return
     }
     do {
       try store.delete(id: id, trash: false)
+      untouchedNoteIDs.remove(id)
       pendingContent = nil
       currentNoteID = nil
     } catch {
@@ -282,6 +296,7 @@ public final class NotesController: NSObject {
       NSLog("Photon Notes: could not delete note \(id): \(error)")
       return
     }
+    untouchedNoteIDs.remove(id)
     if currentNoteID == id {
       currentNoteID = nil
       pendingContent = nil
