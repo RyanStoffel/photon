@@ -13,6 +13,11 @@ if [[ "$branch" == "develop" || "$branch" == "main" ]]; then
   exit 0
 fi
 
+# Dependabot / GitHub Actions version bumps.
+if [[ "$branch" =~ ^dependabot/ ]]; then
+  exit 0
+fi
+
 if [[ "$branch" =~ ^(feature/GH-[0-9]+-[a-z0-9-]+|bug/GH-[0-9]+-[a-z0-9-]+|chore/[a-z0-9][a-z0-9-]*|docs/[a-z0-9][a-z0-9-]*|release/[a-z0-9][a-z0-9.-]*)$ ]]; then
   exit 0
 fi
@@ -26,6 +31,7 @@ Allowed:
   chore/<slug>
   docs/<slug>
   release/<slug>
+  dependabot/*
   develop
   main
 
