@@ -1,9 +1,15 @@
 name: Release
 
+# Pushing a v*.*.* tag publishes a GitHub Release (and bumps the Homebrew cask when
+# HOMEBREW_TAP_TOKEN is set). Running the workflow by hand is a dry run: it builds,
+# signs, packages, smoke-tests, and uploads the artifacts, but creates no tag,
+# release, or cask commit.
+
 on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -21,14 +27,38 @@ jobs:
 
       - name: Read version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          tag="${GITHUB_REF_NAME#v}"
           file="$(tr -d '[:space:]' < VERSION)"
-          if [ "$tag" != "$file" ]; then
-            echo "Tag v$tag does not match VERSION file ($file)."
-            exit 1
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            dry_run=true
+            echo "Dry run for version $file (no tag, release, or cask bump)."
+          else
+            dry_run=false
+            tag="${GITHUB_REF_NAME#v}"
+            if [ "$tag" != "$file" ]; then
+              echo "::error::Tag v$tag does not match VERSION file ($file)."
+              exit 1
+            fi
           fi
-          echo "version=$file" >> "$GITHUB_OUTPUT"
+          if [ ! -f CHANGELOG.md ] || ! grep -q "^## \[$file\]" CHANGELOG.md; then
+            if [ "$dry_run" = "true" ]; then
+              echo "::warning::CHANGELOG.md has no '## [$file]' section; release notes would fall back to generated notes."
+            else
+              echo "::error::CHANGELOG.md has no '## [$file]' section. Add one before tagging."
+              exit 1
+            fi
+          fi
+          prerelease=false
+          case "$file" in
+            0.*) prerelease=true ;;
+          esac
+          {
+            echo "version=$file"
+            echo "dry_run=$dry_run"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Cache SwiftPM
         uses: actions/cache@v4
@@ -38,8 +68,17 @@ jobs:
           restore-keys: |
             release-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: Build app
-        run: Scripts/package_app.sh
+      - name: Build app (universal)
+        env:
+          PHOTON_ARCHS: arm64 x86_64
+        run: |
+          Scripts/package_app.sh
+          archs="$(lipo -archs build/Photon.app/Contents/MacOS/Photon)"
+          echo "Architectures: $archs"
+          case "$archs" in
+            *arm64*x86_64*|*x86_64*arm64*) ;;
+            *) echo "::error::Expected a universal binary, got: $archs"; exit 1 ;;
+          esac
 
       - name: Sign, notarize, package
         id: sign
@@ -52,36 +91,91 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: Scripts/sign-and-package.sh
 
-      - name: Publish GitHub Release
+      - name: Smoke test the packaged app
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SMOKE_LOG: ${{ runner.temp }}/photon-smoke.log
+        run: |
+          rm -rf "$RUNNER_TEMP/smoke"
+          mkdir -p "$RUNNER_TEMP/smoke"
+          ditto -x -k "dist/Photon-${VERSION}.zip" "$RUNNER_TEMP/smoke"
+          Scripts/smoke-test.sh "$RUNNER_TEMP/smoke/Photon.app"
+
+      - name: Write release notes
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
           SIGNING: ${{ steps.sign.outputs.signing }}
         run: |
-          notes="$(mktemp)"
-          {
-            gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
-              -f tag_name="v${VERSION}" \
-              -f target_commitish="${GITHUB_SHA}" \
-              --jq .body
-            echo
-            echo "## Signing"
-            if [ "$SIGNING" = "developer-id" ]; then
-              echo "This build is signed with a Developer ID certificate, notarized, and stapled."
-            else
-              echo "This build is **ad-hoc signed**. Apple signing secrets were not present, so the app is not notarized."
-              echo "On first launch, open **System Settings > Privacy & Security** and click **Open Anyway**."
-            fi
-          } > "$notes"
-          gh release create "v${VERSION}" \
-            --title "Photon ${VERSION}" \
-            --notes-file "$notes" \
+          Scripts/release-notes.sh > dist/RELEASE_NOTES.md
+          echo "----- release notes -----"
+          cat dist/RELEASE_NOTES.md
+          echo "-------------------------"
+
+      - name: Upload release artifacts
+        if: always() && steps.sign.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Photon-${{ steps.version.outputs.version }}${{ steps.version.outputs.dry_run == 'true' && '-dry-run' || '' }}
+          path: |
+            dist/Photon-*.zip
+            dist/Photon-*.dmg
+            dist/SHA256SUMS
+            dist/RELEASE_NOTES.md
+          if-no-files-found: error
+
+      - name: Upload smoke test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-log
+          path: ${{ runner.temp }}/photon-smoke.log
+          if-no-files-found: ignore
+
+      - name: Publish GitHub Release
+        if: steps.version.outputs.dry_run == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          args=(--title "Photon ${VERSION}" --notes-file dist/RELEASE_NOTES.md --verify-tag)
+          if [ "$PRERELEASE" = "true" ]; then
+            args+=(--prerelease)
+          fi
+          gh release create "v${VERSION}" "${args[@]}" \
             "dist/Photon-${VERSION}.zip" \
             "dist/Photon-${VERSION}.dmg" \
             dist/SHA256SUMS
 
       - name: Bump Homebrew cask
+        if: steps.version.outputs.dry_run == 'false'
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: Scripts/update-homebrew-cask.sh
+
+      - name: Summary
+        if: always()
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          DRY_RUN: ${{ steps.version.outputs.dry_run }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          SIGNING: ${{ steps.sign.outputs.signing }}
+        run: |
+          {
+            echo "## Photon ${VERSION}"
+            echo
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "- Mode: **dry run** (workflow_dispatch). No tag, release, or cask bump."
+            else
+              echo "- Mode: release for tag \`v${VERSION}\` (pre-release: ${PRERELEASE})"
+            fi
+            echo "- Signing: \`${SIGNING:-not reached}\`"
+            if [ -f dist/SHA256SUMS ]; then
+              echo
+              echo '```'
+              cat dist/SHA256SUMS
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
