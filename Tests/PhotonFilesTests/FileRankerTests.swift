@@ -134,4 +134,31 @@ final class FileRankerTests: XCTestCase {
     XCTAssertEqual(ranked[0].relevance, 1)
     XCTAssertEqual(ranked[1].relevance, 1)
   }
+
+  func testUnderscoreQueryMatchesPitchPDF() {
+    let pitch = file(
+      "/Users/ryan/Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf",
+      displayName: "Ember_Individual_Pitch.pdf"
+    )
+    let ranked = FileRanker.rank([pitch], query: "ember_individual", limit: 10, home: home)
+    XCTAssertEqual(ranked.count, 1)
+    XCTAssertGreaterThanOrEqual(ranked[0].relevance, FileRanker.strongMatchThreshold)
+  }
+
+  func testRelativePathMatchRanksBelowExactStem() {
+    let exact = file("/Users/ryan/Downloads/ember_individual.txt")
+    let byPath = file(
+      "/Users/ryan/Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf",
+      displayName: "Ember_Individual_Pitch.pdf"
+    )
+    let ranked = FileRanker.rank([byPath, exact], query: "ember_individual", limit: 10, home: home)
+    XCTAssertEqual(ranked.first?.file.path, exact.path)
+    XCTAssertGreaterThan(ranked[0].relevance, ranked[1].relevance)
+  }
+
+  func testWeakSpotlightHitsWithoutFuzzyMatchAreDropped() {
+    let unrelated = file("/Users/ryan/Library/Caches/com.apple.something/random.txt")
+    XCTAssertTrue(FileRanker.rank([unrelated], query: "ember_individual", limit: 10, home: home).isEmpty)
+  }
 }
+

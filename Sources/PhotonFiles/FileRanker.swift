@@ -47,14 +47,18 @@ public enum FileRanker: Sendable {
       if isExcluded(file.path, normalizedFolders: exclusions) {
         return nil
       }
-      return RankedFile(file: file, relevance: relevance(of: file, foldedTerms: terms, wholeQuery: wholeQuery))
+      let score = relevance(of: file, foldedTerms: terms, wholeQuery: wholeQuery, home: home)
+      guard score > 0 else {
+        return nil
+      }
+      return RankedFile(file: file, relevance: score)
     }
     return Array(ranked.sorted(by: precedes).prefix(limit))
   }
 
-  public static func relevance(of file: FileResult, query: String) -> Double {
+  public static func relevance(of file: FileResult, query: String, home: String = NSHomeDirectory()) -> Double {
     let terms = SpotlightQueryBuilder.terms(from: query).map(fold)
-    return relevance(of: file, foldedTerms: terms, wholeQuery: terms.joined(separator: " "))
+    return relevance(of: file, foldedTerms: terms, wholeQuery: terms.joined(separator: " "), home: home)
   }
 
   public static func isExcluded(_ path: String, folders: [String], home: String = NSHomeDirectory()) -> Bool {
@@ -63,59 +67,59 @@ public enum FileRanker: Sendable {
 
   // MARK: - Scoring
 
-  static func relevance(of file: FileResult, foldedTerms terms: [String], wholeQuery: String) -> Double {
+  static func relevance(of file: FileResult, foldedTerms terms: [String], wholeQuery: String, home: String) -> Double {
     guard !terms.isEmpty else {
       return 0
     }
-    let stem = fold(file.stem)
-    if stem == wholeQuery {
-      return 1
+    let relative = PathFormatter.relativeToHome(file.path, home: home) ?? file.path
+    let whole = score(query: wholeQuery, stem: file.stem, fileName: file.fileName, relativePath: relative)
+    if terms.count == 1 {
+      return whole
     }
-    let fileName = fold(file.fileName)
-    let wordStarts = wordStartIndices(in: file.stem)
-    let stemChars = Array(stem)
-    let total = terms.reduce(0.0) { partial, term in
-      partial + termScore(term, stem: stem, stemChars: stemChars, wordStarts: wordStarts, fileName: fileName)
+    let perTerm = terms.map { term in
+      score(query: term, stem: file.stem, fileName: file.fileName, relativePath: relative)
     }
-    return total / Double(terms.count)
+    if perTerm.contains(0) {
+      return 0
+    }
+    let averaged = perTerm.reduce(0, +) / Double(perTerm.count)
+    return max(whole * 0.95, averaged)
   }
 
-  private static func termScore(
-    _ term: String,
-    stem: String,
-    stemChars: [Character],
-    wordStarts: [Int],
-    fileName: String
-  ) -> Double {
-    if stem == term {
+  private static func score(query: String, stem: String, fileName: String, relativePath: String) -> Double {
+    let folded = fold(query)
+    guard !folded.isEmpty else {
+      return 0
+    }
+    if fold(stem) == folded {
       return 1
     }
-    if stem.hasPrefix(term) {
-      return 0.85
+    let stemScore = FileFuzzyMatcher.score(query: query, candidate: stem)
+    let nameScore = FileFuzzyMatcher.score(query: query, candidate: fileName)
+    let pathScore = FileFuzzyMatcher.score(query: query, candidate: relativePath)
+    guard let best = [stemScore, nameScore, pathScore].compactMap { $0 }.max() else {
+      return 0
     }
-    if startsWord(term, stemChars: stemChars, wordStarts: wordStarts) {
-      return 0.7
+    var weighted = best
+    if let stemScore {
+      weighted = max(weighted, stemScore * 1.0)
     }
-    if stem.contains(term) {
-      return 0.55
+    if let nameScore {
+      weighted = max(weighted, nameScore * 0.92)
     }
-    if fileName.contains(term) {
-      return 0.45
+    if let pathScore {
+      weighted = max(weighted, pathScore * 0.78)
     }
-    return 0.2
-  }
-
-  private static func startsWord(_ term: String, stemChars: [Character], wordStarts: [Int]) -> Bool {
-    let needle = Array(term)
-    guard !needle.isEmpty else {
-      return false
+    if fold(stem).hasPrefix(folded) {
+      weighted = max(weighted, 0.85)
     }
-    for start in wordStarts where start > 0 && start + needle.count <= stemChars.count {
-      if Array(stemChars[start ..< start + needle.count]) == needle {
-        return true
-      }
+    if wordStartIndices(in: stem).contains(where: { index in
+      let slice = fold(stem).dropFirst(index)
+      return slice.hasPrefix(folded)
+    }) {
+      weighted = max(weighted, 0.7)
     }
-    return false
+    return min(weighted, 1)
   }
 
   /// Indices where a new word begins: after separators and at camelCase humps.

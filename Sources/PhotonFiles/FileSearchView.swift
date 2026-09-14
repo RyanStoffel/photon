@@ -1,3 +1,4 @@
+import PhotonCore
 import SwiftUI
 
 /// Results area of the launcher while it is in file mode.
@@ -25,37 +26,62 @@ public struct FileSearchView: View {
   private var content: some View {
     switch controller.status {
     case .idle:
-      placeholder("Search files and folders", detail: "Spotlight finds them anywhere on this Mac.")
+      emptyState(
+        symbol: "doc.text.magnifyingglass",
+        title: "Search your files",
+        detail: "Matches names and folders in your home directory. Type to begin."
+      )
     case .searching:
-      ProgressView("Searching\u{2026}")
+      searchingState
     case .unavailable:
-      placeholder(
-        "Spotlight is unavailable",
+      emptyState(
+        symbol: "exclamationmark.triangle",
+        title: "Spotlight is unavailable",
         detail: "Check System Settings > Siri & Spotlight, then try again."
       )
     case let .empty(query):
-      placeholder("No files match \u{201C}\(query)\u{201D}", detail: nil)
+      emptyState(
+        symbol: "magnifyingglass",
+        title: "No matches",
+        detail: "Nothing in your search scope matches \u{201C}\(query)\u{201D}."
+      )
     case .results:
       list
     }
   }
 
+  private var searchingState: some View {
+    HStack(spacing: 8) {
+      ProgressView()
+        .controlSize(.small)
+      Text("Searching\u{2026}")
+        .font(.system(size: 13))
+        .foregroundStyle(.secondary)
+      Spacer()
+    }
+    .padding(.horizontal, 10)
+    .frame(height: LauncherLayout.rowHeight)
+    .padding(.vertical, LauncherLayout.listInset)
+  }
+
   private var list: some View {
     ScrollViewReader { proxy in
-      List(controller.results, selection: $controller.selectedID) { item in
-        FileResultRow(file: item.file)
-          .tag(item.id)
-          .id(item.id)
-          .contentShape(Rectangle())
-          .onTapGesture {
-            controller.select(item.file)
-            if controller.performPrimaryAction() {
-              controller.onRequestDismiss?()
-            }
+      ScrollView(.vertical) {
+        LazyVStack(spacing: 0) {
+          ForEach(controller.results) { item in
+            FileResultRow(file: item.file, selected: item.id == controller.selectedID)
+              .id(item.id)
+              .onTapGesture {
+                controller.select(item.file)
+                if controller.performPrimaryAction() {
+                  controller.onRequestDismiss?()
+                }
+              }
           }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, LauncherLayout.listInset)
       }
-      .listStyle(.plain)
-      .scrollContentBackground(.hidden)
       .onChange(of: controller.selectedID) { _, newValue in
         if let newValue {
           proxy.scrollTo(newValue, anchor: .center)
@@ -83,50 +109,56 @@ public struct FileSearchView: View {
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 6)
-    .frame(height: 28)
+    .frame(height: LauncherLayout.footerHeight)
   }
 
-  private func placeholder(_ title: String, detail: String?) -> some View {
+  private func emptyState(symbol: String, title: String, detail: String) -> some View {
     VStack(spacing: 6) {
+      Image(systemName: symbol)
+        .font(.system(size: 28))
+        .foregroundStyle(.tertiary)
       Text(title)
+        .font(.body.weight(.medium))
+      Text(detail)
+        .font(.caption)
         .foregroundStyle(.secondary)
-      if let detail {
-        Text(detail)
-          .font(.caption)
-          .foregroundStyle(.tertiary)
-      }
+        .multilineTextAlignment(.center)
     }
-    .multilineTextAlignment(.center)
-    .padding()
+    .padding(24)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 }
 
 struct FileResultRow: View {
   let file: FileResult
+  let selected: Bool
 
   var body: some View {
     HStack(spacing: 12) {
       Image(nsImage: FileIconCache.shared.icon(for: file))
         .resizable()
         .interpolation(.high)
-        .frame(width: 24, height: 24)
-      VStack(alignment: .leading, spacing: 2) {
+        .frame(width: LauncherLayout.iconSize, height: LauncherLayout.iconSize)
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
         Text(file.displayName)
-          .font(.body.weight(.medium))
+          .font(.system(size: 14, weight: .medium))
           .lineLimit(1)
-        Text(PathFormatter.parentDisplay(for: file.path, maxLength: 80))
-          .font(.caption)
+          .layoutPriority(1)
+        Text(PathFormatter.parentDisplay(for: file.path, maxLength: 56))
+          .font(.system(size: 12))
           .foregroundStyle(.secondary)
           .lineLimit(1)
           .truncationMode(.middle)
       }
-      Spacer(minLength: 12)
-      Text(file.kind)
-        .font(.caption)
-        .foregroundStyle(.tertiary)
-        .lineLimit(1)
+      Spacer(minLength: 0)
     }
-    .padding(.vertical, 4)
+    .padding(.horizontal, 10)
+    .frame(height: LauncherLayout.rowHeight)
+    .background(
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
+        .fill(selected ? Color.primary.opacity(0.09) : Color.clear)
+    )
+    .contentShape(Rectangle())
   }
 }
 

@@ -50,7 +50,7 @@ public struct FileSearchSettings: Equatable, Sendable {
   public var inlineResults: Bool
 
   public init(
-    scope: FileSearchScope = .computer,
+    scope: FileSearchScope = .home,
     extraFolders: [String] = [],
     excludedFolders: [String] = [],
     searchContents: Bool = false,
