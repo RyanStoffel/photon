@@ -152,7 +152,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     )
     panel.isFloatingPanel = true
     panel.level = .floating
-    panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .moveToActiveSpace]
+    // `.canJoinAllSpaces` and `.moveToActiveSpace` are mutually exclusive; AppKit throws
+    // NSInternalInconsistencyException if both are set, which aborts AppRuntime.start().
+    panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     panel.isOpaque = false
     panel.backgroundColor = .clear
     panel.hasShadow = true
