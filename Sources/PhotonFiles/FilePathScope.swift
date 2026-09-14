@@ -8,43 +8,39 @@ public enum FilePathScope: Sendable {
     case .computer:
       return true
     case .home:
+      let resolved = PathFormatter.resolvingFirmlink(path)
       let normalizedHome = normalizeDirectory(home)
-      if path == normalizedHome || path.hasPrefix(normalizedHome + "/") {
+      if resolved == normalizedHome || resolved.hasPrefix(normalizedHome + "/") {
         return true
       }
       let extras = FileRanker.normalizedFolders(extraFolders, home: normalizedHome)
       return extras.contains { folder in
-        path == folder || path.hasPrefix(folder + "/")
+        resolved == folder || resolved.hasPrefix(folder + "/")
       }
     }
   }
 
   /// System locations that must never appear when scope is home, even if Spotlight returns them.
+  /// Firmlink prefixes (`/System/Volumes/Data`) are stripped first so files under `~` survive.
   public static func isBlockedSystemPath(_ path: String, home: String) -> Bool {
+    let resolved = PathFormatter.resolvingFirmlink(path)
     let normalizedHome = normalizeDirectory(home)
-    if isAllowed(path, scope: .home, home: normalizedHome, extraFolders: []) {
+    if isAllowed(resolved, scope: .home, home: normalizedHome, extraFolders: []) {
       return false
     }
-    if path.hasPrefix("/System") {
+    if resolved.hasPrefix("/System") {
       return true
     }
-    if path.hasPrefix("/Library/") || path == "/Library" {
+    if resolved.hasPrefix("/Library/") || resolved == "/Library" {
       return true
     }
-    if path.hasPrefix("/private") {
+    if resolved.hasPrefix("/private") {
       return true
     }
-    if path.hasPrefix("/usr") || path == "/usr" {
+    if resolved.hasPrefix("/usr") || resolved == "/usr" {
       return true
     }
-    if path.hasPrefix("/bin") || path == "/bin" {
-      return true
-    }
-    if path.hasPrefix("/System/Volumes/Data/") {
-      let remainder = String(path.dropFirst("/System/Volumes/Data".count))
-      if remainder.hasPrefix(normalizedHome) || remainder.hasPrefix(normalizedHome + "/") {
-        return false
-      }
+    if resolved.hasPrefix("/bin") || resolved == "/bin" {
       return true
     }
     return false

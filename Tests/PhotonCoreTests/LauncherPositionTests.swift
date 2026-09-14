@@ -58,6 +58,29 @@ final class LauncherPositionTests: XCTestCase {
     XCTAssertEqual(origin.x, visible.midX - panel.width / 2, accuracy: 0.001)
   }
 
+  func testOriginByMouseDeltaMatchesScreenSpace() {
+    let start = PanelOrigin(x: 100, y: 400)
+    let moved = LauncherPosition.originByMouseDelta(
+      initialOrigin: start,
+      startMouse: PanelOrigin(x: 50, y: 80),
+      currentMouse: PanelOrigin(x: 90, y: 60)
+    )
+    XCTAssertEqual(moved.x, 140, accuracy: 0.001)
+    XCTAssertEqual(moved.y, 380, accuracy: 0.001)
+  }
+
+  func testOriginByMouseDeltaIsStableWhenMouseHolds() {
+    let start = PanelOrigin(x: 200, y: 300)
+    let mouse = PanelOrigin(x: 10, y: 20)
+    let held = LauncherPosition.originByMouseDelta(
+      initialOrigin: start,
+      startMouse: mouse,
+      currentMouse: mouse
+    )
+    XCTAssertEqual(held.x, start.x, accuracy: 0.001)
+    XCTAssertEqual(held.y, start.y, accuracy: 0.001)
+  }
+
   func testStoredOriginUsesSavedXWhenNotCentered() {
     let stored = LauncherStoredPosition(originY: 300, isHorizontallyCentered: false, originX: 120)
     let origin = LauncherPosition.origin(panelSize: panel, visible: visible, stored: stored)

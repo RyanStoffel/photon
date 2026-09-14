@@ -49,4 +49,29 @@ final class FilePathScopeTests: XCTestCase {
     XCTAssertEqual(ranked.count, 1)
     XCTAssertGreaterThanOrEqual(ranked[0].relevance, FileRanker.strongMatchThreshold)
   }
+
+  func testFirmlinkHomePathIsAllowedAndNotBlocked() {
+    let path = "/System/Volumes/Data/Users/ryan/Documents/School/Ember_Individual_Pitch.pdf"
+    XCTAssertTrue(FilePathScope.isAllowed(path, scope: .home, home: home, extraFolders: []))
+    XCTAssertFalse(FilePathScope.isBlockedSystemPath(path, home: home))
+    let ranked = FileRanker.rank(
+      [
+        FileResult(
+          path: path,
+          displayName: "Ember_Individual_Pitch.pdf",
+          fileName: "Ember_Individual_Pitch.pdf",
+          kind: "Document",
+          isFolder: false,
+          isApplication: false,
+          modified: nil,
+          lastUsed: nil
+        )
+      ],
+      query: "ember_individual",
+      limit: 10,
+      home: home,
+      scope: .home
+    )
+    XCTAssertEqual(ranked.count, 1)
+  }
 }

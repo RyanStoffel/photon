@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-14
+
+Patch release: clipboard arrow navigation, search-field mode pills removed, live launcher drag, and Spotlight `mdfind` file search.
+
+### Fixed
+
+- Clipboard: Down/Up (plus Home/End, Page Up/Down, Control+N/P) cycle history items. The compact bar expands on Down or typing, like the main launcher; empty history stays compact.
+- Launcher: Clipboard and Files no longer show a blue capsule in the search field. The mode name stays in the footer corner.
+- Launcher: dragging the search bar follows the pointer in screen space (no jitter or fighting the mouse). Vertical position is stored. The panel snaps when its midpoint sits between the edge guides.
+- File search: queries Spotlight with `mdfind -onlyin $HOME` (Raycast-style), splits punctuation so `ember_individual` matches `Ember_Individual_Pitch`, and resolves `/System/Volumes/Data` firmlinks before filtering system paths. Empty Files stays compact until you type.
+
 ## [0.2.1] - 2026-09-14
 
 Patch release: launcher polish, home-scoped file search, compact clipboard hotkey panel, and drag guide fixes.

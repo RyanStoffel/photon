@@ -105,27 +105,32 @@ public final class ClipboardHistoryViewModel: ObservableObject {
     guard !results.isEmpty else {
       return
     }
+    let count = results.count
     let index = selectedIndex ?? 0
-    let next = min(max(index + delta, 0), results.count - 1)
+    let next = ((index + delta) % count + count) % count
     selectedID = results[next].id
+  }
+
+  public func selectFirst() {
+    selectedID = results.first?.id
+  }
+
+  public func selectLast() {
+    selectedID = results.last?.id
   }
 
   // MARK: Keyboard
 
   /// Returns `true` when the event was consumed. Esc is only consumed while a
   /// clear-all confirmation is pending; the host decides what Esc means otherwise.
+  /// Up/Down stay with the launcher so the compact bar can expand before the
+  /// selection moves.
   public func handleKeyDown(_ event: NSEvent) -> Bool {
     let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
     let command = flags.contains(.command)
     let shift = flags.contains(.shift)
 
     switch event.keyCode {
-    case 126:
-      moveSelection(-1)
-      return true
-    case 125:
-      moveSelection(1)
-      return true
     case 36, 76:
       handleReturn(command: command)
       return true

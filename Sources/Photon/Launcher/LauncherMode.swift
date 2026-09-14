@@ -11,7 +11,7 @@ import SwiftUI
 @MainActor
 protocol LauncherMode: AnyObject {
   var id: String { get }
-  /// Badge shown in front of the search field while the mode is active.
+  /// Mode name shown in the footer corner while the mode is active.
   var title: String { get }
   var placeholder: String { get }
   /// Typed prefixes that switch the launcher into this mode, matched case-insensitively.
@@ -22,6 +22,8 @@ protocol LauncherMode: AnyObject {
   var inlineProviderID: String? { get }
   /// True while an auxiliary panel such as Quick Look holds keyboard focus.
   var holdsFocus: Bool { get }
+  /// When true the launcher stays at compact height (search field + footer only).
+  var prefersCompactLauncherLayout: Bool { get }
 
   func attach(host: any LauncherModeHost)
   func activate(query: String)
