@@ -6,9 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-14
+
+UI polish release: redesigned launcher, Appearance settings, real app icons, Notes sidebar, and a screenshot harness for visual QA on macOS.
+
 ### Added
 
 - Settings > Appearance: show suggestions before typing (off by default), panel width (Compact / Regular / Wide), and appearance (System / Light / Dark) for every Photon window.
+- Developer: `Scripts/screenshots.sh` and CI wiring to capture launcher and settings screenshots on macOS for PR visual QA.
 
 ### Changed
 
@@ -19,6 +24,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - Launcher: application rows show the app's real icon instead of a placeholder square. The launcher never asked the system for app icons; commands now carry an icon description that the launcher resolves and caches. System Settings panes use their own pane icon and fall back to the System Settings icon; clipboard, notes, file, and window commands have fitting icons too.
+- Notes: full-height sidebar and tracking separator when the window uses `fullSizeContentView`.
+
+### Known limitations
+
+- The build is ad-hoc signed and not notarized. macOS blocks the first launch of a downloaded copy until you allow it (Control-click > Open on macOS 14; System Settings > Privacy & Security > Open Anyway on macOS 15 and later; or `xattr -dr com.apple.quarantine /Applications/Photon.app`).
 
 ## [0.1.0] - 2026-09-14
 
@@ -42,5 +52,6 @@ First public build. Photon is a menu-bar launcher for macOS 14 and later; it has
 - The Intel slice of the universal binary has only been compiled, not run.
 - The Hyper key and window management need Accessibility access. The Caps Lock remap uses a per-login-session `hidutil` mapping; Settings > Keybinds > Reset Key Mapping restores the key if Photon quits abnormally.
 
-[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/RyanStoffel/photon/releases/tag/v0.1.1
 [0.1.0]: https://github.com/RyanStoffel/photon/releases/tag/v0.1.0
