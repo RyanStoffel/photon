@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-14
+
+Patch release: launcher polish, home-scoped file search, compact clipboard hotkey panel, and drag guide fixes.
+
+### Fixed
+
+- Launcher: calculator section spacing below the search hairline.
+- File search: default and Files-mode Spotlight scope stay in the home folder; system paths outside `~` are filtered; legacy **This Mac** preference migrates to **Home**.
+- Clipboard: `Cmd+Shift+V` opens the compact launcher bar; Down arrow expands history rows like the main launcher.
+- Launcher: reposition guides align with the panel edges; drag the search bar without holding the launcher shortcut; file search starts compact until you type or press Down.
+
 ## [0.2.0] - 2026-09-14
 
 Feature release: inline calculator and unit conversions, launcher drag-and-snap positioning, clipboard and file-search UX aligned with the redesigned launcher, and searchable System Settings pane titles.
