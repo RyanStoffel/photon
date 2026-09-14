@@ -12,10 +12,28 @@ public enum SpotlightQueryBuilder: Sendable {
 
   public static func terms(from query: String) -> [String] {
     var seen = Set<String>()
-    return query
-      .split(whereSeparator: { $0.isWhitespace || $0.isNewline })
-      .map(String.init)
-      .filter { seen.insert($0.lowercased()).inserted }
+    var terms: [String] = []
+    var current = ""
+
+    func flush() {
+      guard !current.isEmpty else {
+        return
+      }
+      if seen.insert(current.lowercased()).inserted {
+        terms.append(current)
+      }
+      current = ""
+    }
+
+    for scalar in query.unicodeScalars {
+      if CharacterSet.alphanumerics.contains(scalar) {
+        current.append(Character(scalar))
+      } else {
+        flush()
+      }
+    }
+    flush()
+    return terms
   }
 
   /// Escapes a term for use inside a double-quoted Spotlight string literal.

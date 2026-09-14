@@ -13,7 +13,7 @@ Sources/
   PhotonApps/           Application + System Settings pane provider
   PhotonClipboard/      Clipboard history: monitor, store, search, panel view
   PhotonNotes/          Floating markdown notes (see below)
-  PhotonFiles/          Spotlight file search: provider, launcher file mode, Quick Look
+  PhotonFiles/          Spotlight/`mdfind` file search: provider, launcher file mode, Quick Look
   PhotonKeybinds/       Hyper key, app hotkeys, window management
   PhotonCalculator/     Inline launcher calculator and unit conversions
 Tests/
@@ -21,7 +21,7 @@ Tests/
   PhotonAppsTests/      System Settings pane icon policy
   PhotonClipboardTests/ History rules (dedupe, retention), search ranking, store round trip
   PhotonNotesTests/     Title extraction, markdown spans, store, debounce, query parsing, sidebar rows
-  PhotonFilesTests/     Spotlight query strings, ranking, path truncation
+  PhotonFilesTests/     Spotlight query strings, mdfind args, ranking, path truncation
   PhotonKeybindsTests/  Frame math, shortcut parsing, conflicts, hidutil mapping format
 ```
 
@@ -88,14 +88,14 @@ Register a mode next to the provider: `launcher.register(mode:)`. Clipboard stil
 
 Pipeline, all off the main thread except the final publish:
 
-1. `SpotlightQueryBuilder` turns the typed text into a raw Spotlight query string (`kMDItemDisplayName == "*term*"cd || kMDItemFSName == ...`; every term must match; terms shorter than three characters only match word prefixes; `kMDItemTextContent` is added when "search file contents" is on).
-2. `FileSearchEngine` (main actor) debounces 120 ms, cancels the in-flight query, and runs a `SpotlightQueryRunner`: one `NSMetadataQuery` with an `operationQueue`, scopes from settings (`NSMetadataQueryLocalComputerScope` or the home folder plus extra folders), sorted by last-used date. The query is stopped after the gathering phase; up to `max(500, 20 x limit)` hits are converted to plain `FileResult` values on the query's queue.
-3. `FileRanker` scores name relevance (exact > prefix > word start > substring > file name > content), drops user-excluded folders, dedupes, sorts by relevance, last-used, modified, name, and caps at the configured limit. `FileIconCache` prefetches Finder icons before results are published so rows never pop.
-4. `FileSearchController` publishes results and owns selection, Quick Look (`QuickLookCoordinator`, `QLPreviewPanel` data source found through the launcher panel's responder chain), and actions (`FileActions`: open, reveal, copy path). `FileSearchView` renders rows (icon, name, middle-truncated parent path, kind), the `Cmd+I` info strip, and the key hints.
+1. `SpotlightQueryBuilder` turns the typed text into a raw Spotlight query string (`kMDItemDisplayName == "*term*"cd || kMDItemFSName == ...`; every alphanumeric term must match; underscores and punctuation split terms so `ember_individual` is `ember` AND `individual`; terms shorter than three characters only match word prefixes; `kMDItemTextContent` is added when "search file contents" is on).
+2. `FileSearchEngine` (main actor) debounces 120 ms, cancels the in-flight query, and runs `MdfindQueryRunner`: one `/usr/bin/mdfind -onlyin $HOME` (plus extra folders; omitted for **This Mac**) with `-0` null-terminated paths. Up to `max(500, 20 x limit)` hits become `FileResult` values via `FileResultFactory`. This is the same Spotlight/`mdfind` path Raycast uses; the engine does not walk the filesystem.
+3. `FileRanker` scores name relevance (exact > prefix > word start > substring > file name > content), drops user-excluded folders and blocked system paths (`/System`, `/Library` except `~/Library`, `/private`, `/usr`, `/bin`) after resolving `/System/Volumes/Data` firmlinks, dedupes, sorts by relevance, last-used, modified, name, and caps at the configured limit. `FileIconCache` prefetches Finder icons before results are published so rows never pop.
+4. `FileSearchController` publishes results and owns selection, Quick Look (`QuickLookCoordinator`, `QLPreviewPanel` data source found through the launcher panel's responder chain), and actions (`FileActions`: open, reveal, copy path). Empty Files mode stays a compact search field until the user types. `FileSearchView` renders rows (icon, name, middle-truncated parent path, kind), the `Cmd+I` info strip, and the key hints.
 
 `FilesProvider` contributes the *Search Files* command and, for queries of three or more characters, up to three strong name matches to the default list. It never blocks `CommandRegistry.search`: it returns what is cached for the exact query and otherwise starts a background search that asks the launcher to refresh when it finishes.
 
-Spotlight privacy exclusions apply automatically because Spotlight never indexes them. Default scope is the user home folder (`NSMetadataQueryUserHomeScope`); **This Mac** remains available in settings. `FileRanker` re-sorts Spotlight hits with launcher-style fuzzy matching on the stem, file name, and path relative to home (separator-insensitive). Paths shown in the UI abbreviate firmlink prefixes (`/System/Volumes/Data/...`) to `~/…`. The Files settings tab (`FilesSettingsView`, bound to `SettingsStore.files*` keys and bridged to `FileSearchSettings` by `FileSearchIntegration`) adds scope, content search, result limit, default action, inline results, extra folders, and excluded folders.
+Spotlight privacy exclusions apply automatically because Spotlight never indexes them. Default scope is the user home folder (`mdfind -onlyin $HOME`); **This Mac** remains available in settings. `FileRanker` re-sorts Spotlight hits with launcher-style fuzzy matching on the stem, file name, and path relative to home (separator-insensitive). Paths shown in the UI abbreviate firmlink prefixes (`/System/Volumes/Data/...`) to `~/…`. The Files settings tab (`FilesSettingsView`, bound to `SettingsStore.files*` keys and bridged to `FileSearchSettings` by `FileSearchIntegration`) adds scope, content search, result limit, default action, inline results, extra folders, and excluded folders.
 
 ## PhotonNotes
 
