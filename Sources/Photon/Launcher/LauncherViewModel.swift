@@ -33,6 +33,7 @@ final class LauncherViewModel: ObservableObject {
           activeMode.update(query: query)
         } else if query.isEmpty, !preferences.showsSuggestions {
           // Compact mode collapses at once instead of waiting for an empty search.
+          revealsRecommendations = false
           clearResults()
         } else {
           Task { await refresh() }
@@ -62,6 +63,11 @@ final class LauncherViewModel: ObservableObject {
     didSet { updateContent() }
   }
 
+  /// Down on the empty compact bar reveals frecency recents, like Raycast.
+  @Published private(set) var revealsRecommendations = false {
+    didSet { updateContent() }
+  }
+
   /// Drives the panel height; `LauncherPanelController` resizes the window when it changes.
   @Published private(set) var content: LauncherContent = .searchOnly
 
@@ -74,8 +80,10 @@ final class LauncherViewModel: ObservableObject {
       let toggledSuggestions = preferences.showsSuggestions != oldValue.showsSuggestions
       if toggledSuggestions, query.isEmpty, showsCommandList {
         if preferences.showsSuggestions {
+          revealsRecommendations = false
           Task { await refresh() }
         } else {
+          revealsRecommendations = false
           clearResults()
         }
       }
@@ -160,7 +168,7 @@ final class LauncherViewModel: ObservableObject {
     guard showsCommandList else {
       return
     }
-    if query.isEmpty, !preferences.showsSuggestions {
+    if query.isEmpty, !preferences.showsSuggestions, !revealsRecommendations {
       clearResults()
       return
     }
@@ -201,12 +209,25 @@ final class LauncherViewModel: ObservableObject {
       updateContent()
       return
     }
+    if showsCommandList, query.isEmpty, results.isEmpty, delta > 0 {
+      revealRecommendations()
+      Task { await refresh() }
+      return
+    }
     guard !results.isEmpty else {
       return
     }
     let index = results.firstIndex(where: { $0.id == selectedID }) ?? 0
     let next = (index + delta + results.count) % results.count
     selectedID = results[next].id
+  }
+
+  /// Down on the empty bar lists recommended apps and other recents.
+  func revealRecommendations() {
+    guard showsCommandList, query.isEmpty else {
+      return
+    }
+    revealsRecommendations = true
   }
 
   /// Runs the selection. Returns true when the launcher should hide.
@@ -324,6 +345,7 @@ final class LauncherViewModel: ObservableObject {
 
   private func resetTransientUI() {
     clipboardShowsResults = false
+    revealsRecommendations = false
     if session == .clipboard {
       session = .commands
     }
@@ -377,7 +399,7 @@ final class LauncherViewModel: ObservableObject {
         } else {
           .fullHeight
         }
-      } else if query.isEmpty, !preferences.showsSuggestions {
+      } else if query.isEmpty, !preferences.showsSuggestions, !revealsRecommendations {
         .searchOnly
       } else {
         .rows(count: results.count, showsCalculatorHero: calculatorHero != nil)
