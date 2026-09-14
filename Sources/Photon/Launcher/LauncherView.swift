@@ -68,7 +68,9 @@ struct LauncherView: View {
 
   @ViewBuilder
   private var sessionBadge: some View {
-    if let mode = model.activeMode {
+    if model.session == .clipboard {
+      badge("Clipboard")
+    } else if let mode = model.activeMode {
       badge(mode.title)
     }
   }

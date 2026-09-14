@@ -203,13 +203,11 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       hide()
       return
     }
-    if !panel.isVisible {
-      model.resetForShow()
-      position(panel)
-      panel.orderFrontRegardless()
-      panel.makeKey()
-      startMonitor()
-    }
+    model.resetForShow()
+    position(panel)
+    panel.orderFrontRegardless()
+    panel.makeKey()
+    startMonitor()
     model.enterClipboard(query: "")
   }
 
