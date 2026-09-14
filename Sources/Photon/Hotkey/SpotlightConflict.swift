@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 enum SpotlightConflict {
   static let spotlightHotKeyID = "64"
   private static let shownKey = "hasShownSpotlightGuidance"
