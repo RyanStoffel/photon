@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-14
+
+Feature release: inline calculator and unit conversions, launcher drag-and-snap positioning, clipboard and file-search UX aligned with the redesigned launcher, and searchable System Settings pane titles.
+
 ### Added
 
 - Launcher: inline calculator and unit conversions. Type a math expression (`30/5`, `(2+3)*4`, `2^10`) or a conversion (`10 km to mi`, `32 f to c`) to see a result row; Enter copies the result to the clipboard. Local parser only, no AI.
@@ -22,6 +26,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - Launcher: System Settings panes are indexed and shown by their human-facing titles (localized bundle names and common pane labels), with searchable aliases such as `wallpaper`, `privacy`, `bluetooth`, and `battery`, instead of internal `.prefPane` bundle filenames.
+
+### Known limitations
+
+- The build is ad-hoc signed and not notarized. macOS blocks the first launch of a downloaded copy until you allow it (Control-click > Open on macOS 14; System Settings > Privacy & Security > Open Anyway on macOS 15 and later; or `xattr -dr com.apple.quarantine /Applications/Photon.app`).
 
 ## [0.1.1] - 2026-09-14
 
@@ -69,6 +77,7 @@ First public build. Photon is a menu-bar launcher for macOS 14 and later; it has
 - The Intel slice of the universal binary has only been compiled, not run.
 - The Hyper key and window management need Accessibility access. The Caps Lock remap uses a per-login-session `hidutil` mapping; Settings > Keybinds > Reset Key Mapping restores the key if Photon quits abnormally.
 
-[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/RyanStoffel/photon/releases/tag/v0.2.0
 [0.1.1]: https://github.com/RyanStoffel/photon/releases/tag/v0.1.1
 [0.1.0]: https://github.com/RyanStoffel/photon/releases/tag/v0.1.0
