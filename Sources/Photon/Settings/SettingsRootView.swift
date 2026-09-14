@@ -7,12 +7,8 @@ struct SettingsRootView: View {
     TabView {
       GeneralSettingsView()
         .tabItem { Label("General", systemImage: "gearshape") }
-      PlaceholderSettingsView(
-        title: "Clipboard",
-        detail: "History, pin, paste, retention, and excluded apps land in Phase 2.",
-        content: { ClipboardSettingsPlaceholder() }
-      )
-      .tabItem { Label("Clipboard", systemImage: "clipboard") }
+      ClipboardSettingsView()
+        .tabItem { Label("Clipboard", systemImage: "clipboard") }
       PlaceholderSettingsView(
         title: "Notes",
         detail: "Floating notes and markdown persistence land in Phase 2.",
@@ -55,21 +51,6 @@ struct PlaceholderSettingsView<Content: View>: View {
     .formStyle(.grouped)
     .navigationTitle(title)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-  }
-}
-
-private struct ClipboardSettingsPlaceholder: View {
-  @EnvironmentObject private var settings: SettingsStore
-
-  var body: some View {
-    Section("Retention") {
-      Stepper(value: $settings.clipboardRetentionDays, in: 1 ... 365) {
-        Text("Keep items for \(settings.clipboardRetentionDays) days")
-      }
-      .disabled(true)
-      TextField("Excluded apps", text: $settings.clipboardExcludeApps)
-        .disabled(true)
-    }
   }
 }
 
