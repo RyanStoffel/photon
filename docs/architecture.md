@@ -15,6 +15,7 @@ Sources/
   PhotonNotes/          Floating markdown notes (see below)
   PhotonFiles/          Spotlight file search: provider, launcher file mode, Quick Look
   PhotonKeybinds/       Hyper key, app hotkeys, window management
+  PhotonCalculator/     Inline launcher calculator and unit conversions
 Tests/
   PhotonCoreTests/      FuzzyMatcher, FrecencyStore, Command icons, launcher layout and rows
   PhotonAppsTests/      System Settings pane icon policy
