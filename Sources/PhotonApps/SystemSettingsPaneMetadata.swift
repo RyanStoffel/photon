@@ -8,7 +8,7 @@ public enum SystemSettingsPaneMetadata: Sendable {
     localizedInfo: [String: Any]?,
     fallbackStem: String
   ) -> String {
-    for source in [localizedInfo, info].compactMap({ $0 }) {
+    for source in [localizedInfo, info].compactMap(\.self) {
       if let name = bundleName(in: source), !name.isEmpty {
         return name
       }
