@@ -47,7 +47,10 @@ extension AppRuntime {
   private func keptWindows(for scenario: UIScenario) -> [NSWindow] {
     switch scenario {
     case .launcherEmpty, .launcherQuery:
-      return [launcher.panelWindowForScreenshot].compactMap { $0 }
+      if let panel = launcher.panelWindowForScreenshot {
+        return [panel]
+      }
+      return []
     case .settings:
       return NSApp.windows.filter { $0.title == "General" || $0.title == "Settings" }
     case .notes:
