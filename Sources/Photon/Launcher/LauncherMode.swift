@@ -22,6 +22,8 @@ protocol LauncherMode: AnyObject {
   var inlineProviderID: String? { get }
   /// True while an auxiliary panel such as Quick Look holds keyboard focus.
   var holdsFocus: Bool { get }
+  /// When true the launcher stays at compact height (search field + footer only).
+  var prefersCompactLauncherLayout: Bool { get }
 
   func attach(host: any LauncherModeHost)
   func activate(query: String)
