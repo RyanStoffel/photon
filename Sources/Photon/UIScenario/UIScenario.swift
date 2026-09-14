@@ -72,6 +72,9 @@ enum UIScenario: Equatable, Sendable {
     if raw == "notes" {
       return .notes
     }
+    if raw == "calculator" {
+      return .launcherQuery("2 + 2")
+    }
     return nil
   }
 }

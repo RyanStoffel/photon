@@ -10,6 +10,7 @@ Set `PHOTON_UI_SCENARIO` (or pass `--ui-scenario <name>`) at launch:
 | --- | --- |
 | `launcher-empty` | Launcher open, empty query, results loaded |
 | `launcher-query:saf` | Launcher with query `saf` (Safari and related rows) |
+| `calculator` | Launcher with query `2 + 2` and the Raycast-style calculator hero card |
 | `settings:appearance` | Settings window; selects **Appearance** when that tab exists, otherwise **General** |
 | `notes` | Notes window with a seeded sample note in an isolated data directory |
 

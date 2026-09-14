@@ -22,7 +22,7 @@ public struct LauncherRow: Identifiable, Hashable, Sendable {
   public var actionVerb: String {
     switch providerID {
     case "keybinds": "Run"
-    case "calculator": "Copy"
+    case "calculator": "Copy Answer"
     default: "Open"
     }
   }

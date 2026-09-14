@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Launcher: calculator and unit conversion results use a Raycast-style split card (expression and result with caption pills, center arrow) instead of a list row; the footer action reads **Copy Answer**.
 - Clipboard mode: matches the compact launcher layout. The panel stays search-field height until history items appear, then grows row by row. The mode is labeled in the footer instead of a pill beside the search field. Rows use the same icon, title, and secondary relative-time styling as launcher commands; pin, delete, paste, and keyboard shortcuts are unchanged.
 - File search: default scope is your home folder instead of the whole Mac. Settings still offers This Mac, plus extra and excluded folders.
 - File search: fuzzy matching on file names and home-relative paths (case-insensitive; spaces, underscores, and punctuation are ignored), aligned with the app launcher.

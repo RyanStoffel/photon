@@ -327,7 +327,7 @@ final class LauncherViewModel: ObservableObject {
       } else if query.isEmpty, !preferences.showsSuggestions {
         .searchOnly
       } else {
-        .rows(results.count)
+        .rows(count: results.count, showsCalculatorHero: calculatorHero != nil)
       }
     }
     if next != content {
@@ -340,10 +340,10 @@ final class LauncherViewModel: ObservableObject {
       return .searchOnly
     }
     if !clipboard.results.isEmpty {
-      return .rows(clipboard.results.count)
+      return .rows(count: clipboard.results.count, showsCalculatorHero: false)
     }
     if clipboard.showsCompactEmptyRow {
-      return .rows(1)
+      return .rows(count: 1, showsCalculatorHero: false)
     }
     return .searchOnly
   }
