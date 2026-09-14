@@ -20,12 +20,19 @@ It is not an extension platform. There is no AI, no account, no cloud sync, and 
 ## Install
 
 ```sh
+brew tap ryanstoffel/taps
 brew install --cask ryanstoffel/taps/photon
 ```
 
-Requires macOS 14 or later.
+Or download `Photon-<version>.zip` or `.dmg` from the [latest release](https://github.com/RyanStoffel/photon/releases) and move `Photon.app` to `/Applications`. Requires macOS 14 or later; the binary is universal (Apple silicon and Intel).
 
-Photon is distributed from [RyanStoffel/homebrew-taps](https://github.com/RyanStoffel/homebrew-taps). Until a signed, notarized release exists, macOS Gatekeeper will block the first launch: open **System Settings > Privacy & Security** and click **Open Anyway**.
+Photon is distributed from [RyanStoffel/homebrew-taps](https://github.com/RyanStoffel/homebrew-taps). Current builds are ad-hoc signed and not notarized, so macOS Gatekeeper blocks the first launch of a downloaded copy:
+
+- macOS 14: Control-click `Photon.app` and choose **Open**.
+- macOS 15 and later: open Photon once, then go to **System Settings > Privacy & Security** and click **Open Anyway**.
+- Or remove the quarantine flag: `xattr -dr com.apple.quarantine /Applications/Photon.app`
+
+Releases are listed in [CHANGELOG.md](CHANGELOG.md). Version 0.1.0 is a pre-release: it passes CI, including a launch smoke test on a GitHub-hosted Mac, but has not yet been exercised on real hardware.
 
 ## Permissions
 
