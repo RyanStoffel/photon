@@ -47,9 +47,16 @@ cask "photon" do
   desc "Fast, minimal launcher for apps, clipboard history, notes, and files"
   homepage "https://github.com/RyanStoffel/photon"
 
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
 
   app "Photon.app"
+
+  zap trash: [
+    "~/Library/Application Support/Photon",
+    "~/Library/Caches/com.ryanstoffel.photon",
+    "~/Library/Preferences/com.ryanstoffel.photon.plist",
+    "~/Library/Saved Application State/com.ryanstoffel.photon.savedState",
+  ]
 
   caveats <<~EOS
     Photon is ad-hoc signed and not notarized yet, so macOS blocks the first
@@ -63,13 +70,6 @@ cask "photon" do
     clipboard items into other apps, for the Hyper key, and for window
     management. Everything else works without it.
   EOS
-
-  zap trash: [
-    "~/Library/Application Support/Photon",
-    "~/Library/Caches/com.ryanstoffel.photon",
-    "~/Library/Preferences/com.ryanstoffel.photon.plist",
-    "~/Library/Saved Application State/com.ryanstoffel.photon.savedState",
-  ]
 end
 EOF
 else
