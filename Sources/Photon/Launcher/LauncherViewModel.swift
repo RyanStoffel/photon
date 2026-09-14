@@ -174,8 +174,10 @@ final class LauncherViewModel: ObservableObject {
 
   func moveSelection(_ delta: Int) {
     if session == .clipboard {
-      if delta > 0, !clipboardShowsResults, let clipboard, !clipboard.results.isEmpty {
-        clipboardShowsResults = true
+      if !clipboardShowsResults, let clipboard, !clipboard.results.isEmpty {
+        if delta > 0 {
+          clipboardShowsResults = true
+        }
         return
       }
       clipboard?.moveSelection(delta)
