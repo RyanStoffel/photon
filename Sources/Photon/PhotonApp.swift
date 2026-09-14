@@ -9,12 +9,16 @@ struct PhotonApp: App {
     Settings {
       SettingsRootView()
         .environmentObject(appDelegate.runtime.settings)
+        .environmentObject(appDelegate.runtime.clipboard)
         .frame(minWidth: 560, minHeight: 400)
     }
 
     MenuBarExtra("Photon", systemImage: "sun.max.fill") {
       Button("Open Launcher") {
         appDelegate.runtime.toggleLauncher()
+      }
+      Button("Clipboard History") {
+        appDelegate.runtime.showClipboardHistory()
       }
       Button("Settings…") {
         appDelegate.runtime.openSettings()

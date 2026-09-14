@@ -11,6 +11,10 @@ let package = Package(
   targets: [
     .target(name: "PhotonCore"),
     .testTarget(name: "PhotonCoreTests", dependencies: ["PhotonCore"]),
+    // AppKit-backed files in PhotonClipboard are wrapped in `#if canImport(AppKit)`,
+    // so the models, history rules, search, and store compile and test on Linux.
+    .target(name: "PhotonClipboard", dependencies: ["PhotonCore"]),
+    .testTarget(name: "PhotonClipboardTests", dependencies: ["PhotonClipboard"]),
   ]
 )
 
@@ -18,7 +22,6 @@ let package = Package(
 package.products.append(.executable(name: "Photon", targets: ["Photon"]))
 package.targets.append(contentsOf: [
   .target(name: "PhotonApps", dependencies: ["PhotonCore"]),
-  .target(name: "PhotonClipboard", dependencies: ["PhotonCore"]),
   .target(name: "PhotonNotes", dependencies: ["PhotonCore"]),
   .target(name: "PhotonFiles", dependencies: ["PhotonCore"]),
   .target(name: "PhotonKeybinds", dependencies: ["PhotonCore"]),

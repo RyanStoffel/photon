@@ -1,3 +1,4 @@
+import PhotonClipboard
 import PhotonCore
 import SwiftUI
 
@@ -9,7 +10,7 @@ struct LauncherView: View {
     VStack(spacing: 0) {
       searchField
       Divider()
-      results
+      content
       if let lastError = model.lastError {
         Text(lastError)
           .font(.caption)
@@ -33,9 +34,18 @@ struct LauncherView: View {
 
   private var searchField: some View {
     HStack(spacing: 10) {
-      Image(systemName: "magnifyingglass")
-        .foregroundStyle(.secondary)
-      TextField("Search applications", text: $model.query)
+      if model.mode == .clipboard {
+        Label("Clipboard", systemImage: "clipboard")
+          .font(.callout.weight(.medium))
+          .foregroundStyle(.secondary)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 4)
+          .background(.quaternary, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+      } else {
+        Image(systemName: "magnifyingglass")
+          .foregroundStyle(.secondary)
+      }
+      TextField(model.mode == .clipboard ? "Search clipboard history" : "Search applications", text: $model.query)
         .textFieldStyle(.plain)
         .font(.system(size: 22, weight: .medium))
         .onSubmit {
@@ -44,6 +54,20 @@ struct LauncherView: View {
     }
     .padding(.horizontal, 18)
     .padding(.vertical, 16)
+  }
+
+  @ViewBuilder
+  private var content: some View {
+    switch model.mode {
+    case .commands:
+      results
+    case .clipboard:
+      if let clipboard = model.clipboard {
+        ClipboardHistoryView(model: clipboard)
+      } else {
+        results
+      }
+    }
   }
 
   @ViewBuilder
@@ -75,7 +99,7 @@ struct LauncherView: View {
 
   private func resultRow(_ item: RankedCommand) -> some View {
     HStack(spacing: 12) {
-      Image(systemName: item.command.providerID == "apps" ? "app.fill" : "circle.grid.3x3")
+      Image(systemName: symbolName(for: item.command))
         .foregroundStyle(.secondary)
         .frame(width: 24)
       VStack(alignment: .leading, spacing: 2) {
@@ -98,10 +122,23 @@ struct LauncherView: View {
     }
   }
 
+  private func symbolName(for command: Command) -> String {
+    switch command.providerID {
+    case "apps": "app.fill"
+    case "clipboard": "clipboard"
+    default: "circle.grid.3x3"
+    }
+  }
+
   private func run() async {
-    await model.runSelection()
-    if model.lastError == nil {
-      onRun()
+    switch model.mode {
+    case .clipboard:
+      await model.clipboard?.performPrimaryAction()
+    case .commands:
+      await model.runSelection()
+      if model.lastError == nil, model.mode == .commands {
+        onRun()
+      }
     }
   }
 }
