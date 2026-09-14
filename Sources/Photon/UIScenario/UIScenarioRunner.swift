@@ -83,7 +83,8 @@ extension AppRuntime {
     if let mode = launcher.model.modes.first(where: { $0.id == "files" }) {
       launcher.model.enter(mode: mode, query: query)
     }
-    try? await Task.sleep(nanoseconds: 800_000_000)
+    let wait: UInt64 = query.isEmpty ? 400_000_000 : 2_500_000_000
+    try? await Task.sleep(nanoseconds: wait)
   }
 
   @MainActor
