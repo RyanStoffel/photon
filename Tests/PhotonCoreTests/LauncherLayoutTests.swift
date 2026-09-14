@@ -45,4 +45,13 @@ final class LauncherLayoutTests: XCTestCase {
   func testSuggestionsFitOnOnePage() {
     XCTAssertLessThanOrEqual(LauncherLayout.suggestionCount, LauncherLayout.maxVisibleRows)
   }
+
+  func testCalculatorHeroReplacesFirstRowHeight() {
+    let rowOnly = LauncherLayout.listHeight(rowCount: 1)
+    let heroOnly = LauncherLayout.listHeight(rowCount: 1, showsCalculatorHero: true)
+    XCTAssertGreaterThan(heroOnly, rowOnly)
+
+    let heroPlusOne = LauncherLayout.listHeight(rowCount: 2, showsCalculatorHero: true)
+    XCTAssertEqual(heroPlusOne - heroOnly, LauncherLayout.rowHeight + 2 * LauncherLayout.listInset)
+  }
 }

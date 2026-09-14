@@ -104,20 +104,32 @@ struct LauncherView: View {
   // MARK: Command list
 
   private var resultsList: some View {
+    let showsHero = model.calculatorHero != nil
     ScrollViewReader { proxy in
       ScrollView(.vertical) {
         LazyVStack(spacing: 0) {
           if model.rows.isEmpty {
             messageRow
           } else {
-            ForEach(model.rows) { row in
+            if let hero = model.calculatorHero {
+              LauncherCalculatorHeroSection(
+                model: hero,
+                selected: model.selectedID == hero.commandID,
+                onSelect: {
+                  model.selectedID = hero.commandID
+                }
+              )
+              .id(hero.commandID)
+            }
+            ForEach(model.rowsBelowCalculatorHero) { row in
               resultRow(row)
                 .id(row.id)
             }
           }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, LauncherLayout.listInset)
+        .padding(.top, showsHero ? 0 : LauncherLayout.listInset)
+        .padding(.bottom, LauncherLayout.listInset)
       }
       .onChange(of: model.selectedID) { _, newValue in
         if let newValue {
@@ -125,7 +137,7 @@ struct LauncherView: View {
         }
       }
     }
-    .frame(height: LauncherLayout.listHeight(rowCount: model.rows.count))
+    .frame(height: LauncherLayout.listHeight(rowCount: model.rows.count, showsCalculatorHero: showsHero))
   }
 
   private var messageRow: some View {
