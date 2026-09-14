@@ -298,10 +298,10 @@ final class SettingsStore: ObservableObject {
       notesHotkey = nil
     }
 
-    let storedFilesScope = defaults.string(forKey: Keys.filesSearchScope) ?? FileSearchScope.home.rawValue
-    if storedFilesScope == FileSearchScope.computer.rawValue {
-      defaults.set(FileSearchScope.home.rawValue, forKey: Keys.filesSearchScope)
-      filesSearchScope = FileSearchScope.home.rawValue
+    let storedFilesScope = defaults.string(forKey: Keys.filesSearchScope) ?? "home"
+    if storedFilesScope == "this-mac" {
+      defaults.set("home", forKey: Keys.filesSearchScope)
+      filesSearchScope = "home"
     } else {
       filesSearchScope = storedFilesScope
     }
