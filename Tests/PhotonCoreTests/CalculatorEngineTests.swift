@@ -21,11 +21,10 @@ final class CalculatorEngineTests: XCTestCase {
     XCTAssertEqual(CalculatorEngine.evaluate("10 % 3")?.value, "1")
   }
 
-  func testLengthConversion() {
-    let result = CalculatorEngine.evaluate("10 km to mi")
-    XCTAssertNotNil(result)
-    XCTAssertEqual(result?.operationLabel, "Convert")
-    XCTAssertTrue(result!.rowTitle.contains("→"))
+  func testLengthConversion() throws {
+    let result = try XCTUnwrap(CalculatorEngine.evaluate("10 km to mi"))
+    XCTAssertEqual(result.operationLabel, "Convert")
+    XCTAssertTrue(result.rowTitle.contains("→"))
   }
 
   func testTemperatureConversion() {

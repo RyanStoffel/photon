@@ -20,7 +20,7 @@ public enum CalculatorEngine: Sendable {
 private enum MathExpression {
   static func evaluate(_ input: String) -> CalculatorResult? {
     let tokens = tokenize(input)
-    guard !tokens.isEmpty, tokens.contains(where: { if case .op = $0 { return true }; return false }) else {
+    guard !tokens.isEmpty, containsOperator(tokens) else {
       return nil
     }
     var parser = Parser(tokens: tokens)
@@ -43,6 +43,15 @@ private enum MathExpression {
 
   private static func compact(_ input: String) -> String {
     input.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+  }
+
+  private static func containsOperator(_ tokens: [Token]) -> Bool {
+    for token in tokens {
+      if case .op = token {
+        return true
+      }
+    }
+    return false
   }
 
   private enum Token: Equatable {
@@ -251,12 +260,10 @@ private enum UnitConversion {
     }
     let left = String(input[input.startIndex ..< separatorRange.lowerBound]).trimmingCharacters(in: .whitespaces)
     let right = String(input[separatorRange.upperBound...]).trimmingCharacters(in: .whitespaces)
-    guard let (amount, fromUnit) = parseAmountUnit(left),
-          let toUnit = resolveUnit(right)
+    guard let (amount, fromOptional) = parseAmountUnit(left),
+          let from = fromOptional,
+          let to = resolveUnit(right)
     else {
-      return nil
-    }
-    guard let from = fromUnit, let to = toUnit else {
       return nil
     }
     guard let converted = convert(amount: amount, from: from, to: to) else {
@@ -305,7 +312,7 @@ private enum UnitConversion {
   }
 
   private enum LengthUnit: String {
-    case m, km, cm, mm, mi, mile, miles, ft, foot, feet, in, inch, inches, yd, yard, yards
+    case m, km, cm, mm, mi, mile, miles, ft, foot, feet, inch, inches, yd, yard, yards
   }
 
   private enum MassUnit: String {
@@ -330,6 +337,9 @@ private enum UnitConversion {
       .trimmingCharacters(in: .whitespacesAndNewlines)
       .trimmingCharacters(in: CharacterSet(charactersIn: "°"))
       .lowercased()
+    if cleaned == "in" {
+      return .length(.inch)
+    }
     if let unit = LengthUnit(rawValue: cleaned) {
       return .length(unit)
     }
@@ -371,9 +381,9 @@ private enum UnitConversion {
   private static func sameCategory(_ lhs: UnitKind, _ rhs: UnitKind) -> Bool {
     switch (lhs, rhs) {
     case (.length, .length), (.mass, .mass), (.temperature, .temperature), (.time, .time), (.data, .data):
-      return true
+      true
     default:
-      return false
+      false
     }
   }
 
@@ -385,7 +395,7 @@ private enum UnitConversion {
     case .mm: value / 1000
     case .mi, .mile, .miles: value * 1609.344
     case .ft, .foot, .feet: value * 0.3048
-    case .in, .inch, .inches: value * 0.0254
+    case .inch, .inches: value * 0.0254
     case .yd, .yard, .yards: value * 0.9144
     }
   }
@@ -413,7 +423,7 @@ private enum UnitConversion {
     switch unit {
     case .b, .bit, .bits: value / 8
     case .byte, .bytes: value
-    case .kb: value * 1000
+    case .kb: value * 1_000
     case .mb: value * 1_000_000
     case .gb: value * 1_000_000_000
     case .tb: value * 1_000_000_000_000
@@ -431,9 +441,12 @@ private enum UnitConversion {
     case .k, .kelvin: value - 273.15
     }
     switch to {
-    case .c, .cel, .celsius: return celsius
-    case .f, .fah, .fahrenheit: return celsius * 9 / 5 + 32
-    case .k, .kelvin: return celsius + 273.15
+    case .c, .cel, .celsius:
+      celsius
+    case .f, .fah, .fahrenheit:
+      celsius * 9 / 5 + 32
+    case .k, .kelvin:
+      celsius + 273.15
     }
   }
 
@@ -460,7 +473,7 @@ private enum UnitConversion {
     case .mm: "mm"
     case .mi, .mile, .miles: "mi"
     case .ft, .foot, .feet: "ft"
-    case .in, .inch, .inches: "in"
+    case .inch, .inches: "in"
     case .yd, .yard, .yards: "yd"
     }
   }
