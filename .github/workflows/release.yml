@@ -23,7 +23,7 @@ jobs:
       TAP_REPO: homebrew-taps
     steps:
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Read version
         id: version
