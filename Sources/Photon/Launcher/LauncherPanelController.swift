@@ -26,6 +26,10 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     model.frecency
   }
 
+  var panelWindowForScreenshot: NSWindow? {
+    panel
+  }
+
   /// Enables clipboard mode. Call once at startup, before the panel is shown.
   func attachClipboard(_ manager: ClipboardManager) {
     let clipboard = ClipboardHistoryViewModel(manager: manager)

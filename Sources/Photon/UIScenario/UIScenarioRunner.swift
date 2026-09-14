@@ -34,18 +34,24 @@ extension AppRuntime {
 
   @MainActor
   private func hideWindowsExceptScenario(_ scenario: UIScenario) {
-    let keep: (NSWindow) -> Bool = { window in
-      switch scenario {
-      case .launcherEmpty, .launcherQuery:
-        return window.title == "Photon Launcher"
-      case .settings:
-        return window.title == "General" || window.title == "Settings"
-      case .notes:
-        return window.title == "Screenshot sample" || window.title == "Notes"
-      }
-    }
-    for window in NSApp.windows where window.isVisible && !keep(window) {
+    let kept = Set(keptWindows(for: scenario).map(ObjectIdentifier.init))
+    for window in NSApp.windows where window.isVisible && !kept.contains(ObjectIdentifier(window)) {
       window.orderOut(nil)
+    }
+  }
+
+  @MainActor
+  private func keptWindows(for scenario: UIScenario) -> [NSWindow] {
+    switch scenario {
+    case .launcherEmpty, .launcherQuery:
+      return [launcher.panelWindowForScreenshot].compactMap { $0 }
+    case .settings:
+      return NSApp.windows.filter { $0.title == "General" || $0.title == "Settings" }
+    case .notes:
+      if let window = notes.controller.screenshotWindow {
+        return [window]
+      }
+      return NSApp.windows.filter { $0.title == "Screenshot sample" || $0.title == "Notes" }
     }
   }
 
@@ -62,9 +68,10 @@ extension AppRuntime {
 
   @MainActor
   private func positionSettingsWindowForScreenshot() {
-    guard let window = NSApp.windows.first(where: { $0.title.contains("Settings") || $0.className.contains("Settings") })
-      ?? NSApp.windows.first(where: { $0.isVisible && $0.frame.width >= 500 })
-    else {
+    let settingsWindow = NSApp.windows.first { window in
+      window.title.contains("Settings") || window.className.contains("Settings")
+    } ?? NSApp.windows.first { $0.isVisible && $0.frame.width >= 500 }
+    guard let window = settingsWindow else {
       return
     }
     UIScenarioWindowLayout.position(window, size: NSSize(width: 640, height: 480))
@@ -72,8 +79,9 @@ extension AppRuntime {
 
   @MainActor
   private func positionNotesWindowForScreenshot() {
-    guard let window = NSApp.windows.first(where: { $0.title == "Photon Notes" || $0.isVisible && $0.frame.width < 500 })
-    else {
+    let notesWindow = notes.controller.screenshotWindow
+      ?? NSApp.windows.first { $0.title == "Screenshot sample" || $0.title == "Notes" }
+    guard let window = notesWindow else {
       return
     }
     UIScenarioWindowLayout.position(window, size: NSSize(width: 400, height: 480))
@@ -89,19 +97,18 @@ extension AppRuntime {
 }
 
 enum UIScenarioScreenshotNote {
-  static let content = """
-  # Screenshot sample
-
-  A short paragraph used for automated UI screenshots.
-
-  - First bullet item
-  - Second bullet item
-
-  - [ ] Open task
-  - [x] Completed task
-  """
-    .trimmingCharacters(in: .whitespacesAndNewlines)
-    + "\n"
+  static let content: String = [
+    "# Screenshot sample",
+    "",
+    "A short paragraph used for automated UI screenshots.",
+    "",
+    "- First bullet item",
+    "- Second bullet item",
+    "",
+    "- [ ] Open task",
+    "- [x] Completed task",
+    "",
+  ].joined(separator: "\n")
 }
 
 enum UIScenarioWindowLayout {

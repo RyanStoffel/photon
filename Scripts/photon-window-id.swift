@@ -70,7 +70,7 @@ func matchesScenario(_ candidate: WindowCandidate, scenario: String) -> Bool {
     if candidate.title == "Photon Launcher" {
       return true
     }
-    return candidate.width >= 600 && candidate.width <= 700 && candidate.height >= 380 && candidate.height <= 460
+    return candidate.width >= 520 && candidate.width <= 720 && candidate.height >= 320 && candidate.height <= 520
   case "settings":
     if candidate.title == "General" || candidate.title == "Settings" {
       return candidate.width >= 520
@@ -137,9 +137,17 @@ for entry in list {
 }
 
 if let scenario = options.scenario {
-  let slug = scenario.hasPrefix("launcher-query") ? "launcher-query" : scenario
-  let filtered = candidates.filter { matchesScenario($0, scenario: slug == "launcher-query" ? "launcher-query" : scenario) }
-  if let best = filtered.max(by: { score($0, scenario: slug) < score($1, scenario: slug) }) {
+  let key: String = {
+    if scenario.hasPrefix("launcher-query") {
+      return "launcher-query"
+    }
+    if scenario.hasPrefix("settings") {
+      return "settings"
+    }
+    return scenario
+  }()
+  let filtered = candidates.filter { matchesScenario($0, scenario: key) }
+  if let best = filtered.max(by: { score($0, scenario: key) < score($1, scenario: key) }) {
     print(best.id)
     exit(0)
   }
