@@ -114,7 +114,7 @@ jobs:
 
       - name: Upload release artifacts
         if: always() && steps.sign.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Photon-${{ steps.version.outputs.version }}${{ steps.version.outputs.dry_run == 'true' && '-dry-run' || '' }}
           path: |
@@ -126,7 +126,7 @@ jobs:
 
       - name: Upload smoke test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-test-log
           path: ${{ runner.temp }}/photon-smoke.log
