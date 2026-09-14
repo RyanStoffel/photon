@@ -34,7 +34,7 @@ public enum PaneIconPolicy {
       }
     }
 
-    let catalogNames = declared + [info["CFBundleIconName"] as? String].compactMap { $0 }
+    let catalogNames = declared + [info["CFBundleIconName"] as? String].compactMap(\.self)
     if let name = catalogNames.first, fileExists(resources.appendingPathComponent("Assets.car").path) {
       return .bundleResource(bundlePath: paneURL.path, name: (name as NSString).deletingPathExtension)
     }
