@@ -95,13 +95,16 @@ extension LauncherPanelController {
     startMouse: NSPoint,
     currentMouse: NSPoint
   ) {
-    var origin = LauncherPosition.originByMouseDelta(
+    let visible = visibleFrame(for: panel)
+    let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
+    var origin = LauncherPosition.liveDragOrigin(
       initialOrigin: startOrigin,
       startMouse: PanelOrigin(x: startMouse.x, y: startMouse.y),
-      currentMouse: PanelOrigin(x: currentMouse.x, y: currentMouse.y)
+      currentMouse: PanelOrigin(x: currentMouse.x, y: currentMouse.y),
+      panelWidth: size.width,
+      visible: visible
     )
-    let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
-    origin = LauncherPosition.clampedOrigin(origin, panelSize: size, visible: visibleFrame(for: panel))
+    origin = LauncherPosition.clampedOrigin(origin, panelSize: size, visible: visible)
     panel.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
   }
 

@@ -33,6 +33,7 @@ final class LauncherViewModel: ObservableObject {
           activeMode.update(query: query)
         } else if query.isEmpty, !preferences.showsSuggestions {
           // Compact mode collapses at once instead of waiting for an empty search.
+          revealsRecommendations = false
           clearResults()
         } else {
           Task { await refresh() }
@@ -62,6 +63,11 @@ final class LauncherViewModel: ObservableObject {
     didSet { updateContent() }
   }
 
+  /// Down on the empty compact bar reveals frecency recents, like Raycast.
+  @Published private(set) var revealsRecommendations = false {
+    didSet { updateContent() }
+  }
+
   /// Drives the panel height; `LauncherPanelController` resizes the window when it changes.
   @Published private(set) var content: LauncherContent = .searchOnly
 
@@ -74,8 +80,10 @@ final class LauncherViewModel: ObservableObject {
       let toggledSuggestions = preferences.showsSuggestions != oldValue.showsSuggestions
       if toggledSuggestions, query.isEmpty, showsCommandList {
         if preferences.showsSuggestions {
+          revealsRecommendations = false
           Task { await refresh() }
         } else {
+          revealsRecommendations = false
           clearResults()
         }
       }
@@ -133,15 +141,22 @@ final class LauncherViewModel: ObservableObject {
     modes.append(mode)
   }
 
+  func refreshLayout() {
+    updateContent()
+  }
+
   func resetForShow() {
-    session = .commands
-    exitMode(clearingQuery: false)
-    query = ""
-    lastError = nil
+    resetTransientUI()
     selectedID = results.first?.id
     if query.isEmpty, !preferences.showsSuggestions {
       clearResults()
     }
+  }
+
+  /// Collapse clipboard/mode chrome before the window is ordered out so the next
+  /// open cannot inherit a tall panel around a compact SwiftUI root.
+  func resetForHide() {
+    resetTransientUI()
   }
 
   /// Closes any auxiliary UI the active mode owns (Quick Look) without leaving the mode.
@@ -153,7 +168,7 @@ final class LauncherViewModel: ObservableObject {
     guard showsCommandList else {
       return
     }
-    if query.isEmpty, !preferences.showsSuggestions {
+    if query.isEmpty, !preferences.showsSuggestions, !revealsRecommendations {
       clearResults()
       return
     }
@@ -174,18 +189,29 @@ final class LauncherViewModel: ObservableObject {
 
   func moveSelection(_ delta: Int) {
     if session == .clipboard {
-      if !clipboardShowsResults, let clipboard, !clipboard.results.isEmpty {
-        if delta > 0 {
-          clipboardShowsResults = true
+      guard let clipboard, !clipboard.results.isEmpty else {
+        return
+      }
+      if !clipboardShowsResults {
+        clipboardShowsResults = true
+        if delta < 0 {
+          clipboard.selectLast()
+        } else {
+          clipboard.selectFirst()
         }
         return
       }
-      clipboard?.moveSelection(delta)
+      clipboard.moveSelection(delta)
       return
     }
     if let activeMode {
       activeMode.moveSelection(delta)
       updateContent()
+      return
+    }
+    if showsCommandList, query.isEmpty, results.isEmpty, delta > 0 {
+      revealRecommendations()
+      Task { await refresh() }
       return
     }
     guard !results.isEmpty else {
@@ -194,6 +220,14 @@ final class LauncherViewModel: ObservableObject {
     let index = results.firstIndex(where: { $0.id == selectedID }) ?? 0
     let next = (index + delta + results.count) % results.count
     selectedID = results[next].id
+  }
+
+  /// Down on the empty bar lists recommended apps and other recents.
+  func revealRecommendations() {
+    guard showsCommandList, query.isEmpty else {
+      return
+    }
+    revealsRecommendations = true
   }
 
   /// Runs the selection. Returns true when the launcher should hide.
@@ -240,8 +274,10 @@ final class LauncherViewModel: ObservableObject {
     }
     exitMode(clearingQuery: false)
     lastError = nil
-    session = .clipboard
+    // Collapse before switching session so the first `updateContent` is compact
+    // unless this open already has a filter (and therefore rows to show).
     clipboardShowsResults = !initialQuery.isEmpty
+    session = .clipboard
     clipboard.reset()
     if query != initialQuery {
       query = initialQuery
@@ -256,6 +292,7 @@ final class LauncherViewModel: ObservableObject {
     guard session == .clipboard else {
       return
     }
+    clipboardShowsResults = false
     session = .commands
     if query.isEmpty {
       Task { await refresh() }
@@ -306,6 +343,21 @@ final class LauncherViewModel: ObservableObject {
     return nil
   }
 
+  private func resetTransientUI() {
+    clipboardShowsResults = false
+    revealsRecommendations = false
+    if session == .clipboard {
+      session = .commands
+    }
+    exitMode(clearingQuery: false)
+    lastError = nil
+    if !query.isEmpty {
+      query = ""
+    } else {
+      updateContent()
+    }
+  }
+
   private func clearResults() {
     searchGeneration += 1
     isLoading = false
@@ -315,14 +367,16 @@ final class LauncherViewModel: ObservableObject {
     selectedID = nil
   }
 
-  /// Primary results first; a mode's inline results (never its activation command) trail them.
+  /// Primary results first; a mode's inline results (never its activation command) trail them
+  /// except files, which mix into the main list so a query like `ember` shows Documents
+  /// hits without typing "files" first.
   /// An empty query lists suggestions: the few best-ranked (frecency) commands.
   private func arrange(_ ranked: [RankedCommand], forEmptyQuery isSuggestions: Bool) -> [RankedCommand] {
     var primary: [RankedCommand] = []
     var trailing: [RankedCommand] = []
     for item in ranked {
       let mode = mode(forInlineProvider: item.command.providerID)
-      if let mode, item.command.id != mode.activationCommandID {
+      if let mode, item.command.id != mode.activationCommandID, mode.id != "files" {
         trailing.append(item)
       } else {
         primary.append(item)
@@ -345,7 +399,7 @@ final class LauncherViewModel: ObservableObject {
         } else {
           .fullHeight
         }
-      } else if query.isEmpty, !preferences.showsSuggestions {
+      } else if query.isEmpty, !preferences.showsSuggestions, !revealsRecommendations {
         .searchOnly
       } else {
         .rows(count: results.count, showsCalculatorHero: calculatorHero != nil)

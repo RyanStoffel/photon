@@ -69,6 +69,35 @@ final class LauncherPositionTests: XCTestCase {
     XCTAssertEqual(moved.y, 380, accuracy: 0.001)
   }
 
+  func testLiveDragSnapsXToCenterInsideGuideCorridor() {
+    let start = PanelOrigin(x: visible.midX - panel.width / 2, y: 400)
+    let mouse = PanelOrigin(x: visible.midX, y: 500)
+    let origin = LauncherPosition.liveDragOrigin(
+      initialOrigin: start,
+      startMouse: mouse,
+      currentMouse: PanelOrigin(x: mouse.x + 20, y: mouse.y - 80),
+      panelWidth: panel.width,
+      visible: visible
+    )
+    XCTAssertEqual(origin.x, start.x, accuracy: 0.001)
+    XCTAssertEqual(origin.y, 320, accuracy: 0.001)
+  }
+
+  func testLiveDragKeepsXWhenPulledOutsideGuides() {
+    let start = PanelOrigin(x: visible.midX - panel.width / 2, y: 400)
+    let mouse = PanelOrigin(x: visible.midX, y: 500)
+    let outside = panel.width / 2 + 40
+    let origin = LauncherPosition.liveDragOrigin(
+      initialOrigin: start,
+      startMouse: mouse,
+      currentMouse: PanelOrigin(x: mouse.x + outside, y: mouse.y - 10),
+      panelWidth: panel.width,
+      visible: visible
+    )
+    XCTAssertEqual(origin.x, start.x + outside, accuracy: 0.001)
+    XCTAssertEqual(origin.y, 390, accuracy: 0.001)
+  }
+
   func testOriginByMouseDeltaIsStableWhenMouseHolds() {
     let start = PanelOrigin(x: 200, y: 300)
     let mouse = PanelOrigin(x: 10, y: 20)
