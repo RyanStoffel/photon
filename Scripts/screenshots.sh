@@ -46,11 +46,17 @@ capture_scenario_window() {
   local pid="$1"
   local scenario="$2"
   local destination="$3"
-  local window_id
-  window_id="$(swift "$HELPER" --pid "$pid" --owner Photon --layer 0 --scenario "$scenario")" || {
-    echo "No matching Photon window for scenario $scenario (pid $pid)" >&2
-    return 1
-  }
+  local window_id_marker="$4"
+  local window_id=""
+  if [[ -f "$window_id_marker" ]]; then
+    window_id="$(cat "$window_id_marker")"
+  fi
+  if [[ -z "$window_id" ]]; then
+    window_id="$(swift "$HELPER" --pid "$pid" --owner Photon --layer 0 --scenario "$scenario")" || {
+      echo "No matching Photon window for scenario $scenario (pid $pid)" >&2
+      return 1
+    }
+  fi
   screencapture -x -l "$window_id" "$destination"
   sips -Z 1600 "$destination" >/dev/null
 }
@@ -81,6 +87,7 @@ run_scenario() {
   local data_root
   data_root="$(mktemp -d "${TMPDIR:-/tmp}/photon-ui-data.XXXXXX")"
   local ready_marker="$data_root/ready"
+  local window_id_marker="$data_root/window-id"
   rm -f "$png"
 
   quit_photon
@@ -88,6 +95,7 @@ run_scenario() {
   PHOTON_UI_SCENARIO="$scenario" \
   PHOTON_ISOLATED_DATA_ROOT="$data_root" \
   PHOTON_UI_SCENARIO_READY_PATH="$ready_marker" \
+  PHOTON_UI_SCENARIO_WINDOW_ID_PATH="$window_id_marker" \
   PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
     "$APP/Contents/MacOS/Photon" &
   local pid=$!
@@ -95,7 +103,7 @@ run_scenario() {
   wait_for_ready "$ready_marker"
   sleep 0.75
 
-  capture_scenario_window "$pid" "$scenario" "$png" || {
+  capture_scenario_window "$pid" "$scenario" "$png" "$window_id_marker" || {
     quit_photon
     rm -rf "$data_root"
     return 1

@@ -34,7 +34,10 @@ extension AppRuntime {
 
   @MainActor
   private func hideWindowsExceptScenario(_ scenario: UIScenario) {
-    let kept = Set(keptWindows(for: scenario).map(ObjectIdentifier.init))
+    var kept = Set<ObjectIdentifier>()
+    for window in keptWindows(for: scenario) {
+      kept.insert(ObjectIdentifier(window))
+    }
     for window in NSApp.windows where window.isVisible && !kept.contains(ObjectIdentifier(window)) {
       window.orderOut(nil)
     }
@@ -89,6 +92,12 @@ extension AppRuntime {
 
   @MainActor
   private func markScenarioReady() async {
+    if let windowURL = UIScenario.windowIDMarkerURL, let scenario = UIScenario.current {
+      let window = keptWindows(for: scenario).first
+      if let window {
+        try? String(window.windowNumber).write(to: windowURL, atomically: true, encoding: .utf8)
+      }
+    }
     guard let url = UIScenario.readyMarkerURL else {
       return
     }

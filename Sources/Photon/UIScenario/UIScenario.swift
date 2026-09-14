@@ -42,6 +42,14 @@ enum UIScenario: Equatable, Sendable {
     return URL(fileURLWithPath: path)
   }
 
+  /// When set, the app writes the `CGWindow` number to capture for this scenario.
+  static var windowIDMarkerURL: URL? {
+    guard let path = ProcessInfo.processInfo.environment["PHOTON_UI_SCENARIO_WINDOW_ID_PATH"], !path.isEmpty else {
+      return nil
+    }
+    return URL(fileURLWithPath: path)
+  }
+
   private static func parse(_ raw: String) -> UIScenario? {
     if raw == "launcher-empty" {
       return .launcherEmpty
