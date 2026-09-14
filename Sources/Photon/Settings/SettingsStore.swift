@@ -21,6 +21,12 @@ final class SettingsStore: ObservableObject {
     static let clipboardHotkeyModifiers = "clipboardHotkeyModifiers"
     static let notesFolderBookmark = "notesFolderBookmark"
     static let filesSearchScope = "filesSearchScope"
+    static let filesSearchContents = "filesSearchContents"
+    static let filesMaxResults = "filesMaxResults"
+    static let filesDefaultAction = "filesDefaultAction"
+    static let filesInlineResults = "filesInlineResults"
+    static let filesExtraFolders = "filesExtraFolders"
+    static let filesExcludedFolders = "filesExcludedFolders"
     static let hyperKeyEnabled = "hyperKeyEnabled"
   }
 
@@ -120,6 +126,30 @@ final class SettingsStore: ObservableObject {
     didSet { defaults.set(filesSearchScope, forKey: Keys.filesSearchScope) }
   }
 
+  @Published var filesSearchContents: Bool {
+    didSet { defaults.set(filesSearchContents, forKey: Keys.filesSearchContents) }
+  }
+
+  @Published var filesMaxResults: Int {
+    didSet { defaults.set(filesMaxResults, forKey: Keys.filesMaxResults) }
+  }
+
+  @Published var filesDefaultAction: String {
+    didSet { defaults.set(filesDefaultAction, forKey: Keys.filesDefaultAction) }
+  }
+
+  @Published var filesInlineResults: Bool {
+    didSet { defaults.set(filesInlineResults, forKey: Keys.filesInlineResults) }
+  }
+
+  @Published var filesExtraFolders: [String] {
+    didSet { defaults.set(filesExtraFolders, forKey: Keys.filesExtraFolders) }
+  }
+
+  @Published var filesExcludedFolders: [String] {
+    didSet { defaults.set(filesExcludedFolders, forKey: Keys.filesExcludedFolders) }
+  }
+
   @Published var hyperKeyEnabled: Bool {
     didSet { defaults.set(hyperKeyEnabled, forKey: Keys.hyperKeyEnabled) }
   }
@@ -155,7 +185,13 @@ final class SettingsStore: ObservableObject {
     )
 
     notesFolderBookmark = defaults.string(forKey: Keys.notesFolderBookmark) ?? ""
-    filesSearchScope = defaults.string(forKey: Keys.filesSearchScope) ?? "home"
+    filesSearchScope = defaults.string(forKey: Keys.filesSearchScope) ?? "this-mac"
+    filesSearchContents = defaults.bool(forKey: Keys.filesSearchContents)
+    filesMaxResults = defaults.object(forKey: Keys.filesMaxResults) as? Int ?? 50
+    filesDefaultAction = defaults.string(forKey: Keys.filesDefaultAction) ?? "open"
+    filesInlineResults = defaults.object(forKey: Keys.filesInlineResults) as? Bool ?? true
+    filesExtraFolders = defaults.stringArray(forKey: Keys.filesExtraFolders) ?? []
+    filesExcludedFolders = defaults.stringArray(forKey: Keys.filesExcludedFolders) ?? []
     hyperKeyEnabled = defaults.object(forKey: Keys.hyperKeyEnabled) as? Bool ?? true
   }
 

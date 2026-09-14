@@ -15,12 +15,8 @@ struct SettingsRootView: View {
         content: { NotesSettingsPlaceholder() }
       )
       .tabItem { Label("Notes", systemImage: "note.text") }
-      PlaceholderSettingsView(
-        title: "Files",
-        detail: "Spotlight-backed file search lands in Phase 2.",
-        content: { FilesSettingsPlaceholder() }
-      )
-      .tabItem { Label("Files", systemImage: "folder") }
+      FilesSettingsView()
+        .tabItem { Label("Files", systemImage: "folder") }
       PlaceholderSettingsView(
         title: "Keybinds",
         detail: "Hyper key, app hotkeys, and window management land in Phase 2.",
@@ -61,20 +57,6 @@ private struct NotesSettingsPlaceholder: View {
     Section("Storage") {
       Text(settings.notesFolderBookmark.isEmpty ? "Default notes folder (not configured)" : "Custom folder")
         .foregroundStyle(.secondary)
-    }
-  }
-}
-
-private struct FilesSettingsPlaceholder: View {
-  @EnvironmentObject private var settings: SettingsStore
-
-  var body: some View {
-    Section("Scope") {
-      Picker("Search", selection: $settings.filesSearchScope) {
-        Text("Home folder").tag("home")
-        Text("This Mac").tag("this-mac")
-      }
-      .disabled(true)
     }
   }
 }
