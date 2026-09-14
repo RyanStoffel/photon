@@ -1,8 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// Drag the launcher by its search bar chrome. No modifier keys required; mouse-up
-/// always ends the drag and hides snap guides.
+/// Drag the launcher by its search bar chrome. The gesture only starts the
+/// move; AppKit then tracks screen-space mouse location until mouse-up so the
+/// panel follows the pointer instead of SwiftUI's view-local translation.
 struct LauncherSearchBarDragModifier: ViewModifier {
   let onSearchBarDrag: ((LauncherSearchBarDragPhase) -> Void)?
 
@@ -16,7 +17,7 @@ struct LauncherSearchBarDragModifier: ViewModifier {
 
   private var dragGesture: some Gesture {
     DragGesture(minimumDistance: 3)
-      .onChanged { value in
+      .onChanged { _ in
         guard onSearchBarDrag != nil else {
           return
         }
@@ -24,14 +25,8 @@ struct LauncherSearchBarDragModifier: ViewModifier {
           dragActive = true
           onSearchBarDrag?(.began)
         }
-        onSearchBarDrag?(.changed(translation: value.translation))
       }
-      .onEnded { value in
-        guard dragActive else {
-          return
-        }
-        onSearchBarDrag?(.changed(translation: value.translation))
-        onSearchBarDrag?(.ended)
+      .onEnded { _ in
         dragActive = false
       }
   }

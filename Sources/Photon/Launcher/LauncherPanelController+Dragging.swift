@@ -34,48 +34,92 @@ extension LauncherPanelController {
     }
     switch phase {
     case .began:
-      isDraggingLauncher = true
-      searchBarDragInitialOrigin = panel.frame.origin
-      let visible = visibleFrame(for: panel)
-      let guides = LauncherPosition.snapGuideXPositions(
-        visible: visible,
-        panelWidth: panel.frame.width
-      )
-      let screen = panel.screen ?? NSScreen.main ?? NSScreen.screens.first
-      if let screen {
-        centerGuides.show(
-          visibleFrame: screen.visibleFrame,
-          guideXLeft: guides.left,
-          guideXRight: guides.right
-        )
-      }
-    case let .changed(translation):
-      guard let initial = searchBarDragInitialOrigin else {
-        return
-      }
-      var origin = PanelOrigin(
-        x: initial.x + translation.width,
-        y: initial.y - translation.height
-      )
-      let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
-      origin = LauncherPosition.clampedOrigin(origin, panelSize: size, visible: visibleFrame(for: panel))
-      panel.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
-    case .ended:
-      centerGuides.hide()
-      isDraggingLauncher = false
-      searchBarDragInitialOrigin = nil
-      let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
-      let origin = PanelOrigin(x: panel.frame.origin.x, y: panel.frame.origin.y)
-      let stored = LauncherPosition.storedPosition(
-        origin: origin,
-        panelWidth: size.width,
-        visible: visibleFrame(for: panel)
-      )
-      settings.launcherStoredPosition = stored
-      var frame = panel.frame
-      frame.origin.x = stored.originX
-      frame.origin.y = stored.originY
-      panel.setFrame(frame, display: false, animate: false)
+      trackLiveDrag(panel: panel)
+    case .changed, .ended:
+      break
     }
+  }
+
+  /// Follows `NSEvent.mouseLocation` until the button is released so the panel
+  /// cannot fight SwiftUI's view-local drag translation.
+  func trackLiveDrag(panel: NSPanel) {
+    guard !isDraggingLauncher else {
+      return
+    }
+    isDraggingLauncher = true
+    let startMouse = NSEvent.mouseLocation
+    let startOrigin = PanelOrigin(x: panel.frame.origin.x, y: panel.frame.origin.y)
+    searchBarDragInitialOrigin = panel.frame.origin
+    showCenterGuides(for: panel)
+
+    while true {
+      let event = panel.nextEvent(
+        matching: [.leftMouseDragged, .leftMouseUp],
+        until: Date.distantFuture,
+        inMode: .eventTracking,
+        dequeue: true
+      )
+      applyLiveDragOrigin(
+        panel: panel,
+        startOrigin: startOrigin,
+        startMouse: startMouse,
+        currentMouse: NSEvent.mouseLocation
+      )
+      if event == nil || event?.type == .leftMouseUp {
+        break
+      }
+    }
+
+    finishLiveDrag(panel: panel)
+  }
+
+  func showCenterGuides(for panel: NSPanel) {
+    let visible = visibleFrame(for: panel)
+    let guides = LauncherPosition.snapGuideXPositions(
+      visible: visible,
+      panelWidth: panel.frame.width
+    )
+    let screen = panel.screen ?? NSScreen.main ?? NSScreen.screens.first
+    if let screen {
+      centerGuides.show(
+        visibleFrame: screen.visibleFrame,
+        guideXLeft: guides.left,
+        guideXRight: guides.right
+      )
+    }
+  }
+
+  func applyLiveDragOrigin(
+    panel: NSPanel,
+    startOrigin: PanelOrigin,
+    startMouse: NSPoint,
+    currentMouse: NSPoint
+  ) {
+    var origin = LauncherPosition.originByMouseDelta(
+      initialOrigin: startOrigin,
+      startMouse: PanelOrigin(x: startMouse.x, y: startMouse.y),
+      currentMouse: PanelOrigin(x: currentMouse.x, y: currentMouse.y)
+    )
+    let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
+    origin = LauncherPosition.clampedOrigin(origin, panelSize: size, visible: visibleFrame(for: panel))
+    panel.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
+  }
+
+  func finishLiveDrag(panel: NSPanel) {
+    centerGuides.hide()
+    let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
+    let origin = PanelOrigin(x: panel.frame.origin.x, y: panel.frame.origin.y)
+    let stored = LauncherPosition.storedPosition(
+      origin: origin,
+      panelWidth: size.width,
+      visible: visibleFrame(for: panel)
+    )
+    settings.launcherStoredPosition = stored
+    var frame = panel.frame
+    frame.origin.x = stored.originX
+    frame.origin.y = stored.originY
+    panel.setFrame(frame, display: false, animate: false)
+    searchBarDragInitialOrigin = nil
+    isDraggingLauncher = false
   }
 }
