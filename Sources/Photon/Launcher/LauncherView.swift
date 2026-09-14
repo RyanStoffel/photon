@@ -166,6 +166,7 @@ struct LauncherView: View {
     case "apps": "app.fill"
     case "clipboard": "clipboard"
     case "files": "doc"
+    case "notes": "note.text"
     default: "circle.grid.3x3"
     }
   }

@@ -18,9 +18,32 @@ struct HotkeyRecorder: NSViewRepresentable {
   }
 }
 
+/// Recorder for an optional shortcut. Shows "None" when unset; Delete while recording clears it.
+struct OptionalHotkeyRecorder: NSViewRepresentable {
+  @Binding var combo: HotkeyCombo?
+
+  func makeNSView(context _: Context) -> HotkeyRecorderView {
+    let view = HotkeyRecorderView()
+    view.allowsClear = true
+    view.combo = combo
+    view.onChange = { combo = $0 }
+    view.onClear = { combo = nil }
+    return view
+  }
+
+  func updateNSView(_ nsView: HotkeyRecorderView, context _: Context) {
+    nsView.combo = combo
+    nsView.onChange = { combo = $0 }
+    nsView.onClear = { combo = nil }
+    nsView.refresh()
+  }
+}
+
 final class HotkeyRecorderView: NSView {
-  var combo: HotkeyCombo = .defaultCombo
+  var combo: HotkeyCombo? = .defaultCombo
   var onChange: ((HotkeyCombo) -> Void)?
+  var onClear: (() -> Void)?
+  var allowsClear = false
   private var recording = false
   private let button = NSButton(title: "", target: nil, action: nil)
 
@@ -52,7 +75,7 @@ final class HotkeyRecorderView: NSView {
   }
 
   func refresh() {
-    button.title = recording ? "Press a shortcut" : combo.displayString
+    button.title = recording ? "Press a shortcut" : combo?.displayString ?? "None"
   }
 
   @objc
@@ -70,6 +93,13 @@ final class HotkeyRecorderView: NSView {
       return
     }
     if event.keyCode == UInt16(kVKEscape) {
+      recording = false
+      refresh()
+      return
+    }
+    if allowsClear, event.keyCode == UInt16(kVKDelete) || event.keyCode == UInt16(kVKForwardDelete) {
+      combo = nil
+      onClear?()
       recording = false
       refresh()
       return
@@ -95,3 +125,5 @@ final class HotkeyRecorderView: NSView {
 }
 
 private let kVKEscape: Int = 53
+private let kVKDelete: Int = 51
+private let kVKForwardDelete: Int = 117

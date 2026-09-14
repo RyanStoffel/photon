@@ -9,12 +9,8 @@ struct SettingsRootView: View {
         .tabItem { Label("General", systemImage: "gearshape") }
       ClipboardSettingsView()
         .tabItem { Label("Clipboard", systemImage: "clipboard") }
-      PlaceholderSettingsView(
-        title: "Notes",
-        detail: "Floating notes and markdown persistence land in Phase 2.",
-        content: { NotesSettingsPlaceholder() }
-      )
-      .tabItem { Label("Notes", systemImage: "note.text") }
+      NotesSettingsView()
+        .tabItem { Label("Notes", systemImage: "note.text") }
       FilesSettingsView()
         .tabItem { Label("Files", systemImage: "folder") }
       PlaceholderSettingsView(
@@ -47,17 +43,6 @@ struct PlaceholderSettingsView<Content: View>: View {
     .formStyle(.grouped)
     .navigationTitle(title)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-  }
-}
-
-private struct NotesSettingsPlaceholder: View {
-  @EnvironmentObject private var settings: SettingsStore
-
-  var body: some View {
-    Section("Storage") {
-      Text(settings.notesFolderBookmark.isEmpty ? "Default notes folder (not configured)" : "Custom folder")
-        .foregroundStyle(.secondary)
-    }
   }
 }
 
