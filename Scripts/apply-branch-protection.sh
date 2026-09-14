@@ -10,7 +10,8 @@ required_checks='[
   {"context":"branch-name"},
   {"context":"lint"},
   {"context":"build"},
-  {"context":"test"}
+  {"context":"test"},
+  {"context":"smoke"}
 ]'
 
 apply() {
