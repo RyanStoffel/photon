@@ -84,7 +84,9 @@ public final class FileSearchEngine {
         query: trimmed,
         excludedFolders: request.settings.excludedFolders,
         includeApplications: request.includeApplications,
-        limit: request.limit
+        limit: request.limit,
+        scope: request.settings.scope,
+        extraFolders: request.settings.extraFolders
       )
       FileIconCache.shared.prefetch(ranked.map(\.file))
       return ranked
