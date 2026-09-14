@@ -16,6 +16,9 @@ HELPER="$ROOT/Scripts/photon-window-id.swift"
 SCENARIOS=(
   launcher-empty
   launcher-query:saf
+  launcher-query:wallpaper
+  launcher-query:1+1
+  launcher-query:/
   clipboard-empty
   settings:appearance
   notes
