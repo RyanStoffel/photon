@@ -38,6 +38,10 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v5
+      - name: Install lint tools
+        run: |
+          if ! command -v swiftformat >/dev/null; then brew install swiftformat; fi
+          if ! command -v swiftlint >/dev/null; then brew install swiftlint; fi
       - name: SwiftFormat
         run: swiftformat --lint --config .swiftformat .
       - name: SwiftLint
@@ -74,9 +78,38 @@ jobs:
             build-${{ runner.os }}-${{ runner.arch }}-
       - name: Release build
         run: Scripts/package_app.sh
+      - name: Zip app bundle
+        # ditto keeps executable bits and the code signature; upload-artifact alone does not.
+        run: ditto -c -k --keepParent build/Photon.app build/Photon.app.zip
       - name: Upload Photon.app
         uses: actions/upload-artifact@v4
         with:
           name: Photon.app
-          path: build/Photon.app
+          path: build/Photon.app.zip
           if-no-files-found: error
+
+  smoke:
+    name: smoke
+    runs-on: macos-latest
+    needs: build
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+      - name: Download Photon.app
+        uses: actions/download-artifact@v4
+        with:
+          name: Photon.app
+          path: build
+      - name: Unpack
+        run: ditto -x -k build/Photon.app.zip build
+      - name: Launch and watch
+        env:
+          SMOKE_LOG: ${{ runner.temp }}/photon-smoke.log
+        run: Scripts/smoke-test.sh build/Photon.app
+      - name: Upload smoke test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-log
+          path: ${{ runner.temp }}/photon-smoke.log
+          if-no-files-found: ignore

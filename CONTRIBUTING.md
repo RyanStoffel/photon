@@ -10,7 +10,7 @@ Photon is a small, macOS-only launcher. Keep changes focused, native-feeling, an
 
 ### Branch names
 
-CI rejects pull requests whose head branch does not match:
+CI rejects pull requests whose head branch does not match (Dependabot's `dependabot/*` branches are allowed):
 
 | Kind | Pattern | Example |
 | --- | --- | --- |
@@ -40,10 +40,10 @@ Keep commits small and scoped to one concern.
 1. Branch from the latest `develop`.
 2. Open the PR against `develop` (never `main`, except release PRs).
 3. Fill in the PR template. Link the issue with `Closes #N`.
-4. Wait for CI: `branch-name`, `lint`, `build`, `test`.
+4. Wait for CI: `branch-name`, `lint`, `build`, `test`, `smoke`.
 5. Squash-merge once checks are green.
 
-Workers cannot compile macOS code locally. GitHub Actions `macos-latest` is the compiler: push, watch the run, read failed logs, fix, repeat. Do not claim a change builds until CI is green.
+Workers cannot compile macOS code locally. GitHub Actions `macos-latest` is the compiler: push, watch the run, read failed logs, fix, repeat. Do not claim a change builds until CI is green. The `smoke` job launches the built app on the runner for eight seconds and fails on a crash; it is the only runtime check, so treat a red `smoke` as a real bug, not flakiness, until the log says otherwise.
 
 ## Local development
 
@@ -75,7 +75,7 @@ swiftformat --lint .
 swiftlint
 ```
 
-`PhotonCore` (fuzzy matching, frecency, the command registry) has no AppKit dependency and is the only target that compiles on Linux. Feature modules that import AppKit are gated with `#if os(macOS)` in `Package.swift`.
+`PhotonCore` (fuzzy matching, frecency, the command registry) has no AppKit dependency and compiles on Linux, as does the non-AppKit half of `PhotonClipboard` (its AppKit files are wrapped in `#if canImport(AppKit)`). The other feature modules are gated with `#if os(macOS)` in `Package.swift`.
 
 ### Opening in Xcode
 
