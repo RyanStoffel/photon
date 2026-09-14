@@ -6,6 +6,7 @@ import PhotonClipboard
 final class SettingsStore: ObservableObject {
   var onHotkeyChange: (() -> Void)?
   var onClipboardChange: (() -> Void)?
+  var onNotesChange: (() -> Void)?
 
   private enum Keys {
     static let hotkeyKeyCode = "hotkeyKeyCode"
@@ -19,7 +20,11 @@ final class SettingsStore: ObservableObject {
     static let clipboardHotkeyEnabled = "clipboardHotkeyEnabled"
     static let clipboardHotkeyKeyCode = "clipboardHotkeyKeyCode"
     static let clipboardHotkeyModifiers = "clipboardHotkeyModifiers"
-    static let notesFolderBookmark = "notesFolderBookmark"
+    static let notesFontSize = "notesFontSize"
+    static let notesFloatsAboveOtherWindows = "notesFloatsAboveOtherWindows"
+    static let notesOpenOnLaunch = "notesOpenOnLaunch"
+    static let notesHotkeyKeyCode = "notesHotkeyKeyCode"
+    static let notesHotkeyModifiers = "notesHotkeyModifiers"
     static let filesSearchScope = "filesSearchScope"
     static let filesSearchContents = "filesSearchContents"
     static let filesMaxResults = "filesMaxResults"
@@ -116,11 +121,41 @@ final class SettingsStore: ObservableObject {
     )
   }
 
-  // MARK: Other features
+  // MARK: Notes
 
-  @Published var notesFolderBookmark: String {
-    didSet { defaults.set(notesFolderBookmark, forKey: Keys.notesFolderBookmark) }
+  @Published var notesFontSize: Double {
+    didSet {
+      defaults.set(notesFontSize, forKey: Keys.notesFontSize)
+      onNotesChange?()
+    }
   }
+
+  @Published var notesFloatsAboveOtherWindows: Bool {
+    didSet {
+      defaults.set(notesFloatsAboveOtherWindows, forKey: Keys.notesFloatsAboveOtherWindows)
+      onNotesChange?()
+    }
+  }
+
+  @Published var notesOpenOnLaunch: Bool {
+    didSet { defaults.set(notesOpenOnLaunch, forKey: Keys.notesOpenOnLaunch) }
+  }
+
+  /// Optional shortcut that toggles the notes window. `nil` means none.
+  @Published var notesHotkey: HotkeyCombo? {
+    didSet {
+      if let notesHotkey {
+        defaults.set(Int(notesHotkey.keyCode), forKey: Keys.notesHotkeyKeyCode)
+        defaults.set(Int(notesHotkey.carbonModifiers), forKey: Keys.notesHotkeyModifiers)
+      } else {
+        defaults.removeObject(forKey: Keys.notesHotkeyKeyCode)
+        defaults.removeObject(forKey: Keys.notesHotkeyModifiers)
+      }
+      onNotesChange?()
+    }
+  }
+
+  // MARK: Other features
 
   @Published var filesSearchScope: String {
     didSet { defaults.set(filesSearchScope, forKey: Keys.filesSearchScope) }
@@ -184,7 +219,20 @@ final class SettingsStore: ObservableObject {
       fallback: .clipboardDefaultCombo
     )
 
-    notesFolderBookmark = defaults.string(forKey: Keys.notesFolderBookmark) ?? ""
+    notesFontSize = defaults.object(forKey: Keys.notesFontSize) as? Double ?? 14
+    notesFloatsAboveOtherWindows = defaults.object(forKey: Keys.notesFloatsAboveOtherWindows) as? Bool ?? true
+    notesOpenOnLaunch = defaults.bool(forKey: Keys.notesOpenOnLaunch)
+    if defaults.object(forKey: Keys.notesHotkeyKeyCode) != nil {
+      notesHotkey = Self.loadCombo(
+        defaults,
+        keyCodeKey: Keys.notesHotkeyKeyCode,
+        modifiersKey: Keys.notesHotkeyModifiers,
+        fallback: .defaultCombo
+      )
+    } else {
+      notesHotkey = nil
+    }
+
     filesSearchScope = defaults.string(forKey: Keys.filesSearchScope) ?? "this-mac"
     filesSearchContents = defaults.bool(forKey: Keys.filesSearchContents)
     filesMaxResults = defaults.object(forKey: Keys.filesMaxResults) as? Int ?? 50

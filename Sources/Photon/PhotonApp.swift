@@ -20,6 +20,9 @@ struct PhotonApp: App {
       Button("Clipboard History") {
         appDelegate.runtime.showClipboardHistory()
       }
+      Button("Notes") {
+        appDelegate.runtime.toggleNotes()
+      }
       Button("Settings…") {
         appDelegate.runtime.openSettings()
       }
