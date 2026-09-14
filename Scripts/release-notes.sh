@@ -81,6 +81,8 @@ brew tap ryanstoffel/taps
 brew install --cask ryanstoffel/taps/photon
 \`\`\`
 
+On Homebrew 7 or later, run \`brew trust ryanstoffel/taps\` once so that \`brew upgrade\` can load the cask.
+
 Or download \`Photon-${VERSION}.zip\` (or the \`.dmg\`) below and move \`Photon.app\` to \`/Applications\`. Verify a download with \`shasum -a 256 -c SHA256SUMS\` after placing the file next to it.
 
 Photon needs macOS 14 or later. It asks for Accessibility access on first launch for paste-back, the Hyper key, and window management; everything else works without it.

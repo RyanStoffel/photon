@@ -24,6 +24,8 @@ brew tap ryanstoffel/taps
 brew install --cask ryanstoffel/taps/photon
 ```
 
+Homebrew 7 and later only load casks from third-party taps that you have trusted, unless you spell out the full name as above. Run `brew trust ryanstoffel/taps` once so that `brew upgrade` and the short name `photon` work too.
+
 Or download `Photon-<version>.zip` or `.dmg` from the [latest release](https://github.com/RyanStoffel/photon/releases) and move `Photon.app` to `/Applications`. Requires macOS 14 or later; the binary is universal (Apple silicon and Intel).
 
 Photon is distributed from [RyanStoffel/homebrew-taps](https://github.com/RyanStoffel/homebrew-taps). Current builds are ad-hoc signed and not notarized, so macOS Gatekeeper blocks the first launch of a downloaded copy:
