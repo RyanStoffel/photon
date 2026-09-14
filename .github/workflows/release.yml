@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: release
+    runs-on: macos-latest
+    env:
+      TAP_OWNER: RyanStoffel
+      TAP_REPO: homebrew-taps
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Read version
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          file="$(tr -d '[:space:]' < VERSION)"
+          if [ "$tag" != "$file" ]; then
+            echo "Tag v$tag does not match VERSION file ($file)."
+            exit 1
+          fi
+          echo "version=$file" >> "$GITHUB_OUTPUT"
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift', 'Sources/**/*.swift') }}
+          restore-keys: |
+            release-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Build app
+        run: Scripts/package_app.sh
+
+      - name: Sign, notarize, package
+        id: sign
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: Scripts/sign-and-package.sh
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          SIGNING: ${{ steps.sign.outputs.signing }}
+        run: |
+          notes="$(mktemp)"
+          {
+            gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              -f tag_name="v${VERSION}" \
+              -f target_commitish="${GITHUB_SHA}" \
+              --jq .body
+            echo
+            echo "## Signing"
+            if [ "$SIGNING" = "developer-id" ]; then
+              echo "This build is signed with a Developer ID certificate, notarized, and stapled."
+            else
+              echo "This build is **ad-hoc signed**. Apple signing secrets were not present, so the app is not notarized."
+              echo "On first launch, open **System Settings > Privacy & Security** and click **Open Anyway**."
+            fi
+          } > "$notes"
+          gh release create "v${VERSION}" \
+            --title "Photon ${VERSION}" \
+            --notes-file "$notes" \
+            "dist/Photon-${VERSION}.zip" \
+            "dist/Photon-${VERSION}.dmg" \
+            dist/SHA256SUMS
+
+      - name: Bump Homebrew cask
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: Scripts/update-homebrew-cask.sh

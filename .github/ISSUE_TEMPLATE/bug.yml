@@ -1,0 +1,58 @@
+name: Bug
+description: Something is broken or behaves incorrectly.
+title: "fix: "
+labels:
+  - type/bug
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - launcher
+        - clipboard
+        - notes
+        - files
+        - keybinds
+        - windows
+        - settings
+        - ci
+        - release
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Photon version
+      placeholder: 0.1.0 or a commit SHA
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: 15.6
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
