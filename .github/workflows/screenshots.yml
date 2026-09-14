@@ -1,0 +1,40 @@
+name: UI screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref (branch, tag, or SHA) to capture
+        required: true
+        default: develop
+        type: string
+  pull_request:
+    types: [labeled, synchronize, opened, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'screenshots')
+    runs-on: macos-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+      - name: Cache SwiftPM
+        uses: actions/cache@v6
+        with:
+          path: .build
+          key: screenshots-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift', 'Sources/**/*.swift') }}
+          restore-keys: |
+            screenshots-${{ runner.os }}-${{ runner.arch }}-
+      - name: Capture UI screenshots
+        run: Scripts/screenshots.sh
+      - name: Upload ui-screenshots
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-screenshots
+          path: docs/screenshots/*.png
+          if-no-files-found: error

@@ -26,6 +26,10 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     model.frecency
   }
 
+  var panelWindowForScreenshot: NSWindow? {
+    panel
+  }
+
   /// Enables clipboard mode. Call once at startup, before the panel is shown.
   func attachClipboard(_ manager: ClipboardManager) {
     let clipboard = ClipboardHistoryViewModel(manager: manager)
@@ -90,6 +94,45 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       await registry.reloadAll()
       await model.refresh()
     }
+  }
+
+  /// Shows the launcher in a fixed position with an optional query (UI screenshot harness).
+  func showForScreenshot(query: String) {
+    preload()
+    guard let panel else {
+      return
+    }
+    panel.title = "Photon Launcher"
+    model.resetForShow()
+    UIScenarioWindowLayout.position(panel, size: panel.frame.size)
+    panel.orderFrontRegardless()
+    panel.makeKey()
+    startMonitor()
+    if !query.isEmpty {
+      model.query = query
+    }
+  }
+
+  @MainActor
+  func prepareForScreenshot(query: String) async {
+    await registry.reloadAll()
+    showForScreenshot(query: query)
+    await model.refresh()
+    let deadline = Date().addingTimeInterval(10)
+    while Date() < deadline, model.results.isEmpty {
+      try? await Task.sleep(nanoseconds: 100_000_000)
+      await model.refresh()
+    }
+    prefetchVisibleIcons()
+    try? await Task.sleep(nanoseconds: 500_000_000)
+  }
+
+  private func prefetchVisibleIcons() {
+    let icons = model.results.compactMap(\.command.icon)
+    guard !icons.isEmpty else {
+      return
+    }
+    CommandIconCache.shared.prefetch(icons)
   }
 
   /// Opens the panel straight into clipboard history; toggles it closed when
