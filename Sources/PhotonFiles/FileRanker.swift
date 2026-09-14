@@ -27,7 +27,9 @@ public enum FileRanker: Sendable {
     excludedFolders: [String] = [],
     includeApplications: Bool = true,
     limit: Int,
-    home: String = NSHomeDirectory()
+    home: String = NSHomeDirectory(),
+    scope: FileSearchScope = .home,
+    extraFolders: [String] = []
   ) -> [RankedFile] {
     guard limit > 0 else {
       return []
@@ -46,6 +48,14 @@ public enum FileRanker: Sendable {
       }
       if isExcluded(file.path, normalizedFolders: exclusions) {
         return nil
+      }
+      if scope == .home {
+        if FilePathScope.isBlockedSystemPath(file.path, home: home) {
+          return nil
+        }
+        if !FilePathScope.isAllowed(file.path, scope: .home, home: home, extraFolders: extraFolders) {
+          return nil
+        }
       }
       let score = relevance(of: file, foldedTerms: terms, wholeQuery: wholeQuery, home: home)
       guard score > 0 else {

@@ -298,7 +298,13 @@ final class SettingsStore: ObservableObject {
       notesHotkey = nil
     }
 
-    filesSearchScope = defaults.string(forKey: Keys.filesSearchScope) ?? "home"
+    let storedFilesScope = defaults.string(forKey: Keys.filesSearchScope) ?? FileSearchScope.home.rawValue
+    if storedFilesScope == FileSearchScope.computer.rawValue {
+      defaults.set(FileSearchScope.home.rawValue, forKey: Keys.filesSearchScope)
+      filesSearchScope = FileSearchScope.home.rawValue
+    } else {
+      filesSearchScope = storedFilesScope
+    }
     filesSearchContents = defaults.bool(forKey: Keys.filesSearchContents)
     filesMaxResults = defaults.object(forKey: Keys.filesMaxResults) as? Int ?? 50
     filesDefaultAction = defaults.string(forKey: Keys.filesDefaultAction) ?? "open"
