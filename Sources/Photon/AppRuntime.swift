@@ -13,9 +13,7 @@ final class AppRuntime: ObservableObject {
   let registry = CommandRegistry()
   let launcher: LauncherPanelController
   private let hotkey = HotkeyManager.shared
-  private var frecency: FrecencyStore
   private let frecencyURL: URL
-  private var settingsObserver: NSObjectProtocol?
 
   init() {
     let settings = SettingsStore()
@@ -35,14 +33,8 @@ final class AppRuntime: ObservableObject {
       await registry.reloadAll()
     }
     applyHotkey()
-    settingsObserver = NotificationCenter.default.addObserver(
-      forName: SettingsStore.didChangeHotkey,
-      object: settings,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor in
-        self?.applyHotkey()
-      }
+    settings.onHotkeyChange = { [weak self] in
+      self?.applyHotkey()
     }
     SpotlightConflict.adviseIfNeeded(current: settings.hotkey)
   }
@@ -50,9 +42,7 @@ final class AppRuntime: ObservableObject {
   func stop() {
     hotkey.unregister()
     persistFrecency()
-    if let settingsObserver {
-      NotificationCenter.default.removeObserver(settingsObserver)
-    }
+    settings.onHotkeyChange = nil
   }
 
   func toggleLauncher() {
