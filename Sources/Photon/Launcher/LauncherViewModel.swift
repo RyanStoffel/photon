@@ -1,3 +1,4 @@
+import Combine
 import PhotonClipboard
 import PhotonCore
 import SwiftUI
@@ -77,7 +78,17 @@ final class LauncherViewModel: ObservableObject {
   let registry: CommandRegistry
   var frecency: FrecencyStore
   /// Set by `AppRuntime` once the clipboard feature is available.
-  var clipboard: ClipboardHistoryViewModel?
+  var clipboard: ClipboardHistoryViewModel? {
+    didSet {
+      clipboardCancellable = clipboard?.objectWillChange
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _ in
+          self?.updateContent()
+        }
+    }
+  }
+
+  private var clipboardCancellable: AnyCancellable?
   private(set) var modes: [any LauncherMode] = []
   private let limit = 30
   private let trailingLimit = 5
@@ -221,6 +232,7 @@ final class LauncherViewModel: ObservableObject {
     } else {
       clipboard.query = initialQuery
     }
+    updateContent()
   }
 
   /// Back to the command list with an empty query.
@@ -306,16 +318,34 @@ final class LauncherViewModel: ObservableObject {
   }
 
   private func updateContent() {
-    let next: LauncherContent = if !showsCommandList {
-      .fullHeight
-    } else if query.isEmpty, !preferences.showsSuggestions {
-      .searchOnly
-    } else {
-      .rows(results.count)
+    let next: LauncherContent = switch session {
+    case .clipboard:
+      clipboardContent()
+    case .commands:
+      if activeMode != nil {
+        .fullHeight
+      } else if query.isEmpty, !preferences.showsSuggestions {
+        .searchOnly
+      } else {
+        .rows(count: results.count, showsCalculatorHero: calculatorHero != nil)
+      }
     }
     if next != content {
       content = next
     }
+  }
+
+  private func clipboardContent() -> LauncherContent {
+    guard let clipboard else {
+      return .searchOnly
+    }
+    if !clipboard.results.isEmpty {
+      return .rows(count: clipboard.results.count, showsCalculatorHero: false)
+    }
+    if clipboard.showsCompactEmptyRow {
+      return .rows(count: 1, showsCalculatorHero: false)
+    }
+    return .searchOnly
   }
 
   /// Rows resolve their icon on first draw; this warms the ones below the fold.

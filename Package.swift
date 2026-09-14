@@ -15,6 +15,8 @@ let package = Package(
     // so the models, history rules, search, and store compile and test on Linux.
     .target(name: "PhotonClipboard", dependencies: ["PhotonCore"]),
     .testTarget(name: "PhotonClipboardTests", dependencies: ["PhotonClipboard"]),
+    .target(name: "PhotonCalculator", dependencies: ["PhotonCore"]),
+    .testTarget(name: "PhotonCalculatorTests", dependencies: ["PhotonCalculator", "PhotonCore"]),
   ]
 )
 
@@ -38,6 +40,7 @@ package.targets.append(contentsOf: [
       "PhotonNotes",
       "PhotonFiles",
       "PhotonKeybinds",
+      "PhotonCalculator",
     ]
   ),
 ])

@@ -36,6 +36,13 @@ public struct HotkeyCombo: Equatable, Sendable {
     return flags
   }
 
+  /// True when every modifier in this combo is held (the key itself need not be).
+  public func holdsRequiredModifiers(_ flags: NSEvent.ModifierFlags) -> Bool {
+    let required = NSEvent.ModifierFlags(rawValue: UInt(appleFlags))
+    let current = flags.intersection(.deviceIndependentFlagsMask)
+    return current.isSuperset(of: required)
+  }
+
   public static func carbonModifiers(fromApple flags: UInt32) -> UInt32 {
     var carbon: UInt32 = 0
     if flags & UInt32(NSEvent.ModifierFlags.command.rawValue) != 0 {

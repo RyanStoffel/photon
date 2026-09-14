@@ -1,5 +1,6 @@
 import AppKit
 import PhotonApps
+import PhotonCalculator
 import PhotonClipboard
 import PhotonCore
 import PhotonFiles
@@ -138,6 +139,7 @@ final class AppRuntime: ObservableObject {
     registry.register(notes.provider)
     fileSearch = FileSearchIntegration(settings: settings, registry: registry, launcher: launcher)
     registry.register(KeybindsProvider(controller: keybinds))
+    registry.register(CalculatorProvider())
   }
 
   private func applyHotkey() {

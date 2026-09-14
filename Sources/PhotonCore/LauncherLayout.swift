@@ -34,7 +34,8 @@ public enum LauncherContent: Equatable, Sendable {
   /// Empty query in compact mode: search field and footer only.
   case searchOnly
   /// The command list. `0` rows still shows one line (indexing or no results).
-  case rows(Int)
+  /// When `showsCalculatorHero` is true, the first result is rendered as a calculator card instead of a row.
+  case rows(count: Int, showsCalculatorHero: Bool)
   /// A feature view with its own layout (clipboard history, file search).
   case fullHeight
 }
@@ -53,11 +54,22 @@ public enum LauncherLayout {
   public static let hairline: Double = 1
   public static let cornerRadius: Double = 12
   public static let iconSize: Double = 28
+  /// Raycast-style calculator hero card (section label + split card).
+  public static let calculatorSectionSpacing: Double = 6
+  public static let calculatorCardHeight: Double = 108
+  public static let calculatorSectionHeaderHeight: Double = 18
 
   /// Height of the list area for `count` rows, clamped to `maxVisibleRows` and never below one row.
-  public static func listHeight(rowCount count: Int) -> Double {
-    let visible = min(max(count, 1), maxVisibleRows)
-    return Double(visible) * rowHeight + 2 * listInset
+  public static func listHeight(rowCount count: Int, showsCalculatorHero: Bool = false) -> Double {
+    let heroHeight = showsCalculatorHero
+      ? calculatorSectionHeaderHeight + calculatorSectionSpacing + calculatorCardHeight + listInset
+      : 0
+    let dataRows = showsCalculatorHero ? max(count - 1, 0) : count
+    if showsCalculatorHero, dataRows == 0 {
+      return heroHeight
+    }
+    let visible = min(max(dataRows, 1), maxVisibleRows)
+    return heroHeight + Double(visible) * rowHeight + 2 * listInset
   }
 
   /// Search field and footer with a hairline between them.
@@ -67,15 +79,16 @@ public enum LauncherLayout {
 
   /// Tallest the panel gets: a full page of rows.
   public static var maxHeight: Double {
-    height(for: .rows(maxVisibleRows))
+    height(for: .rows(count: maxVisibleRows, showsCalculatorHero: false))
   }
 
   public static func height(for content: LauncherContent) -> Double {
     switch content {
     case .searchOnly:
       compactHeight
-    case let .rows(count):
-      searchFieldHeight + hairline + listHeight(rowCount: count) + hairline + footerHeight
+    case let .rows(count: count, showsCalculatorHero: showsCalculatorHero):
+      searchFieldHeight + hairline + listHeight(rowCount: count, showsCalculatorHero: showsCalculatorHero)
+        + hairline + footerHeight
     case .fullHeight:
       maxHeight
     }

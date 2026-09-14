@@ -18,9 +18,13 @@ public struct LauncherRow: Identifiable, Hashable, Sendable {
     providerID = command.providerID
   }
 
-  /// Verb for the footer hint: window commands run, everything else opens.
+  /// Verb for the footer hint: window commands run, calculator copies, everything else opens.
   public var actionVerb: String {
-    providerID == "keybinds" ? "Run" : "Open"
+    switch providerID {
+    case "keybinds": "Run"
+    case "calculator": "Copy Answer"
+    default: "Open"
+    }
   }
 
   /// A subtitle is shown only when it adds something: not blank and not the title again.

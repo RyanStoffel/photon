@@ -7,6 +7,8 @@ import SwiftUI
 struct LauncherView: View {
   @ObservedObject var model: LauncherViewModel
   var onRun: () -> Void
+  var onSearchBarDrag: ((LauncherSearchBarDragPhase) -> Void)?
+  @EnvironmentObject private var settings: SettingsStore
 
   static let defaultPlaceholder = "Search apps, files, notes and more\u{2026}"
 
@@ -18,15 +20,23 @@ struct LauncherView: View {
         EmptyView()
       case .rows:
         Hairline()
-        resultsList
+        if model.session == .clipboard {
+          LauncherClipboardResultsSection(model: model)
+        } else {
+          resultsList
+        }
       case .fullHeight:
         Hairline()
         featureContent
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
-      if model.showsCommandList {
+      if model.showsCommandList || model.session == .clipboard {
         Hairline()
-        footer
+        if model.session == .clipboard, let clipboard = model.clipboard {
+          ClipboardLauncherFooter(model: clipboard)
+        } else {
+          footer
+        }
       }
     }
     .frame(width: model.panelWidth, height: LauncherLayout.height(for: model.content))
@@ -53,13 +63,12 @@ struct LauncherView: View {
     }
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
+    .launcherSearchBarDrag(hotkey: settings.hotkey, onSearchBarDrag: onSearchBarDrag)
   }
 
   @ViewBuilder
   private var sessionBadge: some View {
-    if model.session == .clipboard {
-      badge("Clipboard")
-    } else if let mode = model.activeMode {
+    if let mode = model.activeMode {
       badge(mode.title)
     }
   }
@@ -75,7 +84,7 @@ struct LauncherView: View {
 
   private var placeholder: String {
     if model.session == .clipboard {
-      "Search clipboard history"
+      "Search clipboard history\u{2026}"
     } else if let mode = model.activeMode {
       mode.placeholder
     } else {
@@ -83,19 +92,12 @@ struct LauncherView: View {
     }
   }
 
-  // MARK: Feature views (clipboard history, file search)
+  // MARK: Feature views (file search and other modes)
 
   @ViewBuilder
   private var featureContent: some View {
-    switch model.session {
-    case .clipboard:
-      if let clipboard = model.clipboard {
-        ClipboardHistoryView(model: clipboard)
-      }
-    case .commands:
-      if let mode = model.activeMode {
-        mode.makeResultsView()
-      }
+    if let mode = model.activeMode {
+      mode.makeResultsView()
     }
   }
 
@@ -108,14 +110,25 @@ struct LauncherView: View {
           if model.rows.isEmpty {
             messageRow
           } else {
-            ForEach(model.rows) { row in
+            if let hero = model.calculatorHero {
+              LauncherCalculatorHeroSection(
+                model: hero,
+                selected: model.selectedID == hero.commandID,
+                onSelect: {
+                  model.selectedID = hero.commandID
+                }
+              )
+              .id(hero.commandID)
+            }
+            ForEach(model.rowsBelowCalculatorHero) { row in
               resultRow(row)
                 .id(row.id)
             }
           }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, LauncherLayout.listInset)
+        .padding(.top, model.calculatorHero != nil ? 0 : LauncherLayout.listInset)
+        .padding(.bottom, LauncherLayout.listInset)
       }
       .onChange(of: model.selectedID) { _, newValue in
         if let newValue {
@@ -123,7 +136,12 @@ struct LauncherView: View {
         }
       }
     }
-    .frame(height: LauncherLayout.listHeight(rowCount: model.rows.count))
+    .frame(
+      height: LauncherLayout.listHeight(
+        rowCount: model.rows.count,
+        showsCalculatorHero: model.calculatorHero != nil
+      )
+    )
   }
 
   private var messageRow: some View {
@@ -201,6 +219,7 @@ struct LauncherView: View {
     case "clipboard": "clipboard"
     case "files": "doc"
     case "notes": "note.text"
+    case "calculator": "function"
     default: "circle.grid.3x3"
     }
   }

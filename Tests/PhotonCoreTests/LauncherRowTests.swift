@@ -56,6 +56,11 @@ final class LauncherRowTests: XCTestCase {
     XCTAssertEqual(row.actionVerb, "Run")
   }
 
+  func testCalculatorRowCopies() {
+    let row = LauncherRow(command: Command(id: "calculator:x", title: "1+1 → 2", providerID: "calculator"))
+    XCTAssertEqual(row.actionVerb, "Copy Answer")
+  }
+
   func testRowIdentityFollowsTheCommand() {
     let command = Command(id: "clipboard:history", title: "Clipboard History", providerID: "clipboard")
     XCTAssertEqual(LauncherRow(command: command).id, command.id)
