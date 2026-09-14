@@ -11,6 +11,14 @@ final class SpotlightQueryBuilderTests: XCTestCase {
     XCTAssertEqual(SpotlightQueryBuilder.terms(from: "  annual\treport Report\n"), ["annual", "report"])
   }
 
+  func testTermsSplitOnUnderscoresAndPunctuation() {
+    XCTAssertEqual(SpotlightQueryBuilder.terms(from: "ember_individual"), ["ember", "individual"])
+    XCTAssertEqual(
+      SpotlightQueryBuilder.terms(from: "Ember-Individual-Pitch.pdf"),
+      ["Ember", "Individual", "Pitch", "pdf"]
+    )
+  }
+
   func testLongTermMatchesAnywhereInNameAndFileName() {
     let query = SpotlightQueryBuilder.queryString(for: "report", searchContents: false)
     XCTAssertEqual(
@@ -22,6 +30,15 @@ final class SpotlightQueryBuilderTests: XCTestCase {
   func testShortTermOnlyMatchesWordPrefixes() {
     let query = SpotlightQueryBuilder.queryString(for: "ab", searchContents: false)
     XCTAssertEqual(query, "(kMDItemDisplayName == \"ab*\"cdw || kMDItemFSName == \"ab*\"cdw)")
+  }
+
+  func testUnderscoreQueryBecomesAndOfNameClauses() {
+    let query = SpotlightQueryBuilder.queryString(for: "ember_individual", searchContents: false)
+    XCTAssertEqual(
+      query,
+      "(kMDItemDisplayName == \"*ember*\"cd || kMDItemFSName == \"*ember*\"cd)"
+        + " && (kMDItemDisplayName == \"*individual*\"cd || kMDItemFSName == \"*individual*\"cd)"
+    )
   }
 
   func testEveryTermMustMatch() {
@@ -46,11 +63,11 @@ final class SpotlightQueryBuilderTests: XCTestCase {
     XCTAssertEqual(SpotlightQueryBuilder.escape("a\"b"), "a\\\"b")
     XCTAssertEqual(SpotlightQueryBuilder.escape("a\\b"), "a\\\\b")
     XCTAssertEqual(SpotlightQueryBuilder.escape("a*b?"), "a\\*b\\?")
-    let query = SpotlightQueryBuilder.queryString(for: "say \"hi\"", searchContents: false)
+    let query = SpotlightQueryBuilder.queryString(for: "say \"hello\"", searchContents: false)
     XCTAssertEqual(
       query,
       "(kMDItemDisplayName == \"*say*\"cd || kMDItemFSName == \"*say*\"cd)"
-        + " && (kMDItemDisplayName == \"*\\\"hi\\\"*\"cd || kMDItemFSName == \"*\\\"hi\\\"*\"cd)"
+        + " && (kMDItemDisplayName == \"*hello*\"cd || kMDItemFSName == \"*hello*\"cd)"
     )
   }
 }

@@ -1,8 +1,8 @@
 import Foundation
 
-/// Debounced, cancellable Spotlight search. One engine serves one consumer:
-/// each new `search` supersedes the previous one, so stale results are never
-/// delivered and the panel never flickers between old and new lists.
+/// Debounced, cancellable Spotlight search via `mdfind`. One engine serves one
+/// consumer: each new `search` supersedes the previous one, so stale results
+/// are never delivered and the panel never flickers between old and new lists.
 @MainActor
 public final class FileSearchEngine {
   public struct Request: Equatable, Sendable {
@@ -29,14 +29,14 @@ public final class FileSearchEngine {
 
   private let debounce: Duration
   private var generation = 0
-  private var runner: SpotlightQueryRunner?
+  private var runner: MdfindQueryRunner?
 
   public init(debounce: Duration = FileSearchEngine.defaultDebounce) {
     self.debounce = debounce
   }
 
   /// Waits out the debounce window, cancels any in-flight query, runs
-  /// Spotlight, and ranks off the main thread. Returns `nil` when a newer
+  /// `mdfind`, and ranks off the main thread. Returns `nil` when a newer
   /// search superseded this one, in which case the caller should do nothing.
   public func search(_ request: Request) async -> Response? {
     generation += 1
@@ -59,15 +59,15 @@ public final class FileSearchEngine {
       return nil
     }
 
-    let runner = SpotlightQueryRunner()
+    let runner = MdfindQueryRunner()
     self.runner = runner
-    let spotlightRequest = SpotlightQueryRunner.Request(
+    let mdfindRequest = MdfindQueryRunner.Request(
       queryString: queryString,
-      scopes: scopes(for: request.settings),
+      onlyIn: onlyInFolders(for: request.settings),
       scanLimit: max(500, request.limit * 20)
     )
-    let outcome: SpotlightQueryRunner.Outcome = await withCheckedContinuation { continuation in
-      runner.start(spotlightRequest) { outcome in
+    let outcome: MdfindQueryRunner.Outcome = await withCheckedContinuation { continuation in
+      runner.start(mdfindRequest) { outcome in
         continuation.resume(returning: outcome)
       }
     }
@@ -79,8 +79,9 @@ public final class FileSearchEngine {
     }
 
     let ranked = await Task.detached(priority: .userInitiated) {
+      let files = outcome.paths.compactMap(FileResultFactory.file(at:))
       let ranked = FileRanker.rank(
-        outcome.files,
+        files,
         query: trimmed,
         excludedFolders: request.settings.excludedFolders,
         includeApplications: request.includeApplications,
@@ -103,12 +104,17 @@ public final class FileSearchEngine {
     runner = nil
   }
 
-  private func scopes(for settings: FileSearchSettings) -> [String] {
-    var scopes = [settings.scope == .computer ? NSMetadataQueryLocalComputerScope : NSMetadataQueryUserHomeScope]
-    let extras = FileRanker.normalizedFolders(settings.extraFolders, home: NSHomeDirectory())
-    for folder in extras where folder.hasPrefix("/") && !scopes.contains(folder) {
-      scopes.append(folder)
+  /// Home scope uses `mdfind -onlyin $HOME` (plus extra folders). Computer
+  /// scope omits `-onlyin` so Spotlight searches this Mac.
+  private func onlyInFolders(for settings: FileSearchSettings) -> [String] {
+    var folders: [String] = []
+    if settings.scope == .home {
+      folders.append(NSHomeDirectory())
     }
-    return scopes
+    let extras = FileRanker.normalizedFolders(settings.extraFolders, home: NSHomeDirectory())
+    for folder in extras where folder.hasPrefix("/") && !folders.contains(folder) {
+      folders.append(folder)
+    }
+    return folders
   }
 }
