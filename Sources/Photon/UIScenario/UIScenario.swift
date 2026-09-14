@@ -5,6 +5,7 @@ import Foundation
 enum UIScenario: Equatable, Sendable {
   case launcherEmpty
   case launcherQuery(String)
+  case clipboardEmpty
   case settings(SettingsPaneID)
   case notes
 
@@ -57,6 +58,9 @@ enum UIScenario: Equatable, Sendable {
     if raw.hasPrefix("launcher-query:") {
       let query = String(raw.dropFirst("launcher-query:".count))
       return .launcherQuery(query)
+    }
+    if raw == "clipboard-empty" {
+      return .clipboardEmpty
     }
     if raw.hasPrefix("settings:") {
       let pane = String(raw.dropFirst("settings:".count))
