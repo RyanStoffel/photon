@@ -16,7 +16,8 @@ Sources/
   PhotonFiles/          Spotlight file search: provider, launcher file mode, Quick Look
   PhotonKeybinds/       Hyper key, app hotkeys, window management
 Tests/
-  PhotonCoreTests/      FuzzyMatcher + FrecencyStore
+  PhotonCoreTests/      FuzzyMatcher, FrecencyStore, Command icons
+  PhotonAppsTests/      System Settings pane icon policy
   PhotonClipboardTests/ History rules (dedupe, retention), search ranking, store round trip
   PhotonNotesTests/     Title extraction, markdown spans, store, debounce, query parsing, sidebar rows
   PhotonFilesTests/     Spotlight query strings, ranking, path truncation
@@ -49,7 +50,9 @@ public protocol CommandProvider: Sendable {
 }
 ```
 
-`Command` is a value type (`id`, `title`, `subtitle`, `keywords`, `providerID`). Providers own how they find and run things. The launcher only searches and dispatches.
+`Command` is a value type (`id`, `title`, `subtitle`, `keywords`, `providerID`, optional `icon`). Providers own how they find and run things. The launcher only searches and dispatches.
+
+`icon` is a `CommandIcon`: the Finder icon of a path (`.fileIcon`), an image file (`.imageFile`), an application by bundle id (`.application`), a named image in a bundle or its asset catalog (`.bundleResource`), or an SF Symbol (`.symbol`). It stays a plain value so `PhotonCore` needs no AppKit; `Sources/Photon/Launcher/CommandIconCache.swift` resolves and caches the `NSImage`s (`NSWorkspace.icon(forFile:)`, `NSImage(contentsOfFile:)`, `urlForApplication(withBundleIdentifier:)`) and is warmed in the background once the providers have loaded. Apps use their bundle's Finder icon; System Settings panes go through `PaneIconPolicy` (`PhotonApps`), which reads the pane's declared icon (`NSPrefPaneIconFile`, `CFBundleIconFile`, or an asset catalog entry) and falls back to the System Settings app icon.
 
 To add a Phase 2 feature:
 
@@ -165,7 +168,7 @@ Safety: the HID remap is only installed after the event tap exists, is removed o
 | --- | --- | --- |
 | `branch-name` | ubuntu-latest | Enforces `feature/GH-<n>-*`, `bug/GH-<n>-*`, `chore/*`, `docs/*`, `release/*` (passes for `develop`/`main` themselves). |
 | `lint` | macos-latest | `swiftformat --lint` and `swiftlint lint --strict`. |
-| `test` | macos-latest | `swift test` (PhotonCoreTests, PhotonClipboardTests, PhotonNotesTests, PhotonFilesTests, PhotonKeybindsTests). |
+| `test` | macos-latest | `swift test` (PhotonCoreTests, PhotonAppsTests, PhotonClipboardTests, PhotonNotesTests, PhotonFilesTests, PhotonKeybindsTests). |
 | `build` | macos-latest | `Scripts/package_app.sh`, uploads `Photon.app` (as a `ditto` zip so permissions and the signature survive). |
 | `smoke` | macos-latest | Downloads that zip and runs `Scripts/smoke-test.sh`: `open` the app, wait 8 s, fail on exit, crash report, or fatal log. |
 

@@ -86,6 +86,18 @@ final class LauncherViewModel: ObservableObject {
       selectedID = results.first?.id
     }
     isLoading = false
+    prefetchIcons(for: results)
+  }
+
+  /// Rows resolve their icon on first draw; this warms the ones below the fold.
+  private func prefetchIcons(for ranked: [RankedCommand]) {
+    let icons = ranked.compactMap(\.command.icon)
+    guard !icons.isEmpty else {
+      return
+    }
+    Task.detached(priority: .utility) {
+      CommandIconCache.shared.prefetch(icons)
+    }
   }
 
   func moveSelection(_ delta: Int) {
