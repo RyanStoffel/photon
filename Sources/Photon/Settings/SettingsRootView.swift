@@ -8,6 +8,9 @@ struct SettingsRootView: View {
       GeneralSettingsView()
         .tabItem { Label("General", systemImage: "gearshape") }
         .tag(SettingsPaneID.general)
+      AppearanceSettingsView()
+        .tabItem { Label("Appearance", systemImage: "paintpalette") }
+        .tag(SettingsPaneID.appearance)
       ClipboardSettingsView()
         .tabItem { Label("Clipboard", systemImage: "clipboard") }
         .tag(SettingsPaneID.clipboard)
@@ -34,12 +37,8 @@ struct SettingsRootView: View {
     }
   }
 
-  /// `appearance` is valid for branches with an Appearance tab; on `develop` it maps to General.
   private static func resolve(_ pane: SettingsPaneID) -> SettingsPaneID {
-    if pane == .appearance {
-      return .general
-    }
-    return pane
+    pane
   }
 }
 

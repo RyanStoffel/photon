@@ -27,19 +27,52 @@ final class LauncherViewModel: ObservableObject {
           enter(mode: match.mode, query: match.remainder)
         } else if let activeMode {
           activeMode.update(query: query)
+        } else if query.isEmpty, !preferences.showsSuggestions {
+          // Compact mode collapses at once instead of waiting for an empty search.
+          clearResults()
         } else {
           Task { await refresh() }
         }
       }
+      updateContent()
     }
   }
 
-  @Published var results: [RankedCommand] = []
+  @Published var results: [RankedCommand] = [] {
+    didSet { updateContent() }
+  }
+
   @Published var selectedID: String?
   @Published var isLoading = false
   @Published var lastError: String?
-  @Published private(set) var session: LauncherSession = .commands
-  @Published private(set) var activeMode: (any LauncherMode)?
+  @Published private(set) var session: LauncherSession = .commands {
+    didSet { updateContent() }
+  }
+
+  @Published private(set) var activeMode: (any LauncherMode)? {
+    didSet { updateContent() }
+  }
+
+  /// Drives the panel height; `LauncherPanelController` resizes the window when it changes.
+  @Published private(set) var content: LauncherContent = .searchOnly
+
+  /// Settings > Appearance values the launcher reads. Set by the panel controller.
+  @Published var preferences = LauncherPreferences(showsSuggestions: false, width: .default) {
+    didSet {
+      guard preferences != oldValue else {
+        return
+      }
+      let toggledSuggestions = preferences.showsSuggestions != oldValue.showsSuggestions
+      if toggledSuggestions, query.isEmpty, showsCommandList {
+        if preferences.showsSuggestions {
+          Task { await refresh() }
+        } else {
+          clearResults()
+        }
+      }
+      updateContent()
+    }
+  }
 
   let registry: CommandRegistry
   var frecency: FrecencyStore
@@ -48,10 +81,32 @@ final class LauncherViewModel: ObservableObject {
   private(set) var modes: [any LauncherMode] = []
   private let limit = 30
   private let trailingLimit = 5
+  /// Searches finish out of order when typing fast; only the latest one may publish.
+  private var searchGeneration = 0
 
   init(registry: CommandRegistry, frecency: FrecencyStore) {
     self.registry = registry
     self.frecency = frecency
+  }
+
+  var panelWidth: Double {
+    preferences.width.points
+  }
+
+  var rows: [LauncherRow] {
+    results.map { LauncherRow(command: $0.command) }
+  }
+
+  var selectedRow: LauncherRow? {
+    guard let selectedID, let ranked = results.first(where: { $0.id == selectedID }) else {
+      return nil
+    }
+    return LauncherRow(command: ranked.command)
+  }
+
+  /// True while the default command list (not a mode or the clipboard) is on screen.
+  var showsCommandList: Bool {
+    session == .commands && activeMode == nil
   }
 
   func register(mode: any LauncherMode) {
@@ -65,6 +120,9 @@ final class LauncherViewModel: ObservableObject {
     query = ""
     lastError = nil
     selectedID = results.first?.id
+    if query.isEmpty, !preferences.showsSuggestions {
+      clearResults()
+    }
   }
 
   /// Closes any auxiliary UI the active mode owns (Quick Look) without leaving the mode.
@@ -73,31 +131,26 @@ final class LauncherViewModel: ObservableObject {
   }
 
   func refresh() async {
-    guard session == .commands, activeMode == nil else {
+    guard showsCommandList else {
       return
     }
+    if query.isEmpty, !preferences.showsSuggestions {
+      clearResults()
+      return
+    }
+    searchGeneration += 1
+    let generation = searchGeneration
     isLoading = results.isEmpty
     let ranked = await registry.search(query, frecency: frecency)
-    guard session == .commands, activeMode == nil else {
+    guard showsCommandList, generation == searchGeneration else {
       return
     }
-    results = arrange(ranked)
+    results = arrange(ranked, forEmptyQuery: query.isEmpty)
     if !results.contains(where: { $0.id == selectedID }) {
       selectedID = results.first?.id
     }
     isLoading = false
     prefetchIcons(for: results)
-  }
-
-  /// Rows resolve their icon on first draw; this warms the ones below the fold.
-  private func prefetchIcons(for ranked: [RankedCommand]) {
-    let icons = ranked.compactMap(\.command.icon)
-    guard !icons.isEmpty else {
-      return
-    }
-    Task.detached(priority: .utility) {
-      CommandIconCache.shared.prefetch(icons)
-    }
   }
 
   func moveSelection(_ delta: Int) {
@@ -224,8 +277,18 @@ final class LauncherViewModel: ObservableObject {
     return nil
   }
 
+  private func clearResults() {
+    searchGeneration += 1
+    isLoading = false
+    if !results.isEmpty {
+      results = []
+    }
+    selectedID = nil
+  }
+
   /// Primary results first; a mode's inline results (never its activation command) trail them.
-  private func arrange(_ ranked: [RankedCommand]) -> [RankedCommand] {
+  /// An empty query lists suggestions: the few best-ranked (frecency) commands.
+  private func arrange(_ ranked: [RankedCommand], forEmptyQuery isSuggestions: Bool) -> [RankedCommand] {
     var primary: [RankedCommand] = []
     var trailing: [RankedCommand] = []
     for item in ranked {
@@ -236,6 +299,33 @@ final class LauncherViewModel: ObservableObject {
         primary.append(item)
       }
     }
+    if isSuggestions {
+      return Array(primary.prefix(LauncherLayout.suggestionCount))
+    }
     return Array(primary.prefix(limit)) + Array(trailing.prefix(trailingLimit))
+  }
+
+  private func updateContent() {
+    let next: LauncherContent = if !showsCommandList {
+      .fullHeight
+    } else if query.isEmpty, !preferences.showsSuggestions {
+      .searchOnly
+    } else {
+      .rows(results.count)
+    }
+    if next != content {
+      content = next
+    }
+  }
+
+  /// Rows resolve their icon on first draw; this warms the ones below the fold.
+  private func prefetchIcons(for ranked: [RankedCommand]) {
+    let icons = ranked.compactMap(\.command.icon)
+    guard !icons.isEmpty else {
+      return
+    }
+    Task.detached(priority: .utility) {
+      CommandIconCache.shared.prefetch(icons)
+    }
   }
 }
