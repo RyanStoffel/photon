@@ -15,6 +15,7 @@ final class AppRuntime: ObservableObject {
   let clipboard: ClipboardManager
   private let hotkey = HotkeyManager.shared
   private let frecencyURL: URL
+  private var fileSearch: FileSearchIntegration?
 
   init() {
     let settings = SettingsStore()
@@ -81,7 +82,7 @@ final class AppRuntime: ObservableObject {
     }
     registry.register(clipboardProvider)
     registry.register(NotesProvider())
-    registry.register(FilesProvider())
+    fileSearch = FileSearchIntegration(settings: settings, registry: registry, launcher: launcher)
     registry.register(KeybindsProvider())
   }
 
