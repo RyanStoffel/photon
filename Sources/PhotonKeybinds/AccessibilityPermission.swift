@@ -7,11 +7,13 @@ public enum AccessibilityPermission {
     AXIsProcessTrusted()
   }
 
+  /// Value of `kAXTrustedCheckOptionPrompt`; the imported global is a `var`, which Swift 6 rejects.
+  private static let promptOptionKey = "AXTrustedCheckOptionPrompt"
+
   /// Asks macOS to show its own "grant access" dialog once, then returns the current state.
   @discardableResult
   public static func requestTrust() -> Bool {
-    let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-    return AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
+    AXIsProcessTrustedWithOptions([promptOptionKey: true] as CFDictionary)
   }
 
   /// Input Monitoring. Accessibility alone is enough for Photon's tap, so this is informational.
