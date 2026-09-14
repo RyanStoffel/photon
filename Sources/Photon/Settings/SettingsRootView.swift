@@ -7,6 +7,8 @@ struct SettingsRootView: View {
     TabView {
       GeneralSettingsView()
         .tabItem { Label("General", systemImage: "gearshape") }
+      AppearanceSettingsView()
+        .tabItem { Label("Appearance", systemImage: "paintpalette") }
       ClipboardSettingsView()
         .tabItem { Label("Clipboard", systemImage: "clipboard") }
       NotesSettingsView()

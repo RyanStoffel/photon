@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import PhotonClipboard
 import PhotonCore
 import QuickLookUI
@@ -12,6 +13,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   private let model: LauncherViewModel
   private var panel: LauncherPanel?
   private var localMonitor: Any?
+  private var cancellables: Set<AnyCancellable> = []
   /// App that was frontmost before a mode asked us to activate; restored on hide.
   private var previousApplication: NSRunningApplication?
 
@@ -20,6 +22,43 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     self.registry = registry
     self.frecencyURL = frecencyURL
     model = LauncherViewModel(registry: registry, frecency: FrecencyStore.load(from: frecencyURL))
+    super.init()
+    model.preferences = settings.launcherPreferences
+    observe()
+  }
+
+  /// The window follows the model: `content` decides the height, the width preset the width.
+  /// `@Published` emits from `willSet`, so the sinks use the incoming value, never the model's.
+  private func observe() {
+    model.$content
+      .removeDuplicates()
+      .sink { [weak self] content in
+        guard let self else {
+          return
+        }
+        resize(width: model.panelWidth, content: content)
+      }
+      .store(in: &cancellables)
+    model.$preferences
+      .map(\.width)
+      .removeDuplicates()
+      .sink { [weak self] width in
+        guard let self else {
+          return
+        }
+        resize(width: width.points, content: model.content)
+      }
+      .store(in: &cancellables)
+    // objectWillChange fires before the write lands; hop once through the run loop to read the new values.
+    settings.objectWillChange
+      .receive(on: RunLoop.main)
+      .sink { [weak self] _ in
+        guard let self else {
+          return
+        }
+        model.preferences = settings.launcherPreferences
+      }
+      .store(in: &cancellables)
   }
 
   func currentFrecency() -> FrecencyStore {
@@ -82,7 +121,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       return
     }
     model.resetForShow()
-    center(panel)
+    position(panel)
     panel.orderFrontRegardless()
     panel.makeKey()
     startMonitor()
@@ -105,7 +144,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     }
     if !panel.isVisible {
       model.resetForShow()
-      center(panel)
+      position(panel)
       panel.orderFrontRegardless()
       panel.makeKey()
       startMonitor()
@@ -153,8 +192,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   }
 
   private func makePanel() -> LauncherPanel {
+    let size = NSSize(width: model.panelWidth, height: LauncherLayout.height(for: model.content))
     let panel = LauncherPanel(
-      contentRect: NSRect(x: 0, y: 0, width: 640, height: 420),
+      contentRect: NSRect(origin: .zero, size: size),
       styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
       backing: .buffered,
       defer: false
@@ -177,23 +217,58 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       self?.model.activeMode
     }
 
+    // System material behind the whole panel, clipped to the rounded shape. The window
+    // shadow follows the opaque region, so the corners stay clean.
+    let background = NSVisualEffectView(frame: NSRect(origin: .zero, size: size))
+    background.material = .popover
+    background.blendingMode = .behindWindow
+    background.state = .active
+    background.wantsLayer = true
+    background.layer?.cornerRadius = LauncherLayout.cornerRadius
+    background.layer?.cornerCurve = .continuous
+    background.layer?.masksToBounds = true
+    background.autoresizingMask = [.width, .height]
+
     let host = NSHostingView(rootView: LauncherView(model: model, onRun: { [weak self] in
       self?.hide()
     }))
     host.safeAreaRegions = []
-    panel.contentView = host
+    host.frame = background.bounds
+    host.autoresizingMask = [.width, .height]
+    background.addSubview(host)
+    panel.contentView = background
     return panel
   }
 
-  private func center(_ panel: NSPanel) {
+  /// Keeps the top edge where it is (so the search field never jumps) and the panel centred.
+  private func resize(width: Double, content: LauncherContent) {
+    guard let panel else {
+      return
+    }
+    let size = NSSize(width: width, height: LauncherLayout.height(for: content))
+    var frame = panel.frame
+    guard frame.size != size else {
+      return
+    }
+    frame.origin.x = frame.midX - size.width / 2
+    frame.origin.y = frame.maxY - size.height
+    frame.size = size
+    // No animation: the resize and SwiftUI's relayout land in the same display cycle.
+    panel.setFrame(frame, display: false, animate: false)
+    panel.invalidateShadow()
+  }
+
+  /// Centred horizontally, top edge a little above the middle of the screen, like Spotlight.
+  private func position(_ panel: NSPanel) {
     guard let screen = NSScreen.main ?? NSScreen.screens.first else {
       return
     }
     let visible = screen.visibleFrame
     let size = panel.frame.size
+    let top = min(visible.minY + visible.height * 0.74, visible.maxY - 8)
     let origin = NSPoint(
       x: visible.midX - size.width / 2,
-      y: visible.midY - size.height / 2 + 40
+      y: top - size.height
     )
     panel.setFrameOrigin(origin)
   }

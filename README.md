@@ -10,7 +10,7 @@ It is not an extension platform. There is no AI, no account, no cloud sync, and 
 
 ## Features
 
-- **Launcher** — `Cmd+Space` opens a floating search panel. Configurable hotkey.
+- **Launcher** — `Cmd+Space` opens a compact floating search field that expands into results as you type; turn on suggestions under **Settings > Appearance** to see your most used apps and commands before typing. Configurable hotkey, panel width, and light/dark appearance.
 - **Applications** — fuzzy search over `/Applications`, `/System/Applications`, `~/Applications`, and System Settings panes, ranked by frecency.
 - **Clipboard history** — `Cmd+Shift+V`, or type `cb ` in the launcher. Text (with rich text), links, images, and files; searchable, pin, paste back or copy. Retention of 1/7/30 days or forever, an item limit, and excluded apps (password managers by default).
 - **Notes** — a compact floating window with live markdown styling, one `.md` file per note in `~/Library/Application Support/Photon/Notes`, autosave, and a `⌘P` switcher. Type `notes` or `n <title>` in the launcher to open a note; an optional hotkey toggles the window.
