@@ -1,4 +1,5 @@
 import AppKit
+import PhotonClipboard
 import PhotonCore
 import SwiftUI
 
@@ -20,6 +21,15 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
 
   func currentFrecency() -> FrecencyStore {
     model.frecency
+  }
+
+  /// Enables clipboard mode. Call once at startup, before the panel is shown.
+  func attachClipboard(_ manager: ClipboardManager) {
+    let clipboard = ClipboardHistoryViewModel(manager: manager)
+    clipboard.onDismiss = { [weak self] in
+      self?.hide()
+    }
+    model.clipboard = clipboard
   }
 
   func preload() {
@@ -54,6 +64,27 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       await registry.reloadAll()
       await model.refresh()
     }
+  }
+
+  /// Opens the panel straight into clipboard history; toggles it closed when
+  /// clipboard history is already showing.
+  func showClipboard() {
+    preload()
+    guard let panel, model.clipboard != nil else {
+      return
+    }
+    if panel.isVisible, model.mode == .clipboard {
+      hide()
+      return
+    }
+    if !panel.isVisible {
+      model.resetForShow()
+      center(panel)
+      panel.orderFrontRegardless()
+      panel.makeKey()
+      startMonitor()
+    }
+    model.enterClipboard(query: "")
   }
 
   func hide() {
@@ -121,27 +152,58 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       guard let self else {
         return event
       }
-      switch event.keyCode {
-      case 53:
-        hide()
-        return nil
-      case 126:
-        model.moveSelection(-1)
-        return nil
-      case 125:
-        model.moveSelection(1)
-        return nil
-      case 36, 76:
-        Task {
-          await self.model.runSelection()
-          if self.model.lastError == nil {
-            self.hide()
-          }
-        }
-        return nil
-      default:
-        return event
+      switch model.mode {
+      case .clipboard:
+        return handleClipboardKey(event)
+      case .commands:
+        return handleCommandKey(event)
       }
+    }
+  }
+
+  private func handleCommandKey(_ event: NSEvent) -> NSEvent? {
+    switch event.keyCode {
+    case 53:
+      hide()
+      return nil
+    case 126:
+      model.moveSelection(-1)
+      return nil
+    case 125:
+      model.moveSelection(1)
+      return nil
+    case 36, 76:
+      Task {
+        await self.model.runSelection()
+        if self.model.lastError == nil, self.model.mode == .commands {
+          self.hide()
+        }
+      }
+      return nil
+    default:
+      return event
+    }
+  }
+
+  /// Clipboard mode: the clipboard view model owns navigation and actions.
+  /// Esc, or Delete on an empty query, returns to the command list.
+  private func handleClipboardKey(_ event: NSEvent) -> NSEvent? {
+    guard let clipboard = model.clipboard else {
+      return handleCommandKey(event)
+    }
+    if clipboard.handleKeyDown(event) {
+      return nil
+    }
+    let command = event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command)
+    switch event.keyCode {
+    case 53:
+      model.exitClipboard()
+      return nil
+    case 51 where !command && model.query.isEmpty:
+      model.exitClipboard()
+      return nil
+    default:
+      return event
     }
   }
 

@@ -12,6 +12,7 @@ final class AppRuntime: ObservableObject {
   let settings: SettingsStore
   let registry = CommandRegistry()
   let launcher: LauncherPanelController
+  let clipboard: ClipboardManager
   private let hotkey = HotkeyManager.shared
   private let frecencyURL: URL
 
@@ -23,29 +24,45 @@ final class AppRuntime: ObservableObject {
     let dir = support.appendingPathComponent("Photon", isDirectory: true)
     frecencyURL = dir.appendingPathComponent("frecency.json")
     launcher = LauncherPanelController(settings: settings, registry: registry, frecencyURL: frecencyURL)
+    clipboard = ClipboardManager(
+      settings: settings.clipboardSettings,
+      directory: dir.appendingPathComponent("Clipboard", isDirectory: true)
+    )
+    launcher.attachClipboard(clipboard)
     registerProviders()
   }
 
   func start() {
     launcher.preload()
+    clipboard.start()
     Task {
       await registry.reloadAll()
     }
     applyHotkey()
+    applyClipboardHotkey()
     settings.onHotkeyChange = { [weak self] in
       self?.applyHotkey()
+    }
+    settings.onClipboardChange = { [weak self] in
+      self?.applyClipboardSettings()
     }
     SpotlightConflict.adviseIfNeeded(current: settings.hotkey)
   }
 
   func stop() {
-    hotkey.unregister()
+    hotkey.unregisterAll()
+    clipboard.stop()
     persistFrecency()
     settings.onHotkeyChange = nil
+    settings.onClipboardChange = nil
   }
 
   func toggleLauncher() {
     launcher.toggle()
+  }
+
+  func showClipboardHistory() {
+    launcher.showClipboard()
   }
 
   func openSettings() {
@@ -56,7 +73,13 @@ final class AppRuntime: ObservableObject {
   /// Phase 2: add `registry.register(YourProvider())` here. Do not edit PhotonCore.
   private func registerProviders() {
     registry.register(AppsProvider())
-    registry.register(ClipboardProvider())
+    let clipboardProvider = ClipboardProvider()
+    clipboardProvider.openHistory = { [weak self] in
+      Task { @MainActor [weak self] in
+        self?.showClipboardHistory()
+      }
+    }
+    registry.register(clipboardProvider)
     registry.register(NotesProvider())
     registry.register(FilesProvider())
     registry.register(KeybindsProvider())
@@ -70,6 +93,25 @@ final class AppRuntime: ObservableObject {
       try hotkey.register(combo: settings.hotkey)
     } catch {
       NSLog("Photon: failed to register hotkey: \(error)")
+    }
+  }
+
+  private func applyClipboardSettings() {
+    clipboard.settings = settings.clipboardSettings
+    applyClipboardHotkey()
+  }
+
+  private func applyClipboardHotkey() {
+    guard settings.clipboardEnabled, settings.clipboardHotkeyEnabled else {
+      hotkey.unregister(id: HotkeyManager.HotkeyID.clipboard)
+      return
+    }
+    do {
+      try hotkey.register(combo: settings.clipboardHotkey, id: HotkeyManager.HotkeyID.clipboard) { [weak self] in
+        self?.showClipboardHistory()
+      }
+    } catch {
+      NSLog("Photon: failed to register clipboard hotkey: \(error)")
     }
   }
 
