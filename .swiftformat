@@ -10,6 +10,6 @@
 --trimwhitespace always
 --insertlines enabled
 --commas inline
---trailingcommas always
+--disable trailingCommas
 --hexliteralcase lowercase
 --exclude .build,.swiftpm,build

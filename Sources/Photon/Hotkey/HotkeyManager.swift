@@ -5,11 +5,12 @@ enum HotkeyError: Error, Sendable {
   case registrationFailed(OSStatus)
 }
 
+private let photonHotKeySignature: OSType = 0x5048_544e
+
 /// Abstraction over Carbon `RegisterEventHotKey`.
 @MainActor
 final class HotkeyManager {
   static let shared = HotkeyManager()
-  static let signature: OSType = 0x5048_544e
 
   var onPressed: (() -> Void)?
 
@@ -21,7 +22,7 @@ final class HotkeyManager {
   func register(combo: HotkeyCombo) throws {
     unregister()
 
-    var hotKeyID = EventHotKeyID(signature: Self.signature, id: 1)
+    var hotKeyID = EventHotKeyID(signature: photonHotKeySignature, id: 1)
     var status = RegisterEventHotKey(
       combo.keyCode,
       combo.carbonModifiers,
@@ -83,8 +84,8 @@ private func photonHotKeyHandler(
     nil,
     &hotKeyID
   )
-  if status == noErr, hotKeyID.signature == HotkeyManager.signature {
-    DispatchQueue.main.async {
+  if status == noErr, hotKeyID.signature == photonHotKeySignature {
+    Task { @MainActor in
       HotkeyManager.shared.handlePress()
     }
   }
