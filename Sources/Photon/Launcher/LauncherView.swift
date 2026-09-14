@@ -63,7 +63,7 @@ struct LauncherView: View {
     }
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
-    .launcherSearchBarDrag(hotkey: settings.hotkey, onSearchBarDrag: onSearchBarDrag)
+    .launcherSearchBarDrag(onSearchBarDrag: onSearchBarDrag)
   }
 
   @ViewBuilder

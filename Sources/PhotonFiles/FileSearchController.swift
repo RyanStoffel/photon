@@ -49,9 +49,14 @@ public final class FileSearchController: ObservableObject {
 
   private let engine: FileSearchEngine
   private var query = ""
+  private var resultsPanelExpanded = false
   private var searchTask: Task<Void, Never>?
   private var noticeTask: Task<Void, Never>?
   private var selectionMovedByUser = false
+
+  public var prefersCompactLauncherLayout: Bool {
+    !resultsPanelExpanded && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && status == .idle
+  }
 
   public init(settings: FileSearchSettings = FileSearchSettings(), engine: FileSearchEngine = FileSearchEngine()) {
     self.settings = settings
@@ -84,12 +89,16 @@ public final class FileSearchController: ObservableObject {
 
   public func activate(query: String) {
     showsInfo = false
+    resultsPanelExpanded = false
     update(query: query)
   }
 
   public func update(query: String) {
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
     self.query = trimmed
+    if !trimmed.isEmpty {
+      resultsPanelExpanded = true
+    }
     searchTask?.cancel()
     guard !trimmed.isEmpty else {
       engine.cancel()
@@ -114,6 +123,7 @@ public final class FileSearchController: ObservableObject {
     notice = nil
     showsInfo = false
     query = ""
+    resultsPanelExpanded = false
     clearResults()
   }
 
@@ -149,6 +159,10 @@ public final class FileSearchController: ObservableObject {
   // MARK: - Selection
 
   public func moveSelection(_ delta: Int) {
+    if delta > 0, prefersCompactLauncherLayout {
+      resultsPanelExpanded = true
+      return
+    }
     guard !results.isEmpty else {
       return
     }

@@ -18,6 +18,8 @@ SCENARIOS=(
   launcher-query:saf
   calculator
   clipboard-empty
+  files-empty
+  files-query:report
   settings:appearance
   notes
 )

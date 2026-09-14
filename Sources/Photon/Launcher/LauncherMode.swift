@@ -41,6 +41,11 @@ protocol LauncherMode: AnyObject {
   func endPreviewPanelControl(_ panel: QLPreviewPanel)
 }
 
+extension LauncherMode {
+  /// When true the launcher stays at compact height (search field + footer only).
+  var prefersCompactLauncherLayout: Bool { false }
+}
+
 /// What a mode may ask of the launcher.
 @MainActor
 protocol LauncherModeHost: AnyObject {
