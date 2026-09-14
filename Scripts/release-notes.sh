@@ -23,7 +23,9 @@ changelog_section() {
       if (index($0, "## [" version "]") == 1) { printing = 1; next }
     }
     printing { print }
-  ' "$CHANGELOG" | sed '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'
+  ' "$CHANGELOG" \
+    | grep -vE '^\[(Unreleased|[0-9]+\.[0-9]+\.[0-9]+)\]: ' \
+    | sed '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'
 }
 
 body="$(changelog_section || true)"
