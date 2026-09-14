@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Launch Photon.app through LaunchServices, keep it running for a few seconds, and
 # fail if the process exited, macOS wrote a crash report for it, or the unified log
-# recorded a Swift fatal error. This is the only runtime check that runs in CI.
+# recorded a Swift fatal error or an uncaught Objective-C exception. This is the only
+# runtime check that runs in CI.
 #
 # Usage: Scripts/smoke-test.sh [path/to/Photon.app]
 # Env:   SMOKE_WAIT_SECONDS (default 8), SMOKE_LOG (unified log excerpt destination)
@@ -121,9 +122,12 @@ if [[ -n "$NEW_REPORTS" ]]; then
 fi
 
 collect_log
-if grep -Eq 'Fatal error|EXC_BAD_ACCESS|EXC_CRASH|Termination Reason' "$LOG_OUT"; then
-  echo "::error::the unified log contains a fatal error for Photon"
-  grep -En 'Fatal error|EXC_BAD_ACCESS|EXC_CRASH|Termination Reason' "$LOG_OUT" | head -n 20
+# AppKit swallows uncaught exceptions on the main run loop, so the process survives them
+# while whatever was running (for example AppRuntime.start) silently stops. Treat them as failures.
+FATAL_PATTERN='Fatal error|EXC_BAD_ACCESS|EXC_CRASH|Termination Reason|An uncaught exception was raised|HIExceptions\] FAULT'
+if grep -Eq "$FATAL_PATTERN" "$LOG_OUT"; then
+  echo "::error::the unified log contains a fatal error or uncaught exception for Photon"
+  grep -En "$FATAL_PATTERN" "$LOG_OUT" | head -n 20
   STATUS=1
 fi
 

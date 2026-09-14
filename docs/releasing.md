@@ -71,7 +71,7 @@ After the release, open a PR that merges `main` back into `develop` if `main` re
 
 ## Smoke test
 
-`Scripts/smoke-test.sh [Photon.app]` is the only runtime check that runs without a person. It verifies the code signature and `Info.plist`, launches the bundle with `open`, waits eight seconds (`SMOKE_WAIT_SECONDS`), and fails if the process is gone, macOS wrote a `Photon*.ips` crash report, or the unified log contains a Swift fatal error. CI runs it as the `smoke` job on every PR against the artifact of the `build` job; the release workflow runs it against the zip it is about to publish. The log excerpt is uploaded as the `smoke-test-log` artifact.
+`Scripts/smoke-test.sh [Photon.app]` is the only runtime check that runs without a person. It verifies the code signature and `Info.plist`, launches the bundle with `open`, waits eight seconds (`SMOKE_WAIT_SECONDS`), and fails if the process is gone, macOS wrote a `Photon*.ips` crash report, or the unified log contains a Swift fatal error or an uncaught exception (AppKit swallows those on the main run loop, so the process survives while startup silently stops). CI runs it as the `smoke` job on every PR against the artifact of the `build` job; the release workflow runs it against the zip it is about to publish. The log excerpt is uploaded as the `smoke-test-log` artifact.
 
 It does not click anything. Hotkeys, the launcher panel, clipboard capture, and window management still need a manual pass on a Mac.
 
