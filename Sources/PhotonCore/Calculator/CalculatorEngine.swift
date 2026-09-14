@@ -73,26 +73,12 @@ private enum MathExpression {
         continue
       }
       if char.isNumber || char == "." {
-        let start = index
-        var sawDot = char == "."
-        index = input.index(after: index)
-        while index < input.endIndex {
-          let next = input[index]
-          if next.isNumber {
-            index = input.index(after: index)
-          } else if next == ".", !sawDot {
-            sawDot = true
-            index = input.index(after: index)
-          } else {
-            break
-          }
-        }
-        let slice = input[start ..< index]
-        guard let value = Double(slice) else {
+        guard let (value, next) = readNumber(in: input, from: index) else {
           return []
         }
         tokens.append(.number(value))
         pendingUnary = false
+        index = next
         continue
       }
       if char == "(" {
@@ -112,13 +98,34 @@ private enum MathExpression {
           tokens.append(.number(0))
         }
         tokens.append(.op(char))
-        pendingUnary = char != ")"
+        pendingUnary = true
         index = input.index(after: index)
         continue
       }
       return []
     }
     return tokens
+  }
+
+  private static func readNumber(in input: String, from start: String.Index) -> (Double, String.Index)? {
+    var index = start
+    var sawDot = input[index] == "."
+    index = input.index(after: index)
+    while index < input.endIndex {
+      let next = input[index]
+      if next.isNumber {
+        index = input.index(after: index)
+      } else if next == ".", !sawDot {
+        sawDot = true
+        index = input.index(after: index)
+      } else {
+        break
+      }
+    }
+    guard let value = Double(input[start ..< index]) else {
+      return nil
+    }
+    return (value, index)
   }
 
   private struct Parser {
