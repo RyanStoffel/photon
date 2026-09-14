@@ -21,9 +21,9 @@ extension AppRuntime {
     case let .launcherQuery(query):
       await showLauncherForScreenshot(query: query)
     case let .settings(pane):
-      settings.pendingSettingsPane = pane
+      settings.selectedPane = pane
       openSettings()
-      try? await Task.sleep(nanoseconds: 1_200_000_000)
+      try? await Task.sleep(nanoseconds: 1_500_000_000)
       positionSettingsWindowForScreenshot()
     case .notes:
       seedScreenshotNoteIfNeeded()
