@@ -7,7 +7,7 @@ final class CalculatorDisplayModelTests: XCTestCase {
     let model = CalculatorDisplayModel(result: result, commandID: "calculator:test")
     XCTAssertEqual(model.expression, "2 + 2")
     XCTAssertEqual(model.value, "4")
-    XCTAssertEqual(model.expressionCaption, "Sum")
+    XCTAssertEqual(model.expressionCaption, "Add")
     XCTAssertEqual(model.valueCaption, "Four")
   }
 
