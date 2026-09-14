@@ -55,6 +55,15 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     }
   }
 
+  /// Resolves every provider's icons in the background so the first list draws without a stall.
+  func warmIcons() {
+    let frecency = model.frecency
+    Task.detached(priority: .utility) { [registry] in
+      let ranked = await registry.search("", frecency: frecency)
+      CommandIconCache.shared.prefetch(ranked.compactMap(\.command.icon))
+    }
+  }
+
   func toggle() {
     preload()
     guard let panel else {

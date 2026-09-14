@@ -50,7 +50,8 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
       title: "Search Files",
       subtitle: "Find files and folders with Spotlight",
       keywords: ["files", "file", "find", "finder", "spotlight", "folder", "search"],
-      providerID: id
+      providerID: id,
+      icon: .symbol(name: "doc.text.magnifyingglass")
     )
   }
 
@@ -108,7 +109,8 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
       title: file.displayName,
       subtitle: PathFormatter.parentDisplay(for: file.path, maxLength: 60),
       keywords: [file.fileName],
-      providerID: id
+      providerID: id,
+      icon: .fileIcon(path: file.path)
     )
   }
 

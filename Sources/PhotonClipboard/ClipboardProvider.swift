@@ -39,7 +39,8 @@ public final class ClipboardProvider: CommandProvider, @unchecked Sendable {
         title: "Clipboard History",
         subtitle: "Search, paste, and pin what you copied",
         keywords: Self.prefixes + ["paste", "history", "copy"],
-        providerID: id
+        providerID: id,
+        icon: .symbol(name: "clipboard")
       )
     ]
   }
