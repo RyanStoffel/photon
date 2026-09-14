@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-14
+
+Patch release: clipboard reopen/arrows, live-snap drag, Documents file search, and Down-to-recents.
+
+### Fixed
+
+- Clipboard: Down expands history and Up/Down cycle items after typing. Closing and reopening (Cmd+Shift+V or from the main search) restores the compact Photon bar; the panel size and mode reset on dismiss so the next open is not a clipped bar in a huge overlay.
+- Launcher: while dragging, X live-snaps so the panel sits between the two dotted edge guides. Drag mostly vertically to set height; X leaves the corridor only when pulled clearly outside the guides.
+- File search: `ember` surfaces `Ember_Individual_Pitch.pdf` and similar Documents files via Spotlight `mdfind -onlyin $HOME` plus a `mdfind -name` filename fallback. File hits mix into the main launcher without typing “files”. `mdfind` times out so Files cannot stick on Searching.
+- Launcher: Down on the empty/default bar reveals recommended apps and other recents. The hairline under the search field is slightly darker on top.
+
 ## [0.2.2] - 2026-09-14
 
 Patch release: clipboard arrow navigation, search-field mode pills removed, live launcher drag, and Spotlight `mdfind` file search.
@@ -99,7 +110,10 @@ First public build. Photon is a menu-bar launcher for macOS 14 and later; it has
 - The Intel slice of the universal binary has only been compiled, not run.
 - The Hyper key and window management need Accessibility access. The Caps Lock remap uses a per-login-session `hidutil` mapping; Settings > Keybinds > Reset Key Mapping restores the key if Photon quits abnormally.
 
-[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/RyanStoffel/photon/releases/tag/v0.2.3
+[0.2.2]: https://github.com/RyanStoffel/photon/releases/tag/v0.2.2
+[0.2.1]: https://github.com/RyanStoffel/photon/releases/tag/v0.2.1
 [0.2.0]: https://github.com/RyanStoffel/photon/releases/tag/v0.2.0
 [0.1.1]: https://github.com/RyanStoffel/photon/releases/tag/v0.1.1
 [0.1.0]: https://github.com/RyanStoffel/photon/releases/tag/v0.1.0
