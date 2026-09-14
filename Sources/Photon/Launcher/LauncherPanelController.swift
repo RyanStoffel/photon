@@ -272,7 +272,11 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     )
     panel.setFrameOrigin(origin)
   }
+}
 
+// MARK: Keys
+
+extension LauncherPanelController {
   private func startMonitor() {
     stopMonitor()
     localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
