@@ -28,7 +28,7 @@ public enum FileRanker: Sendable {
     includeApplications: Bool = true,
     limit: Int,
     home: String = NSHomeDirectory(),
-    scope: FileSearchScope = .home,
+    scope: FileSearchScope = .computer,
     extraFolders: [String] = []
   ) -> [RankedFile] {
     guard limit > 0 else {
