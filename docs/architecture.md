@@ -15,6 +15,7 @@ Sources/
   PhotonNotes/          Floating markdown notes (see below)
   PhotonFiles/          Spotlight file search: provider, launcher file mode, Quick Look
   PhotonKeybinds/       Hyper key, app hotkeys, window management
+  PhotonCalculator/     Inline launcher calculator and unit conversions
 Tests/
   PhotonCoreTests/      FuzzyMatcher, FrecencyStore, Command icons, launcher layout and rows
   PhotonAppsTests/      System Settings pane icon policy
@@ -34,6 +35,7 @@ Tests/
 | PhotonNotes | PhotonCore | yes (AppKit panel and split view, SwiftUI sidebar list) |
 | PhotonFiles | PhotonCore | yes (plus QuickLookUI) |
 | PhotonKeybinds | PhotonCore | yes (plus ApplicationServices, CoreGraphics, IOKit) |
+| PhotonCalculator | PhotonCore | partly (pasteboard copy guarded) |
 | Photon | all of the above | yes |
 
 ## How a provider plugs in

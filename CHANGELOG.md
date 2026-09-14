@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Launcher: inline calculator and unit conversions. Type a math expression (`30/5`, `(2+3)*4`, `2^10`) or a conversion (`10 km to mi`, `32 f to c`) to see a result row; Enter copies the result to the clipboard. Local parser only, no AI.
+
 ### Changed
 
 - Clipboard mode: matches the compact launcher layout. The panel stays search-field height until history items appear, then grows row by row. The mode is labeled in the footer instead of a pill beside the search field. Rows use the same icon, title, and secondary relative-time styling as launcher commands; pin, delete, paste, and keyboard shortcuts are unchanged.

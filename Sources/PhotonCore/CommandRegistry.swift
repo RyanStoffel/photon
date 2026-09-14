@@ -75,6 +75,9 @@ public final class CommandRegistry: @unchecked Sendable {
     if query.isEmpty {
       return 0
     }
+    if command.keywords.contains(where: { $0.caseInsensitiveCompare(query) == .orderedSame }) {
+      return 5
+    }
     if let score = FuzzyMatcher.score(query: query, candidate: command.title) {
       return score
     }
