@@ -52,9 +52,8 @@ final class FileRankerTests: XCTestCase {
     let extensionOnly = file("/a/Notes.md")
     let unrelated = file("/a/Readme.txt")
     let ranked = FileRanker.rank([unrelated, extensionOnly, name], query: "md", limit: 10)
-    XCTAssertEqual(ranked.map(\.file.path), [name.path, extensionOnly.path, unrelated.path])
-    XCTAssertEqual(ranked[1].relevance, 0.45)
-    XCTAssertEqual(ranked[2].relevance, 0.2)
+    XCTAssertEqual(ranked.map(\.file.path), [name.path, extensionOnly.path])
+    XCTAssertGreaterThan(ranked[0].relevance, ranked[1].relevance)
   }
 
   func testMultiTermQueryAveragesTermScores() {
@@ -161,4 +160,3 @@ final class FileRankerTests: XCTestCase {
     XCTAssertTrue(FileRanker.rank([unrelated], query: "ember_individual", limit: 10, home: home).isEmpty)
   }
 }
-

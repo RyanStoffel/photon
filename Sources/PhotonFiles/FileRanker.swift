@@ -94,21 +94,18 @@ public enum FileRanker: Sendable {
     if fold(stem) == folded {
       return 1
     }
-    let stemScore = FileFuzzyMatcher.score(query: query, candidate: stem)
-    let nameScore = FileFuzzyMatcher.score(query: query, candidate: fileName)
-    let pathScore = FileFuzzyMatcher.score(query: query, candidate: relativePath)
-    guard let best = [stemScore, nameScore, pathScore].compactMap { $0 }.max() else {
-      return 0
+    var weighted = 0.0
+    if let stemScore = FileFuzzyMatcher.score(query: query, candidate: stem) {
+      weighted = max(weighted, stemScore)
     }
-    var weighted = best
-    if let stemScore {
-      weighted = max(weighted, stemScore * 1.0)
-    }
-    if let nameScore {
+    if let nameScore = FileFuzzyMatcher.score(query: query, candidate: fileName) {
       weighted = max(weighted, nameScore * 0.92)
     }
-    if let pathScore {
+    if let pathScore = FileFuzzyMatcher.score(query: query, candidate: relativePath) {
       weighted = max(weighted, pathScore * 0.78)
+    }
+    guard weighted > 0 else {
+      return 0
     }
     if fold(stem).hasPrefix(folded) {
       weighted = max(weighted, 0.85)
