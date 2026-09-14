@@ -34,18 +34,8 @@ struct LauncherView: View {
 
   private var searchField: some View {
     HStack(spacing: 10) {
-      if model.mode == .clipboard {
-        Label("Clipboard", systemImage: "clipboard")
-          .font(.callout.weight(.medium))
-          .foregroundStyle(.secondary)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 4)
-          .background(.quaternary, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-      } else {
-        Image(systemName: "magnifyingglass")
-          .foregroundStyle(.secondary)
-      }
-      TextField(model.mode == .clipboard ? "Search clipboard history" : "Search applications", text: $model.query)
+      sessionBadge
+      TextField(placeholder, text: $model.query)
         .textFieldStyle(.plain)
         .font(.system(size: 22, weight: .medium))
         .onSubmit {
@@ -57,13 +47,49 @@ struct LauncherView: View {
   }
 
   @ViewBuilder
+  private var sessionBadge: some View {
+    if model.session == .clipboard {
+      Label("Clipboard", systemImage: "clipboard")
+        .font(.callout.weight(.medium))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+    } else if let mode = model.activeMode {
+      Text(mode.title)
+        .font(.caption.weight(.semibold))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(Color.accentColor.opacity(0.18)))
+        .foregroundStyle(Color.accentColor)
+    } else {
+      Image(systemName: "magnifyingglass")
+        .foregroundStyle(.secondary)
+    }
+  }
+
+  private var placeholder: String {
+    if model.session == .clipboard {
+      "Search clipboard history"
+    } else if let mode = model.activeMode {
+      mode.placeholder
+    } else {
+      "Search applications"
+    }
+  }
+
+  @ViewBuilder
   private var content: some View {
-    switch model.mode {
-    case .commands:
-      results
+    switch model.session {
     case .clipboard:
       if let clipboard = model.clipboard {
         ClipboardHistoryView(model: clipboard)
+      } else {
+        results
+      }
+    case .commands:
+      if let mode = model.activeMode {
+        mode.makeResultsView()
       } else {
         results
       }
@@ -99,8 +125,7 @@ struct LauncherView: View {
 
   private func resultRow(_ item: RankedCommand) -> some View {
     HStack(spacing: 12) {
-      Image(systemName: symbolName(for: item.command))
-        .foregroundStyle(.secondary)
+      resultIcon(for: item.command)
         .frame(width: 24)
       VStack(alignment: .leading, spacing: 2) {
         Text(item.command.title)
@@ -110,6 +135,7 @@ struct LauncherView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
+            .truncationMode(.middle)
         }
       }
       Spacer()
@@ -122,21 +148,34 @@ struct LauncherView: View {
     }
   }
 
+  @ViewBuilder
+  private func resultIcon(for command: Command) -> some View {
+    if let icon = model.mode(forInlineProvider: command.providerID)?.icon(for: command) {
+      Image(nsImage: icon)
+        .resizable()
+        .interpolation(.high)
+        .frame(width: 24, height: 24)
+    } else {
+      Image(systemName: symbolName(for: command))
+        .foregroundStyle(.secondary)
+    }
+  }
+
   private func symbolName(for command: Command) -> String {
     switch command.providerID {
     case "apps": "app.fill"
     case "clipboard": "clipboard"
+    case "files": "doc"
     default: "circle.grid.3x3"
     }
   }
 
   private func run() async {
-    switch model.mode {
+    switch model.session {
     case .clipboard:
       await model.clipboard?.performPrimaryAction()
     case .commands:
-      await model.runSelection()
-      if model.lastError == nil, model.mode == .commands {
+      if await model.runSelection() {
         onRun()
       }
     }
