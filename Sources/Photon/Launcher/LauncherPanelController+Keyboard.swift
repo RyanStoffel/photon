@@ -1,4 +1,6 @@
 import AppKit
+import PhotonClipboard
+import PhotonCore
 
 // MARK: Keys
 
@@ -75,6 +77,9 @@ extension LauncherPanelController {
     guard let clipboard = model.clipboard else {
       return handle(event) ? nil : event
     }
+    if handleClipboardListNavigation(event, clipboard: clipboard) {
+      return nil
+    }
     if clipboard.handleKeyDown(event) {
       return nil
     }
@@ -88,6 +93,54 @@ extension LauncherPanelController {
       return nil
     default:
       return event
+    }
+  }
+
+  /// Down expands the compact clipboard list, then Up/Down (and typical list
+  /// keys) move through items. Returning true swallows the event so the search
+  /// field cannot steal arrow keys.
+  func handleClipboardListNavigation(_ event: NSEvent, clipboard: ClipboardHistoryViewModel) -> Bool {
+    let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+    let command = flags.contains(.command)
+    let option = flags.contains(.option)
+    let control = flags.contains(.control)
+    guard !command, !option else {
+      return false
+    }
+
+    switch event.keyCode {
+    case 125:
+      model.moveSelection(1)
+      return true
+    case 126:
+      model.moveSelection(-1)
+      return true
+    case 45 where control:
+      model.moveSelection(1)
+      return true
+    case 35 where control:
+      model.moveSelection(-1)
+      return true
+    case 115:
+      if !model.clipboardShowsResults, !clipboard.results.isEmpty {
+        model.moveSelection(1)
+      }
+      clipboard.selectFirst()
+      return true
+    case 119:
+      if !model.clipboardShowsResults, !clipboard.results.isEmpty {
+        model.moveSelection(1)
+      }
+      clipboard.selectLast()
+      return true
+    case 121:
+      model.moveSelection(LauncherLayout.maxVisibleRows)
+      return true
+    case 116:
+      model.moveSelection(-LauncherLayout.maxVisibleRows)
+      return true
+    default:
+      return false
     }
   }
 
