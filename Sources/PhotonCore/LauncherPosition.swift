@@ -134,6 +134,28 @@ public enum LauncherPosition {
     )
   }
 
+  /// Follows the pointer on Y; snaps X into the guide corridor (centered) unless
+  /// the drag has pulled the panel midpoint clearly outside the two edge guides.
+  public static func liveDragOrigin(
+    initialOrigin: PanelOrigin,
+    startMouse: PanelOrigin,
+    currentMouse: PanelOrigin,
+    panelWidth: Double,
+    visible: ScreenVisibleFrame
+  ) -> PanelOrigin {
+    let raw = originByMouseDelta(
+      initialOrigin: initialOrigin,
+      startMouse: startMouse,
+      currentMouse: currentMouse
+    )
+    let horizontal = resolveHorizontalSnap(
+      panelMidX: raw.x + panelWidth / 2,
+      panelWidth: panelWidth,
+      visible: visible
+    )
+    return PanelOrigin(x: horizontal.originX, y: raw.y)
+  }
+
   public static func storedPosition(
     origin: PanelOrigin,
     panelWidth: Double,

@@ -8,7 +8,8 @@ Set `PHOTON_UI_SCENARIO` (or pass `--ui-scenario <name>`) at launch:
 
 | Scenario | Description |
 | --- | --- |
-| `launcher-empty` | Launcher open, empty query, results loaded |
+| `launcher-empty` | Launcher open, empty query, compact bar |
+| `launcher-recs` | Empty bar after Down: recommended apps / recents |
 | `launcher-query:saf` | Launcher with query `saf` (Safari and related rows) |
 | `calculator` | Launcher with query `2 + 2` and the Raycast-style calculator hero card |
 | `clipboard-empty` | Clipboard mode with empty history (compact bar) |

@@ -59,4 +59,6 @@ protocol LauncherModeHost: AnyObject {
   func modeRequestsDismiss()
   /// Activate the app so an auxiliary panel can take keyboard focus.
   func modeRequestsActivation()
+  /// Recompute panel height (compact vs results) after async mode state changes.
+  func modeRequestsLayoutUpdate()
 }

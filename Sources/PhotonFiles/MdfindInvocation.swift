@@ -8,13 +8,31 @@ enum MdfindInvocation: Sendable {
   /// Arguments after the executable. `-0` emits NUL-separated paths so names
   /// with spaces and newlines stay intact.
   static func arguments(queryString: String, onlyIn: [String]) -> [String] {
+    arguments(queryString: queryString, fileName: nil, onlyIn: onlyIn)
+  }
+
+  /// Filename/basename fallback (`mdfind -name`) used when the metadata
+  /// predicate misses underscore-tokenized names such as `Ember_Individual_Pitch.pdf`.
+  static func nameArguments(fileName: String, onlyIn: [String]) -> [String] {
+    arguments(queryString: nil, fileName: fileName, onlyIn: onlyIn)
+  }
+
+  static func arguments(queryString: String?, fileName: String?, onlyIn: [String]) -> [String] {
     var args: [String] = []
     for folder in onlyIn {
       args.append("-onlyin")
       args.append(folder)
     }
+    if let fileName {
+      args.append("-name")
+      args.append(fileName)
+    }
     args.append("-0")
-    args.append(queryString)
+    if let queryString {
+      args.append(queryString)
+    } else if let fileName {
+      args.append(fileName)
+    }
     return args
   }
 

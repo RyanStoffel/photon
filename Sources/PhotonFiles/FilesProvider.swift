@@ -12,8 +12,8 @@ public enum FilesProviderError: LocalizedError, Sendable {
   }
 }
 
-/// Launcher provider for the Files feature: the "Search Files" command plus up
-/// to three strong file matches inline in the default results.
+/// Launcher provider for the Files feature: the "Search Files" command plus
+/// filename matches inline in the default results (no Files-mode prefix required).
 ///
 /// Inline results never block the launcher. `commands(matching:)` returns what
 /// is cached for the exact query and otherwise starts a debounced Spotlight
@@ -128,8 +128,8 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
       guard let response = await engine.search(request) else {
         return
       }
-      let strong = response.files.filter { $0.relevance >= FileRanker.strongMatchThreshold }
-      let cache = InlineCache(query: query, files: strong.map(\.file))
+      let shown = Array(response.files.prefix(FileSearchSettings.inlineLimit))
+      let cache = InlineCache(query: query, files: shown.map(\.file))
       synchronized {
         self.cache = cache
       }

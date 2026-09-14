@@ -15,6 +15,7 @@ OUT="$ROOT/docs/screenshots"
 HELPER="$ROOT/Scripts/photon-window-id.swift"
 SCENARIOS=(
   launcher-empty
+  launcher-recs
   launcher-query:saf
   calculator
   clipboard-empty

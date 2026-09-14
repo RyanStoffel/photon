@@ -23,7 +23,8 @@ final class SpotlightQueryBuilderTests: XCTestCase {
     let query = SpotlightQueryBuilder.queryString(for: "report", searchContents: false)
     XCTAssertEqual(
       query,
-      "(kMDItemDisplayName == \"*report*\"cd || kMDItemFSName == \"*report*\"cd)"
+      "(kMDItemDisplayName == \"*report*\"cd || kMDItemFSName == \"*report*\"cd"
+        + " || kMDItemDisplayName == \"report*\"cdw || kMDItemFSName == \"report*\"cdw)"
     )
   }
 
@@ -36,8 +37,10 @@ final class SpotlightQueryBuilderTests: XCTestCase {
     let query = SpotlightQueryBuilder.queryString(for: "ember_individual", searchContents: false)
     XCTAssertEqual(
       query,
-      "(kMDItemDisplayName == \"*ember*\"cd || kMDItemFSName == \"*ember*\"cd)"
-        + " && (kMDItemDisplayName == \"*individual*\"cd || kMDItemFSName == \"*individual*\"cd)"
+      "(kMDItemDisplayName == \"*ember*\"cd || kMDItemFSName == \"*ember*\"cd"
+        + " || kMDItemDisplayName == \"ember*\"cdw || kMDItemFSName == \"ember*\"cdw)"
+        + " && (kMDItemDisplayName == \"*individual*\"cd || kMDItemFSName == \"*individual*\"cd"
+        + " || kMDItemDisplayName == \"individual*\"cdw || kMDItemFSName == \"individual*\"cdw)"
     )
   }
 
@@ -45,8 +48,10 @@ final class SpotlightQueryBuilderTests: XCTestCase {
     let query = SpotlightQueryBuilder.queryString(for: "annual report", searchContents: false)
     XCTAssertEqual(
       query,
-      "(kMDItemDisplayName == \"*annual*\"cd || kMDItemFSName == \"*annual*\"cd)"
-        + " && (kMDItemDisplayName == \"*report*\"cd || kMDItemFSName == \"*report*\"cd)"
+      "(kMDItemDisplayName == \"*annual*\"cd || kMDItemFSName == \"*annual*\"cd"
+        + " || kMDItemDisplayName == \"annual*\"cdw || kMDItemFSName == \"annual*\"cdw)"
+        + " && (kMDItemDisplayName == \"*report*\"cd || kMDItemFSName == \"*report*\"cd"
+        + " || kMDItemDisplayName == \"report*\"cdw || kMDItemFSName == \"report*\"cdw)"
     )
   }
 
@@ -55,6 +60,7 @@ final class SpotlightQueryBuilderTests: XCTestCase {
     XCTAssertEqual(
       query,
       "(kMDItemDisplayName == \"*invoice*\"cd || kMDItemFSName == \"*invoice*\"cd"
+        + " || kMDItemDisplayName == \"invoice*\"cdw || kMDItemFSName == \"invoice*\"cdw"
         + " || kMDItemTextContent == \"invoice*\"cdw)"
     )
   }
@@ -66,8 +72,10 @@ final class SpotlightQueryBuilderTests: XCTestCase {
     let query = SpotlightQueryBuilder.queryString(for: "say \"hello\"", searchContents: false)
     XCTAssertEqual(
       query,
-      "(kMDItemDisplayName == \"*say*\"cd || kMDItemFSName == \"*say*\"cd)"
-        + " && (kMDItemDisplayName == \"*hello*\"cd || kMDItemFSName == \"*hello*\"cd)"
+      "(kMDItemDisplayName == \"*say*\"cd || kMDItemFSName == \"*say*\"cd"
+        + " || kMDItemDisplayName == \"say*\"cdw || kMDItemFSName == \"say*\"cdw)"
+        + " && (kMDItemDisplayName == \"*hello*\"cd || kMDItemFSName == \"*hello*\"cd"
+        + " || kMDItemDisplayName == \"hello*\"cdw || kMDItemFSName == \"hello*\"cdw)"
     )
   }
 }

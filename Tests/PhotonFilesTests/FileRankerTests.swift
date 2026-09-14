@@ -144,6 +144,21 @@ final class FileRankerTests: XCTestCase {
     XCTAssertGreaterThanOrEqual(ranked[0].relevance, FileRanker.strongMatchThreshold)
   }
 
+  func testEmberQuerySurfacesPitchPDFAbovePrefixedFolders() {
+    let exactFolder = file("/Users/ryan/Developer/school/capstone/ember", isFolder: true)
+    let poc = file("/Users/ryan/Developer/school/capstone/ember_poc", isFolder: true)
+    let pdf = file(
+      "/Users/ryan/Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf",
+      displayName: "Ember_Individual_Pitch.pdf"
+    )
+    let ranked = FileRanker.rank([poc, pdf, exactFolder], query: "ember", limit: 10, home: home)
+    XCTAssertEqual(
+      ranked.map(\.file.path),
+      [exactFolder.path, pdf.path, poc.path]
+    )
+    XCTAssertGreaterThanOrEqual(ranked[1].relevance, 0.93)
+  }
+
   func testRelativePathMatchRanksBelowExactStem() {
     let exact = file("/Users/ryan/Downloads/ember_individual.txt")
     let byPath = file(
