@@ -8,7 +8,8 @@ import Foundation
 /// is granted, sends Cmd+V to the frontmost app.
 public enum ClipboardPaster: Sendable {
   private static let accessibilityPromptKey = "AXTrustedCheckOptionPrompt"
-  private static let accessibilitySettingsURL = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+  private static let accessibilitySettingsURL =
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
 
   /// Whether macOS lets Photon post keyboard events.
   public static var isAccessibilityTrusted: Bool {
