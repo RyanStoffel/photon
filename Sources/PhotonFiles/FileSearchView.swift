@@ -91,24 +91,30 @@ public struct FileSearchView: View {
   }
 
   private var footer: some View {
-    HStack(spacing: 14) {
+    HStack(spacing: 12) {
+      Image(systemName: "folder")
+        .font(.system(size: 12, weight: .medium))
+      Text("Files")
+        .fontWeight(.medium)
       if let notice = controller.notice {
+        Text("·")
         Text(notice)
-          .font(.caption)
-          .foregroundStyle(.secondary)
+          .lineLimit(1)
       } else {
+        Spacer(minLength: 12)
         ForEach(controller.keyHints) { hint in
           KeyHintView(hint: hint)
         }
       }
-      Spacer()
+      Spacer(minLength: 8)
       if controller.isSearching {
         ProgressView()
           .controlSize(.small)
       }
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 6)
+    .font(.system(size: 12))
+    .foregroundStyle(.secondary)
+    .padding(.horizontal, 14)
     .frame(height: LauncherLayout.footerHeight)
   }
 
