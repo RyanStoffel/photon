@@ -230,7 +230,6 @@ final class LauncherViewModel: ObservableObject {
     }
   }
 
-<<<<<<< HEAD
   // MARK: Clipboard session
 
   /// Switches the panel to clipboard history. `query` seeds its search field.
@@ -264,8 +263,6 @@ final class LauncherViewModel: ObservableObject {
     }
   }
 
-=======
->>>>>>> 8516ce7 (fix(launcher): snap guides on panel edges and reliable drag)
   // MARK: Feature modes (file search today)
 
   func enter(mode: any LauncherMode, query: String) {
@@ -340,8 +337,12 @@ final class LauncherViewModel: ObservableObject {
     case .clipboard:
       clipboardContent()
     case .commands:
-      if activeMode != nil {
-        .fullHeight
+      if let activeMode {
+        if activeMode.prefersCompactLauncherLayout {
+          .searchOnly
+        } else {
+          .fullHeight
+        }
       } else if query.isEmpty, !preferences.showsSuggestions {
         .searchOnly
       } else {
@@ -353,7 +354,6 @@ final class LauncherViewModel: ObservableObject {
     }
   }
 
-<<<<<<< HEAD
   private func clipboardContent() -> LauncherContent {
     guard let clipboard else {
       return .searchOnly
@@ -370,8 +370,6 @@ final class LauncherViewModel: ObservableObject {
     return .searchOnly
   }
 
-=======
->>>>>>> 8516ce7 (fix(launcher): snap guides on panel edges and reliable drag)
   /// Rows resolve their icon on first draw; this warms the ones below the fold.
   private func prefetchIcons(for ranked: [RankedCommand]) {
     let icons = ranked.compactMap(\.command.icon)
