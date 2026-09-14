@@ -4,18 +4,44 @@ import Foundation
 public enum PathFormatter: Sendable {
   public static let ellipsis = "\u{2026}"
 
-  public static func abbreviatingHome(_ path: String, home: String = NSHomeDirectory()) -> String {
-    let root = home.hasSuffix("/") ? String(home.dropLast()) : home
-    guard !root.isEmpty else {
-      return path
+  /// Spotlight and Finder sometimes return firmlink-prefixed paths on modern macOS.
+  public static func resolvingFirmlink(_ path: String) -> String {
+    let prefix = "/System/Volumes/Data"
+    if path == prefix {
+      return "/"
     }
-    if path == root {
-      return "~"
-    }
-    if path.hasPrefix(root + "/") {
-      return "~" + path.dropFirst(root.count)
+    if path.hasPrefix(prefix + "/") {
+      return String(path.dropFirst(prefix.count))
     }
     return path
+  }
+
+  public static func abbreviatingHome(_ path: String, home: String = NSHomeDirectory()) -> String {
+    let resolved = resolvingFirmlink(path)
+    let root = home.hasSuffix("/") ? String(home.dropLast()) : home
+    guard !root.isEmpty else {
+      return resolved
+    }
+    if resolved == root {
+      return "~"
+    }
+    if resolved.hasPrefix(root + "/") {
+      return "~" + resolved.dropFirst(root.count)
+    }
+    return resolved
+  }
+
+  /// Path under `home` without the home prefix, for fuzzy matching. `nil` when outside home.
+  public static func relativeToHome(_ path: String, home: String = NSHomeDirectory()) -> String? {
+    let resolved = resolvingFirmlink(path)
+    let root = home.hasSuffix("/") ? String(home.dropLast()) : home
+    if resolved == root {
+      return ""
+    }
+    if resolved.hasPrefix(root + "/") {
+      return String(resolved.dropFirst(root.count + 1))
+    }
+    return nil
   }
 
   /// Shortens a path to at most `maxLength` characters by dropping middle

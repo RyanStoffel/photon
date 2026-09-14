@@ -93,7 +93,7 @@ Pipeline, all off the main thread except the final publish:
 
 `FilesProvider` contributes the *Search Files* command and, for queries of three or more characters, up to three strong name matches to the default list. It never blocks `CommandRegistry.search`: it returns what is cached for the exact query and otherwise starts a background search that asks the launcher to refresh when it finishes.
 
-Spotlight privacy exclusions apply automatically because Spotlight never indexes them. The Files settings tab (`FilesSettingsView`, bound to `SettingsStore.files*` keys and bridged to `FileSearchSettings` by `FileSearchIntegration`) adds scope, content search, result limit, default action, inline results, extra folders, and excluded folders.
+Spotlight privacy exclusions apply automatically because Spotlight never indexes them. Default scope is the user home folder (`NSMetadataQueryUserHomeScope`); **This Mac** remains available in settings. `FileRanker` re-sorts Spotlight hits with launcher-style fuzzy matching on the stem, file name, and path relative to home (separator-insensitive). Paths shown in the UI abbreviate firmlink prefixes (`/System/Volumes/Data/...`) to `~/…`. The Files settings tab (`FilesSettingsView`, bound to `SettingsStore.files*` keys and bridged to `FileSearchSettings` by `FileSearchIntegration`) adds scope, content search, result limit, default action, inline results, extra folders, and excluded folders.
 
 ## PhotonNotes
 

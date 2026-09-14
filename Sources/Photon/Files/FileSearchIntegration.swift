@@ -46,7 +46,7 @@ final class FileSearchIntegration {
 extension SettingsStore {
   var fileSearchSettings: FileSearchSettings {
     FileSearchSettings(
-      scope: FileSearchScope(rawValue: filesSearchScope) ?? .computer,
+      scope: FileSearchScope(rawValue: filesSearchScope) ?? .home,
       extraFolders: filesExtraFolders,
       excludedFolders: filesExcludedFolders,
       searchContents: filesSearchContents,
