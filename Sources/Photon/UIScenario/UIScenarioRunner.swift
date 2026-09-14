@@ -23,6 +23,7 @@ extension AppRuntime {
     case let .settings(pane):
       settings.pendingSettingsPane = pane
       openSettings()
+      try? await Task.sleep(nanoseconds: 1_200_000_000)
       positionSettingsWindowForScreenshot()
     case .notes:
       seedScreenshotNoteIfNeeded()
@@ -52,7 +53,10 @@ extension AppRuntime {
       }
       return []
     case .settings:
-      return NSApp.windows.filter { $0.title == "General" || $0.title == "Settings" }
+      return NSApp.windows.filter {
+        ["General", "Appearance", "Settings"].contains($0.title)
+          || $0.className.contains("Settings")
+      }
     case .notes:
       if let window = notes.controller.screenshotWindow {
         return [window]
