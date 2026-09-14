@@ -80,7 +80,7 @@ Avoid editing `Command.swift` or `CommandRegistry.swift` unless the protocol its
 
 ### Launcher sessions and modes
 
-Clipboard history is a `LauncherSession.clipboard` beside the command list: same search field, its own view model, prefix (`cb ` / `clipboard `), and keys. File search uses a generic `LauncherMode` protocol (`Sources/Photon/Launcher/LauncherMode.swift`): typed prefixes (`/`, `f `), an activation command id, and optional inline results after the primary list. While a mode is active the launcher shows a badge, renders `makeResultsView()`, and forwards leftover keys to `handle(_:)`. Escape or Backspace on an empty query leaves the session or mode; a second Escape hides the launcher. A mode reaches back through `LauncherModeHost` (focus, dismiss, activate the app for an auxiliary panel).
+Clipboard history is a `LauncherSession.clipboard` beside the command list: same search field, its own view model, prefix (`cb ` / `clipboard `), and keys. File search uses a generic `LauncherMode` protocol (`Sources/Photon/Launcher/LauncherMode.swift`): typed prefixes (`/`, `f `), an activation command id, and optional inline results after the primary list. While a mode is active the launcher labels the footer corner (not the search field), renders `makeResultsView()`, and forwards leftover keys to `handle(_:)`. Escape or Backspace on an empty query leaves the session or mode; a second Escape hides the launcher. A mode reaches back through `LauncherModeHost` (focus, dismiss, activate the app for an auxiliary panel).
 
 Register a mode next to the provider: `launcher.register(mode:)`. Clipboard still uses `attachClipboard` rather than this hook; a chore issue tracks unifying the two.
 

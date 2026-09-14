@@ -30,10 +30,12 @@ struct LauncherView: View {
         featureContent
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
-      if model.showsCommandList || model.session == .clipboard {
+      if showsPanelFooter {
         Hairline()
         if model.session == .clipboard, let clipboard = model.clipboard {
           ClipboardLauncherFooter(model: clipboard)
+        } else if let mode = model.activeMode, model.content == .searchOnly {
+          LauncherModeFooter(title: mode.title)
         } else {
           footer
         }
@@ -51,9 +53,14 @@ struct LauncherView: View {
 
   // MARK: Search field
 
+  private var showsPanelFooter: Bool {
+    model.showsCommandList
+      || model.session == .clipboard
+      || (model.activeMode != nil && model.content == .searchOnly)
+  }
+
   private var searchField: some View {
     HStack(spacing: 12) {
-      sessionBadge
       TextField(placeholder, text: $model.query)
         .textFieldStyle(.plain)
         .font(.system(size: 20))
@@ -64,24 +71,6 @@ struct LauncherView: View {
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
     .launcherSearchBarDrag(onSearchBarDrag: onSearchBarDrag)
-  }
-
-  @ViewBuilder
-  private var sessionBadge: some View {
-    if model.session == .clipboard {
-      badge("Clipboard")
-    } else if let mode = model.activeMode {
-      badge(mode.title)
-    }
-  }
-
-  private func badge(_ title: String) -> some View {
-    Text(title)
-      .font(.system(size: 12, weight: .semibold))
-      .padding(.horizontal, 8)
-      .padding(.vertical, 4)
-      .background(Capsule().fill(Color.accentColor.opacity(0.18)))
-      .foregroundStyle(Color.accentColor)
   }
 
   private var placeholder: String {
@@ -273,6 +262,23 @@ private struct Hairline: View {
     Rectangle()
       .fill(Color.primary.opacity(0.08))
       .frame(height: LauncherLayout.hairline)
+  }
+}
+
+/// Compact-mode label in the footer corner (Clipboard / Files). No search-field pill.
+private struct LauncherModeFooter: View {
+  let title: String
+
+  var body: some View {
+    HStack(spacing: 12) {
+      Text(title)
+        .fontWeight(.medium)
+      Spacer(minLength: 0)
+    }
+    .font(.system(size: 12))
+    .foregroundStyle(.secondary)
+    .padding(.horizontal, 14)
+    .frame(height: LauncherLayout.footerHeight)
   }
 }
 
