@@ -98,7 +98,10 @@ public enum LauncherPosition {
 
   /// Horizontal positions of the two snap guides in screen coordinates.
   /// When the panel is centred, guides sit on the panel's left and right edges.
-  public static func snapGuideXPositions(visible: ScreenVisibleFrame, panelWidth: Double) -> (left: Double, right: Double) {
+  public static func snapGuideXPositions(
+    visible: ScreenVisibleFrame,
+    panelWidth: Double
+  ) -> (left: Double, right: Double) {
     (
       visible.midX - panelWidth / 2,
       visible.midX + panelWidth / 2

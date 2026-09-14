@@ -43,7 +43,9 @@ protocol LauncherMode: AnyObject {
 
 extension LauncherMode {
   /// When true the launcher stays at compact height (search field + footer only).
-  var prefersCompactLauncherLayout: Bool { false }
+  var prefersCompactLauncherLayout: Bool {
+    false
+  }
 }
 
 /// What a mode may ask of the launcher.
