@@ -318,7 +318,8 @@ extension NotesWindow: NSTextViewDelegate {
 }
 
 extension NotesWindow: NSTextStorageDelegate {
-  func textStorage(
+  /// `NSTextStorageDelegate` is nonisolated in the SDK; the storage is only ever edited on the main thread.
+  nonisolated func textStorage(
     _: NSTextStorage,
     didProcessEditing editedMask: NSTextStorageEditActions,
     range editedRange: NSRange,
@@ -327,6 +328,8 @@ extension NotesWindow: NSTextStorageDelegate {
     guard editedMask.contains(.editedCharacters) else {
       return
     }
-    restyle(around: editedRange)
+    MainActor.assumeIsolated {
+      restyle(around: editedRange)
+    }
   }
 }
