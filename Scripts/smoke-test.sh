@@ -86,8 +86,11 @@ for _ in $(seq 1 100); do
 done
 [[ -n "$PID" ]] || { collect_log; dump_log; fail "no Photon process appeared within 10 s"; }
 
+canonical() {
+  (cd "$(dirname "$1")" && printf '%s/%s\n' "$(pwd -P)" "$(basename "$1")")
+}
 RUNNING_EXECUTABLE="$(ps -p "$PID" -o comm= | sed 's/^ *//')"
-if [[ "$RUNNING_EXECUTABLE" != "$EXECUTABLE" ]]; then
+if [[ "$(canonical "$RUNNING_EXECUTABLE")" != "$(canonical "$EXECUTABLE")" ]]; then
   fail "pid $PID is running $RUNNING_EXECUTABLE, expected $EXECUTABLE"
 fi
 
