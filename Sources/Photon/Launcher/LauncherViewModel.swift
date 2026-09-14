@@ -134,14 +134,17 @@ final class LauncherViewModel: ObservableObject {
   }
 
   func resetForShow() {
-    session = .commands
-    exitMode(clearingQuery: false)
-    query = ""
-    lastError = nil
+    resetTransientUI()
     selectedID = results.first?.id
     if query.isEmpty, !preferences.showsSuggestions {
       clearResults()
     }
+  }
+
+  /// Collapse clipboard/mode chrome before the window is ordered out so the next
+  /// open cannot inherit a tall panel around a compact SwiftUI root.
+  func resetForHide() {
+    resetTransientUI()
   }
 
   /// Closes any auxiliary UI the active mode owns (Quick Look) without leaving the mode.
@@ -174,13 +177,19 @@ final class LauncherViewModel: ObservableObject {
 
   func moveSelection(_ delta: Int) {
     if session == .clipboard {
-      if !clipboardShowsResults, let clipboard, !clipboard.results.isEmpty {
-        if delta > 0 {
-          clipboardShowsResults = true
+      guard let clipboard, !clipboard.results.isEmpty else {
+        return
+      }
+      if !clipboardShowsResults {
+        clipboardShowsResults = true
+        if delta < 0 {
+          clipboard.selectLast()
+        } else {
+          clipboard.selectFirst()
         }
         return
       }
-      clipboard?.moveSelection(delta)
+      clipboard.moveSelection(delta)
       return
     }
     if let activeMode {
@@ -240,8 +249,10 @@ final class LauncherViewModel: ObservableObject {
     }
     exitMode(clearingQuery: false)
     lastError = nil
-    session = .clipboard
+    // Collapse before switching session so the first `updateContent` is compact
+    // unless this open already has a filter (and therefore rows to show).
     clipboardShowsResults = !initialQuery.isEmpty
+    session = .clipboard
     clipboard.reset()
     if query != initialQuery {
       query = initialQuery
@@ -256,6 +267,7 @@ final class LauncherViewModel: ObservableObject {
     guard session == .clipboard else {
       return
     }
+    clipboardShowsResults = false
     session = .commands
     if query.isEmpty {
       Task { await refresh() }
@@ -304,6 +316,20 @@ final class LauncherViewModel: ObservableObject {
       }
     }
     return nil
+  }
+
+  private func resetTransientUI() {
+    clipboardShowsResults = false
+    if session == .clipboard {
+      session = .commands
+    }
+    exitMode(clearingQuery: false)
+    lastError = nil
+    if !query.isEmpty {
+      query = ""
+    } else {
+      updateContent()
+    }
   }
 
   private func clearResults() {

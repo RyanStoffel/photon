@@ -137,6 +137,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       return
     }
     model.resetForShow()
+    collapseToCompactIfNeeded(force: true)
     position(panel)
     panel.orderFrontRegardless()
     panel.makeKey()
@@ -161,6 +162,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     }
     panel.title = "Photon Launcher"
     model.resetForShow()
+    collapseToCompactIfNeeded()
     UIScenarioWindowLayout.position(panel, size: panel.frame.size)
     panel.orderFrontRegardless()
     panel.makeKey()
@@ -204,6 +206,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       return
     }
     model.resetForShow()
+    collapseToCompactIfNeeded(force: true)
     position(panel)
     panel.orderFrontRegardless()
     panel.makeKey()
@@ -213,6 +216,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
 
   func hide() {
     model.prepareForHide()
+    model.resetForHide()
+    collapseToCompactIfNeeded(force: true)
     panel?.orderOut(nil)
     stopMonitor()
     persistFrecency()
@@ -298,6 +303,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       }
     ).environmentObject(settings))
     host.safeAreaRegions = []
+    host.translatesAutoresizingMaskIntoConstraints = true
     host.frame = background.bounds
     host.autoresizingMask = [.width, .height]
     background.addSubview(host)
@@ -305,15 +311,23 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     return panel
   }
 
+  /// If a previous session left the `NSPanel` taller than the SwiftUI root, the
+  /// hosting view centers the compact bar in a huge material — the clipped overlay
+  /// in GH-89. Force-sync the window to compact height on hide and before show.
+  func collapseToCompactIfNeeded(force: Bool = false) {
+    let content: LauncherContent = force ? .searchOnly : model.content
+    resize(width: model.panelWidth, content: content, force: force)
+  }
+
   /// Keeps the top edge fixed so the search field never jumps.
   /// Recentres horizontally only when snapped to center.
-  private func resize(width: Double, content: LauncherContent) {
+  private func resize(width: Double, content: LauncherContent, force: Bool = false) {
     guard let panel else {
       return
     }
     let size = NSSize(width: width, height: LauncherLayout.height(for: content))
     var frame = panel.frame
-    guard frame.size != size else {
+    guard force || frame.size != size else {
       return
     }
     let keepsCenter = settings.launcherStoredPosition?.isHorizontallyCentered ?? true
