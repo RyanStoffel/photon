@@ -1,12 +1,29 @@
+import PhotonClipboard
 import PhotonCore
 import SwiftUI
+
+/// What the panel shows below the search field.
+enum LauncherMode: Equatable {
+  case commands
+  case clipboard
+}
 
 @MainActor
 final class LauncherViewModel: ObservableObject {
   @Published var query = "" {
     didSet {
-      if query != oldValue {
-        Task { await refresh() }
+      guard query != oldValue else {
+        return
+      }
+      switch mode {
+      case .clipboard:
+        clipboard?.query = query
+      case .commands:
+        if clipboard != nil, let sub = ClipboardProvider.historyQuery(fromLauncherQuery: query) {
+          enterClipboard(query: sub)
+        } else {
+          Task { await refresh() }
+        }
       }
     }
   }
@@ -15,9 +32,12 @@ final class LauncherViewModel: ObservableObject {
   @Published var selectedID: String?
   @Published var isLoading = false
   @Published var lastError: String?
+  @Published private(set) var mode: LauncherMode = .commands
 
   let registry: CommandRegistry
   var frecency: FrecencyStore
+  /// Set by `AppRuntime` once the clipboard feature is available.
+  var clipboard: ClipboardHistoryViewModel?
   private let limit = 30
 
   init(registry: CommandRegistry, frecency: FrecencyStore) {
@@ -26,6 +46,7 @@ final class LauncherViewModel: ObservableObject {
   }
 
   func resetForShow() {
+    mode = .commands
     query = ""
     lastError = nil
     selectedID = results.first?.id
@@ -56,12 +77,48 @@ final class LauncherViewModel: ObservableObject {
     guard let selectedID, let ranked = results.first(where: { $0.id == selectedID }) else {
       return
     }
+    if ranked.command.id == ClipboardProvider.historyCommandID, clipboard != nil {
+      frecency.recordUse(id: ranked.command.id)
+      lastError = nil
+      enterClipboard(query: "")
+      return
+    }
     do {
       try await registry.execute(ranked.command)
       frecency.recordUse(id: ranked.command.id)
       lastError = nil
     } catch {
       lastError = error.localizedDescription
+    }
+  }
+
+  // MARK: Clipboard mode
+
+  /// Switches the panel to clipboard history. `query` seeds its search field.
+  func enterClipboard(query initialQuery: String) {
+    guard let clipboard else {
+      return
+    }
+    lastError = nil
+    mode = .clipboard
+    clipboard.reset()
+    if query != initialQuery {
+      query = initialQuery
+    } else {
+      clipboard.query = initialQuery
+    }
+  }
+
+  /// Back to the command list with an empty query.
+  func exitClipboard() {
+    guard mode == .clipboard else {
+      return
+    }
+    mode = .commands
+    if query.isEmpty {
+      Task { await refresh() }
+    } else {
+      query = ""
     }
   }
 }

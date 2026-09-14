@@ -75,7 +75,7 @@ swiftformat --lint .
 swiftlint
 ```
 
-`PhotonCore` (fuzzy matching, frecency, the command registry) has no AppKit dependency and is the only target that compiles on Linux. Feature modules that import AppKit are gated with `#if os(macOS)` in `Package.swift`.
+`PhotonCore` (fuzzy matching, frecency, the command registry) has no AppKit dependency and compiles on Linux, as does the non-AppKit half of `PhotonClipboard` (its AppKit files are wrapped in `#if canImport(AppKit)`). The other feature modules are gated with `#if os(macOS)` in `Package.swift`.
 
 ### Opening in Xcode
 
