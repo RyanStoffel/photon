@@ -1,12 +1,14 @@
 import Carbon
 import Foundation
 import PhotonClipboard
+import PhotonKeybinds
 
 @MainActor
 final class SettingsStore: ObservableObject {
   var onHotkeyChange: (() -> Void)?
   var onClipboardChange: (() -> Void)?
   var onNotesChange: (() -> Void)?
+  var onKeybindsChange: (() -> Void)?
 
   private enum Keys {
     static let hotkeyKeyCode = "hotkeyKeyCode"
@@ -33,6 +35,7 @@ final class SettingsStore: ObservableObject {
     static let filesExtraFolders = "filesExtraFolders"
     static let filesExcludedFolders = "filesExcludedFolders"
     static let hyperKeyEnabled = "hyperKeyEnabled"
+    static let keybinds = "keybindsConfiguration"
   }
 
   private let defaults: UserDefaults
@@ -185,8 +188,14 @@ final class SettingsStore: ObservableObject {
     didSet { defaults.set(filesExcludedFolders, forKey: Keys.filesExcludedFolders) }
   }
 
-  @Published var hyperKeyEnabled: Bool {
-    didSet { defaults.set(hyperKeyEnabled, forKey: Keys.hyperKeyEnabled) }
+  /// Hyper key, app hotkeys, and window shortcuts. Stored as one JSON blob.
+  @Published var keybinds: KeybindsConfiguration {
+    didSet {
+      if let data = try? JSONEncoder().encode(keybinds) {
+        defaults.set(data, forKey: Keys.keybinds)
+      }
+      onKeybindsChange?()
+    }
   }
 
   init(defaults: UserDefaults = .standard) {
@@ -240,7 +249,21 @@ final class SettingsStore: ObservableObject {
     filesInlineResults = defaults.object(forKey: Keys.filesInlineResults) as? Bool ?? true
     filesExtraFolders = defaults.stringArray(forKey: Keys.filesExtraFolders) ?? []
     filesExcludedFolders = defaults.stringArray(forKey: Keys.filesExcludedFolders) ?? []
-    hyperKeyEnabled = defaults.object(forKey: Keys.hyperKeyEnabled) as? Bool ?? true
+    keybinds = Self.loadKeybinds(from: defaults)
+  }
+
+  private static func loadKeybinds(from defaults: UserDefaults) -> KeybindsConfiguration {
+    let stored = defaults.data(forKey: Keys.keybinds).flatMap {
+      try? JSONDecoder().decode(KeybindsConfiguration.self, from: $0)
+    }
+    if let stored {
+      return stored.normalized()
+    }
+    var configuration = KeybindsConfiguration.default
+    if let legacyEnabled = defaults.object(forKey: Keys.hyperKeyEnabled) as? Bool {
+      configuration.hyperKey.enabled = legacyEnabled
+    }
+    return configuration
   }
 
   private static func loadCombo(

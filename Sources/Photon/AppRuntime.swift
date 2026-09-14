@@ -14,6 +14,7 @@ final class AppRuntime: ObservableObject {
   let launcher: LauncherPanelController
   let clipboard: ClipboardManager
   let notes: NotesIntegration
+  let keybinds: KeybindsController
   private let hotkey = HotkeyManager.shared
   private let frecencyURL: URL
   private var fileSearch: FileSearchIntegration?
@@ -32,6 +33,7 @@ final class AppRuntime: ObservableObject {
     )
     launcher.attachClipboard(clipboard)
     notes = NotesIntegration(settings: settings)
+    keybinds = KeybindsController(hotkeys: hotkey)
     registerProviders()
   }
 
@@ -50,16 +52,26 @@ final class AppRuntime: ObservableObject {
       self?.applyClipboardSettings()
     }
     notes.start()
+    keybinds.apply(settings.keybinds)
+    settings.onKeybindsChange = { [weak self] in
+      guard let self else {
+        return
+      }
+      keybinds.apply(settings.keybinds)
+    }
     SpotlightConflict.adviseIfNeeded(current: settings.hotkey)
+    keybinds.adviseAccessibilityIfNeeded()
   }
 
   func stop() {
+    keybinds.stop()
     notes.stop()
     hotkey.unregisterAll()
     clipboard.stop()
     persistFrecency()
     settings.onHotkeyChange = nil
     settings.onClipboardChange = nil
+    settings.onKeybindsChange = nil
   }
 
   func toggleLauncher() {
@@ -91,7 +103,7 @@ final class AppRuntime: ObservableObject {
     registry.register(clipboardProvider)
     registry.register(notes.provider)
     fileSearch = FileSearchIntegration(settings: settings, registry: registry, launcher: launcher)
-    registry.register(KeybindsProvider())
+    registry.register(KeybindsProvider(controller: keybinds))
   }
 
   private func applyHotkey() {
