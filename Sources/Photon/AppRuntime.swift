@@ -38,6 +38,10 @@ final class AppRuntime: ObservableObject {
   }
 
   func start() {
+    applyAppearance()
+    settings.onAppearanceChange = { [weak self] in
+      self?.applyAppearance()
+    }
     launcher.preload()
     if UIScenario.current == nil {
       clipboard.start()
@@ -96,6 +100,12 @@ final class AppRuntime: ObservableObject {
     settings.onHotkeyChange = nil
     settings.onClipboardChange = nil
     settings.onKeybindsChange = nil
+    settings.onAppearanceChange = nil
+  }
+
+  /// Settings > Appearance applies to every Photon window, including the launcher panel.
+  private func applyAppearance() {
+    NSApp.appearance = settings.appearance.nsAppearance
   }
 
   func toggleLauncher() {

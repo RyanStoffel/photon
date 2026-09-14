@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Settings > Appearance: show suggestions before typing (off by default), panel width (Compact / Regular / Wide), and appearance (System / Light / Dark) for every Photon window.
+
+### Changed
+
+- Launcher: redesigned panel. A wider (740 pt), rounded panel on the system popover material with a hairline border; a 20 pt search field with the placeholder "Search apps, files, notes and more…"; a footer with the app name and the key hint for the selected row. The panel opens as a single search field and grows as results arrive; suggestions before typing are an option.
+- Launcher rows: icon and name only for applications (no path); subtitles stay where they carry meaning (System Settings, file location, command descriptions, window shortcuts) and render as secondary text on the same line. Rows are 40 pt with a rounded selection highlight; commands without an app icon get a small symbol tile.
+
 ### Fixed
 
 - Launcher: application rows show the app's real icon instead of a placeholder square. The launcher never asked the system for app icons; commands now carry an icon description that the launcher resolves and caches. System Settings panes use their own pane icon and fall back to the System Settings icon; clipboard, notes, file, and window commands have fitting icons too.

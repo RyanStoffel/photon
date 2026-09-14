@@ -8,7 +8,7 @@ Deployment target: macOS 14.
 
 ```
 Sources/
-  PhotonCore/           Fuzzy matching, frecency, Command, CommandRegistry
+  PhotonCore/           Fuzzy matching, frecency, Command, CommandRegistry, launcher layout and row rules
   Photon/               App process: hotkey, launcher panel, settings, wiring
   PhotonApps/           Application + System Settings pane provider
   PhotonClipboard/      Clipboard history: monitor, store, search, panel view
@@ -16,7 +16,7 @@ Sources/
   PhotonFiles/          Spotlight file search: provider, launcher file mode, Quick Look
   PhotonKeybinds/       Hyper key, app hotkeys, window management
 Tests/
-  PhotonCoreTests/      FuzzyMatcher, FrecencyStore, Command icons
+  PhotonCoreTests/      FuzzyMatcher, FrecencyStore, Command icons, launcher layout and rows
   PhotonAppsTests/      System Settings pane icon policy
   PhotonClipboardTests/ History rules (dedupe, retention), search ranking, store round trip
   PhotonNotesTests/     Title extraction, markdown spans, store, debounce, query parsing
@@ -119,9 +119,10 @@ App-side wiring lives in `Sources/Photon/Notes/NotesIntegration.swift`: it maps 
 - `PhotonApp` is a SwiftUI `@main` app with `NSApplicationDelegateAdaptor`.
 - `LSUIElement` keeps it out of the Dock. A `MenuBarExtra` is the visible affordance.
 - `HotkeyManager` wraps Carbon `RegisterEventHotKey`. The default shortcut is `Cmd+Space`. First launch compares that shortcut to Spotlight (`com.apple.symbolichotkeys`, id 64) and shows guidance if they collide.
-- `LauncherPanelController` owns a non-activating floating `NSPanel` (native material, centered). The panel is created at launch so the hotkey only has to order it front. Esc and losing key focus hide it. The panel has a command list, a clipboard session (`LauncherSession.clipboard`), and protocol-based feature modes (`LauncherMode`; file search today).
+- `LauncherPanelController` owns a non-activating floating `NSPanel`. Its content view is an `NSVisualEffectView` (`.popover`, `.behindWindow`, always active) clipped to a 12 pt continuous corner radius, with the SwiftUI `LauncherView` on top. The panel is created at launch so the hotkey only has to order it front. Esc and losing key focus hide it. The panel has a command list, a clipboard session (`LauncherSession.clipboard`), and protocol-based feature modes (`LauncherMode`; file search today).
+- Panel size: `LauncherLayout` (PhotonCore) is the single source of the metrics (56 pt search field, 40 pt rows, at most 8 visible, 32 pt footer, width presets 620 / 740 / 860). `LauncherViewModel` publishes a `LauncherContent` (`.searchOnly` for an empty query in compact mode, `.rows(n)`, or `.fullHeight` for clipboard and file mode); the controller resizes the window from it with the top edge fixed, and `LauncherView` sizes itself from the same value, so the two never disagree. `LauncherRow` maps a `Command` to what a row shows (title, optional secondary detail, icon). Settings > Appearance (`launcherShowsSuggestions`, `launcherPanelWidth`, `appearance`) reach the launcher as a `LauncherPreferences` value; `appearance` is applied to `NSApp.appearance`.
 - `HotkeyManager` registers several Carbon hotkeys keyed by id: `1` is the launcher, `2` opens clipboard history, `3` toggles the notes window (off by default), and `add(combo:handler:)` hands out ids from `1000` for features with a dynamic number of shortcuts (app hotkeys, window commands).
-- Settings is a regular SwiftUI `Settings` scene: General, Clipboard, Notes, Files, Keybinds, and About are all implemented and bound to `SettingsStore`.
+- Settings is a regular SwiftUI `Settings` scene: General, Appearance, Clipboard, Notes, Files, Keybinds, and About are all implemented and bound to `SettingsStore`.
 
 ## Clipboard history (`PhotonClipboard`)
 
