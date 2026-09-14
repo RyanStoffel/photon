@@ -133,6 +133,8 @@ public enum LauncherPosition {
       y: initialOrigin.y + (currentMouse.y - startMouse.y)
     )
   }
+
+  public static func storedPosition(
     origin: PanelOrigin,
     panelWidth: Double,
     visible: ScreenVisibleFrame
