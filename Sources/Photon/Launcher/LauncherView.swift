@@ -67,7 +67,7 @@ struct LauncherView: View {
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
     .contentShape(Rectangle())
-    .gesture(searchBarDragGesture)
+    .highPriorityGesture(searchBarDragGesture)
   }
 
   private var searchBarDragGesture: some Gesture {

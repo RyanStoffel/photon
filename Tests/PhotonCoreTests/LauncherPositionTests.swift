@@ -2,7 +2,7 @@ import PhotonCore
 import XCTest
 
 final class LauncherPositionTests: XCTestCase {
-  private let visible = ScreenVisibleFrame(minX: 0, minY: 0, width: 1_440, height: 900)
+  private let visible = ScreenVisibleFrame(minX: 0, minY: 0, width: 1440, height: 900)
   private let panel = PanelSize(width: 740, height: 89)
 
   func testDefaultOriginCentersHorizontally() {
