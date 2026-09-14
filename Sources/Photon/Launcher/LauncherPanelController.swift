@@ -98,6 +98,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     guard let panel else {
       return
     }
+    panel.title = "Photon Launcher"
     model.resetForShow()
     UIScenarioWindowLayout.position(panel, size: panel.frame.size)
     panel.orderFrontRegardless()

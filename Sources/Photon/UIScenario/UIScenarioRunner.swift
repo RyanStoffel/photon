@@ -29,6 +29,24 @@ extension AppRuntime {
       notes.controller.show(focus: true)
       positionNotesWindowForScreenshot()
     }
+    hideWindowsExceptScenario(scenario)
+  }
+
+  @MainActor
+  private func hideWindowsExceptScenario(_ scenario: UIScenario) {
+    let keep: (NSWindow) -> Bool = { window in
+      switch scenario {
+      case .launcherEmpty, .launcherQuery:
+        return window.title == "Photon Launcher"
+      case .settings:
+        return window.title == "General" || window.title == "Settings"
+      case .notes:
+        return window.title == "Screenshot sample" || window.title == "Notes"
+      }
+    }
+    for window in NSApp.windows where window.isVisible && !keep(window) {
+      window.orderOut(nil)
+    }
   }
 
   @MainActor
@@ -82,6 +100,8 @@ enum UIScenarioScreenshotNote {
   - [ ] Open task
   - [x] Completed task
   """
+    .trimmingCharacters(in: .whitespacesAndNewlines)
+    + "\n"
 }
 
 enum UIScenarioWindowLayout {

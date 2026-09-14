@@ -42,35 +42,17 @@ wait_for_ready() {
   return 1
 }
 
-window_ids_for_pid() {
+capture_scenario_window() {
   local pid="$1"
-  swift "$HELPER" --pid "$pid" --owner Photon --layer 0 2>/dev/null || true
-}
-
-capture_pid_windows() {
-  local pid="$1"
-  local destination="$2"
-  local ids
-  ids="$(window_ids_for_pid "$pid")"
-  if [[ -z "$ids" ]]; then
-    echo "No Photon windows found for pid $pid" >&2
+  local scenario="$2"
+  local destination="$3"
+  local window_id
+  window_id="$(swift "$HELPER" --pid "$pid" --owner Photon --layer 0 --scenario "$scenario")" || {
+    echo "No matching Photon window for scenario $scenario (pid $pid)" >&2
     return 1
-  fi
-  local index=0
-  while IFS= read -r window_id; do
-    [[ -z "$window_id" ]] && continue
-    local path="$destination"
-    if (( index > 0 )); then
-      path="${destination%.png}-${index}.png"
-    fi
-    screencapture -x -l "$window_id" "$path"
-    sips -Z 1600 "$path" >/dev/null
-    index=$((index + 1))
-  done <<< "$ids"
-  if (( index == 0 )); then
-    return 1
-  fi
-  return 0
+  }
+  screencapture -x -l "$window_id" "$destination"
+  sips -Z 1600 "$destination" >/dev/null
 }
 
 quit_photon() {
@@ -113,7 +95,7 @@ run_scenario() {
   wait_for_ready "$ready_marker"
   sleep 0.75
 
-  capture_pid_windows "$pid" "$png" || {
+  capture_scenario_window "$pid" "$scenario" "$png" || {
     quit_photon
     rm -rf "$data_root"
     return 1
