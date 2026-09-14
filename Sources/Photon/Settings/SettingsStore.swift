@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 final class SettingsStore: ObservableObject {
-  static let didChangeHotkey = Notification.Name("PhotonSettingsDidChangeHotkey")
+  var onHotkeyChange: (() -> Void)?
 
   private enum Keys {
     static let hotkeyKeyCode = "hotkeyKeyCode"
@@ -21,7 +21,7 @@ final class SettingsStore: ObservableObject {
     didSet {
       defaults.set(Int(hotkey.keyCode), forKey: Keys.hotkeyKeyCode)
       defaults.set(Int(hotkey.carbonModifiers), forKey: Keys.hotkeyModifiers)
-      NotificationCenter.default.post(name: Self.didChangeHotkey, object: self)
+      onHotkeyChange?()
     }
   }
 
