@@ -6,11 +6,11 @@ let package = Package(
   name: "Photon",
   platforms: [.macOS(.v14)],
   products: [
-    .library(name: "PhotonCore", targets: ["PhotonCore"])
+    .library(name: "PhotonCore", targets: ["PhotonCore"]),
   ],
   targets: [
     .target(name: "PhotonCore"),
-    .testTarget(name: "PhotonCoreTests", dependencies: ["PhotonCore"])
+    .testTarget(name: "PhotonCoreTests", dependencies: ["PhotonCore"]),
   ]
 )
 
@@ -30,8 +30,8 @@ package.targets.append(contentsOf: [
       "PhotonClipboard",
       "PhotonNotes",
       "PhotonFiles",
-      "PhotonKeybinds"
+      "PhotonKeybinds",
     ]
-  )
+  ),
 ])
 #endif
