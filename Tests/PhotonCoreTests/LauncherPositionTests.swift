@@ -27,7 +27,7 @@ final class LauncherPositionTests: XCTestCase {
   }
 
   func testResolveHorizontalSnapKeepsOffsetOutsideGuides() {
-    let offsetMidX = visible.midX + 100
+    let offsetMidX = visible.midX + panel.width / 2 + 40
     let result = LauncherPosition.resolveHorizontalSnap(
       panelMidX: offsetMidX,
       panelWidth: panel.width,
