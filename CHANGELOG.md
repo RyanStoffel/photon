@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Notes: the window now has a collapsible sidebar (`NSSplitViewController`, system sidebar material) listing every note with its title, a one-line snippet, and a Notes-style date, newest first. `Cmd+P` focuses the list instead of opening a popover; `Ctrl+Cmd+S` hides or shows the sidebar; the sidebar's width and collapsed state are remembered. The toolbar uses the unified style with the standard sidebar toggle, "New Note" beside it, and an `ellipsis.circle` menu (Float on Top, Reveal in Finder, Delete Note). The editor styles the first line as a title, uses wider insets, and sits on the standard text background. The window title is the current note's title. Text size commands moved out of the menu; `Cmd+=` / `Cmd+-` / `Cmd+0` and the Notes settings tab still control it.
+
 ## [0.1.0] - 2026-09-14
 
 First public build. Photon is a menu-bar launcher for macOS 14 and later; it has no Dock icon, no account, no cloud sync, and no telemetry.
