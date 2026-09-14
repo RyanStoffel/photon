@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Launcher: System Settings panes are indexed and shown by their human-facing titles (localized bundle names and common pane labels), with searchable aliases such as `wallpaper`, `privacy`, `bluetooth`, and `battery`, instead of internal `.prefPane` bundle filenames.
+
 ## [0.1.1] - 2026-09-14
 
 UI polish release: redesigned launcher, Appearance settings, real app icons, Notes sidebar, and a screenshot harness for visual QA on macOS.
