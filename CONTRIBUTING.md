@@ -10,7 +10,7 @@ Photon is a small, macOS-only launcher. Keep changes focused, native-feeling, an
 
 ### Branch names
 
-CI rejects pull requests whose head branch does not match:
+CI rejects pull requests whose head branch does not match (Dependabot's `dependabot/*` branches are allowed):
 
 | Kind | Pattern | Example |
 | --- | --- | --- |
