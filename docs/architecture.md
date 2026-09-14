@@ -19,7 +19,7 @@ Tests/
   PhotonCoreTests/      FuzzyMatcher, FrecencyStore, Command icons, launcher layout and rows
   PhotonAppsTests/      System Settings pane icon policy
   PhotonClipboardTests/ History rules (dedupe, retention), search ranking, store round trip
-  PhotonNotesTests/     Title extraction, markdown spans, store, debounce, query parsing
+  PhotonNotesTests/     Title extraction, markdown spans, store, debounce, query parsing, sidebar rows
   PhotonFilesTests/     Spotlight query strings, ranking, path truncation
   PhotonKeybindsTests/  Frame math, shortcut parsing, conflicts, hidutil mapping format
 ```
@@ -31,7 +31,7 @@ Tests/
 | PhotonCore | -- | no |
 | PhotonApps | PhotonCore | yes |
 | PhotonClipboard | PhotonCore | partly (guarded) |
-| PhotonNotes | PhotonCore | yes (AppKit panel, SwiftUI switcher) |
+| PhotonNotes | PhotonCore | yes (AppKit panel and split view, SwiftUI sidebar list) |
 | PhotonFiles | PhotonCore | yes (plus QuickLookUI) |
 | PhotonKeybinds | PhotonCore | yes (plus ApplicationServices, CoreGraphics, IOKit) |
 | Photon | all of the above | yes |
@@ -104,10 +104,11 @@ Raycast-Notes-style floating notes. One markdown file per note in
 | --- | --- |
 | `NotesController` (public) | Facade the app uses: show / toggle / hide, create, open, delete, preferences, `noteSummaries()` for the launcher. Owns the store, the current note, and autosave. |
 | `NoteStore` | Directory-backed CRUD. Files are named after creation time (`Note 2026-09-14 at 03.12.45.md`) and never renamed, so launcher frecency stays stable. Writes are atomic; `rescan()` diffs modification date + size so external edits are picked up when the window becomes key. Delete moves to the Trash. |
-| `NotesWindow` / `NotesPanel` | Non-activating `NSPanel` (titled, closable, resizable, `.unifiedCompact` toolbar, `NSVisualEffectView` background). Floats at `.floating` level when the preference is on. Frame is autosaved under `PhotonNotesWindow`. The panel handles ⌘N / ⌘P / ⌘W / ⌘F / ⌘+ / ⌘- / ⌘0 / Esc and routes copy / paste / undo itself because an agent app may have no Edit menu. |
-| `MarkdownTextView` + `MarkdownTextStyler` | `NSTextView` (TextKit 1, plain text) styled from `MarkdownStyler` spans inside `NSTextStorageDelegate.didProcessEditing`. Content stays plain markdown; only attributes change. Clicking `[ ]` toggles it, Return continues lists. |
-| `MarkdownStyler` (pure) | Line-based span computation: headings, bold / italic, inline code, fenced code, bullet and numbered lists, checkboxes. Paragraph-local restyle unless the document contains a fence. |
-| `NoteSwitcherModel` / `NoteSwitcherView` | ⌘P popover anchored to the toolbar: fuzzy filter over titles (`FuzzyMatcher`), arrow keys, Return opens, "Create" when nothing matches. |
+| `NotesWindow` / `NotesPanel` | Non-activating `NSPanel` (titled, closable, resizable, `.unified` toolbar) whose `contentViewController` is an `NSSplitViewController`: a sidebar item (`NSSplitViewItem(sidebarWithViewController:)`, system sidebar material, full-height layout, 180–340 pt) hosting the SwiftUI list, and the editor column on `textBackgroundColor`. Floats at `.floating` level when the preference is on. Frame is autosaved under `PhotonNotesWindow.sidebar`; sidebar width and collapsed state are stored in `PhotonNotesSidebarWidth` / `PhotonNotesSidebarCollapsed` (`NotesWindow+Sidebar.swift`). The panel handles ⌘N / ⌘P (list ⇄ editor) / ⌃⌘S (toggle sidebar) / ⌘W / ⌘F / ⌘+ / ⌘- / ⌘0 / Esc and Return (list → editor), and routes copy / paste / undo itself because an agent app may have no Edit menu. The window title is the current note's title. |
+| `NotesWindow+Toolbar` | Standard toolbar items only: `.toggleSidebar`, "New Note" (`square.and.pencil`) in the sidebar's toolbar area, `.sidebarTrackingSeparator`, flexible space, and an `NSMenuToolbarItem` (`ellipsis.circle`) with Float on Top, Reveal in Finder, Delete Note. SF Symbols at the default toolbar size, no tinting. |
+| `MarkdownTextView` + `MarkdownTextStyler` | `NSTextView` (TextKit 1, plain text) styled from `MarkdownStyler` spans inside `NSTextStorageDelegate.didProcessEditing` (`NotesWindow+Editor.swift`). Content stays plain markdown; only attributes change. The first non-blank line gets the `.title` look (1.7× the body size, bold, extra paragraph spacing) layered over its markdown spans. 18 pt container insets. Clicking `[ ]` toggles it, Return continues lists. |
+| `MarkdownStyler` (pure) | Line-based span computation: headings, bold / italic, inline code, fenced code, bullet and numbered lists, checkboxes. `titleSpan(in:)` marks the first non-blank line; `editAffectsTitle(_:in:)` tells the editor when an edit near the top needs a full pass. Otherwise restyling is paragraph-local unless the document contains a fence. |
+| `NoteSidebarRow` (pure) / `NoteSidebarModel` / `NoteSidebarView` | Sidebar rows (title, snippet or "No additional text", Notes-style date: time today, "Yesterday", weekday within a week, else numeric) sorted newest first; the model bridges the SwiftUI `List(selection:)` to the controller and distinguishes user selection from programmatic updates. |
 | `Debouncer` (pure) | Autosave coalescing (0.6 s) with an injectable scheduler for tests. Flushes on note switch, hide, resign key, and termination. |
 | `NoteQuery` (pure) | Launcher grammar: `notes`, `note`, `n <text>`, `note <text>`, `notes <text>` list notes; anything else only matches the fixed "Notes" and "New Note" commands. |
 | `NotesProvider` | `CommandProvider`: `notes.open`, `notes.new`, and `note:<id>` results. |
