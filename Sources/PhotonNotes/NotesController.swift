@@ -60,6 +60,10 @@ public final class NotesController: NSObject {
     window?.isVisible ?? false
   }
 
+  public var screenshotWindow: NSWindow? {
+    window?.panel
+  }
+
   /// Newest first, including unsaved edits to the current note.
   public func noteSummaries() -> [NoteSummary] {
     loadIfNeeded()
