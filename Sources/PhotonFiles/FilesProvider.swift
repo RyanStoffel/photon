@@ -55,22 +55,18 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
   }
 
   public func update(settings: FileSearchSettings) {
-    lock.lock()
-    self.settings = settings
-    cache = nil
-    lock.unlock()
+    synchronized {
+      self.settings = settings
+      cache = nil
+    }
   }
 
   public func commands(matching query: String) async -> [Command] {
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
     var commands = [searchCommand]
+    let (current, cached) = synchronized { (settings, cache) }
 
-    lock.lock()
-    let settings = settings
-    let cached = cache
-    lock.unlock()
-
-    guard settings.inlineResults, trimmed.count >= FileSearchSettings.inlineMinimumQueryLength else {
+    guard current.inlineResults, trimmed.count >= FileSearchSettings.inlineMinimumQueryLength else {
       cancelInlineSearch()
       return commands
     }
@@ -78,7 +74,7 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
       commands += cached.files.map(command(for:))
       return commands
     }
-    scheduleInlineSearch(query: trimmed, settings: settings)
+    scheduleInlineSearch(query: trimmed, settings: current)
     return commands
   }
 
@@ -86,10 +82,10 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
     if command.id == Self.searchCommandID {
       return
     }
-    lock.lock()
-    let file = cache?.files.first { $0.path == Self.path(forCommandID: command.id) }
-    let action = settings.defaultAction
-    lock.unlock()
+    let path = Self.path(forCommandID: command.id)
+    let (file, action) = synchronized {
+      (cache?.files.first { $0.path == path }, settings.defaultAction)
+    }
     guard let file else {
       throw FilesProviderError.unknownCommand(command.id)
     }
@@ -131,9 +127,10 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
         return
       }
       let strong = response.files.filter { $0.relevance >= FileRanker.strongMatchThreshold }
-      lock.lock()
-      cache = InlineCache(query: query, files: strong.map(\.file))
-      lock.unlock()
+      let cache = InlineCache(query: query, files: strong.map(\.file))
+      synchronized {
+        self.cache = cache
+      }
       onInlineResultsChanged?()
     }
   }
@@ -142,5 +139,11 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
     Task { @MainActor [weak self] in
       self?.engine.cancel()
     }
+  }
+
+  private func synchronized<T>(_ body: () throws -> T) rethrows -> T {
+    lock.lock()
+    defer { lock.unlock() }
+    return try body()
   }
 }

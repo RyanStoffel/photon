@@ -77,18 +77,15 @@ public final class QuickLookCoordinator: NSObject {
   }
 }
 
-extension QuickLookCoordinator: QLPreviewPanelDataSource {
-  public nonisolated func numberOfPreviewItems(in _: QLPreviewPanel!) -> Int {
-    MainActor.assumeIsolated {
-      previewURL == nil ? 0 : 1
-    }
+/// Quick Look calls its data source on the main thread; `@preconcurrency`
+/// lets these main-actor methods satisfy the nonisolated protocol.
+extension QuickLookCoordinator: @preconcurrency QLPreviewPanelDataSource {
+  public func numberOfPreviewItems(in _: QLPreviewPanel!) -> Int {
+    previewURL == nil ? 0 : 1
   }
 
-  public nonisolated func previewPanel(_: QLPreviewPanel!, previewItemAt _: Int) -> (any QLPreviewItem)! {
-    let url: URL? = MainActor.assumeIsolated {
-      previewURL
-    }
-    return url.map { $0 as NSURL }
+  public func previewPanel(_: QLPreviewPanel!, previewItemAt _: Int) -> (any QLPreviewItem)! {
+    previewURL.map { $0 as NSURL }
   }
 }
 

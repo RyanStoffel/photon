@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 
 /// State and behaviour of the launcher's file mode. The launcher feeds it the
