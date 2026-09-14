@@ -100,44 +100,48 @@ extension LauncherPanelController {
   /// keys) move through items. Returning true swallows the event so the search
   /// field cannot steal arrow keys.
   func handleClipboardListNavigation(_ event: NSEvent, clipboard: ClipboardHistoryViewModel) -> Bool {
+    if let delta = clipboardListDelta(for: event) {
+      model.moveSelection(delta)
+      return true
+    }
+    return handleClipboardListJump(event, clipboard: clipboard)
+  }
+
+  func clipboardListDelta(for event: NSEvent) -> Int? {
     let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-    let command = flags.contains(.command)
-    let option = flags.contains(.option)
+    guard !flags.contains(.command), !flags.contains(.option) else {
+      return nil
+    }
     let control = flags.contains(.control)
-    guard !command, !option else {
+    switch event.keyCode {
+    case 125, 45 where control:
+      return 1
+    case 126, 35 where control:
+      return -1
+    case 121:
+      return LauncherLayout.maxVisibleRows
+    case 116:
+      return -LauncherLayout.maxVisibleRows
+    default:
+      return nil
+    }
+  }
+
+  func handleClipboardListJump(_ event: NSEvent, clipboard: ClipboardHistoryViewModel) -> Bool {
+    let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+    guard !flags.contains(.command), !flags.contains(.option) else {
       return false
     }
-
     switch event.keyCode {
-    case 125:
-      model.moveSelection(1)
-      return true
-    case 126:
-      model.moveSelection(-1)
-      return true
-    case 45 where control:
-      model.moveSelection(1)
-      return true
-    case 35 where control:
-      model.moveSelection(-1)
-      return true
-    case 115:
+    case 115, 119:
       if !model.clipboardShowsResults, !clipboard.results.isEmpty {
         model.moveSelection(1)
       }
-      clipboard.selectFirst()
-      return true
-    case 119:
-      if !model.clipboardShowsResults, !clipboard.results.isEmpty {
-        model.moveSelection(1)
+      if event.keyCode == 115 {
+        clipboard.selectFirst()
+      } else {
+        clipboard.selectLast()
       }
-      clipboard.selectLast()
-      return true
-    case 121:
-      model.moveSelection(LauncherLayout.maxVisibleRows)
-      return true
-    case 116:
-      model.moveSelection(-LauncherLayout.maxVisibleRows)
       return true
     default:
       return false
