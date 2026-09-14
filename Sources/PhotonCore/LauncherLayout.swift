@@ -35,7 +35,7 @@ public enum LauncherContent: Equatable, Sendable {
   case searchOnly
   /// The command list. `0` rows still shows one line (indexing or no results).
   /// When `showsCalculatorHero` is true, the first result is rendered as a calculator card instead of a row.
-  case rows(Int, showsCalculatorHero: Bool = false)
+  case rows(count: Int, showsCalculatorHero: Bool)
   /// A feature view with its own layout (clipboard history, file search).
   case fullHeight
 }
@@ -79,14 +79,14 @@ public enum LauncherLayout {
 
   /// Tallest the panel gets: a full page of rows.
   public static var maxHeight: Double {
-    height(for: .rows(maxVisibleRows))
+    height(for: .rows(count: maxVisibleRows, showsCalculatorHero: false))
   }
 
   public static func height(for content: LauncherContent) -> Double {
     switch content {
     case .searchOnly:
       compactHeight
-    case let .rows(count, showsCalculatorHero):
+    case let .rows(count: count, showsCalculatorHero: showsCalculatorHero):
       searchFieldHeight + hairline + listHeight(rowCount: count, showsCalculatorHero: showsCalculatorHero)
         + hairline + footerHeight
     case .fullHeight:
