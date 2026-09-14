@@ -1,6 +1,7 @@
 import Carbon
 import Foundation
 import PhotonClipboard
+import PhotonCore
 import PhotonKeybinds
 
 @MainActor
@@ -9,11 +10,20 @@ final class SettingsStore: ObservableObject {
   var onClipboardChange: (() -> Void)?
   var onNotesChange: (() -> Void)?
   var onKeybindsChange: (() -> Void)?
+  var onAppearanceChange: (() -> Void)?
+
+  /// Selected settings tab (`UIScenario` and screenshot harness).
+  @Published var selectedPane: SettingsPaneID = .general
+  /// Applied once when the settings window opens for a scenario.
+  var pendingSettingsPane: SettingsPaneID?
 
   private enum Keys {
     static let hotkeyKeyCode = "hotkeyKeyCode"
     static let hotkeyModifiers = "hotkeyModifiers"
     static let launchAtLogin = "launchAtLogin"
+    static let launcherShowsSuggestions = "launcherShowsSuggestions"
+    static let launcherPanelWidth = "launcherPanelWidth"
+    static let appearance = "appearance"
     static let clipboardEnabled = "clipboardEnabled"
     static let clipboardRetentionDays = "clipboardRetentionDays"
     static let clipboardMaxItems = "clipboardMaxItems"
@@ -60,6 +70,29 @@ final class SettingsStore: ObservableObject {
   }
 
   @Published var launchAtLoginError: String?
+
+  // MARK: Appearance
+
+  /// Off (the default) keeps the launcher to its search field until the user types.
+  @Published var launcherShowsSuggestions: Bool {
+    didSet { defaults.set(launcherShowsSuggestions, forKey: Keys.launcherShowsSuggestions) }
+  }
+
+  @Published var launcherPanelWidth: LauncherPanelWidth {
+    didSet { defaults.set(launcherPanelWidth.rawValue, forKey: Keys.launcherPanelWidth) }
+  }
+
+  @Published var appearance: AppAppearance {
+    didSet {
+      defaults.set(appearance.rawValue, forKey: Keys.appearance)
+      onAppearanceChange?()
+    }
+  }
+
+  /// Snapshot the launcher reads.
+  var launcherPreferences: LauncherPreferences {
+    LauncherPreferences(showsSuggestions: launcherShowsSuggestions, width: launcherPanelWidth)
+  }
 
   // MARK: Clipboard
 
@@ -207,6 +240,10 @@ final class SettingsStore: ObservableObject {
       fallback: .defaultCombo
     )
     launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
+    launcherShowsSuggestions = defaults.bool(forKey: Keys.launcherShowsSuggestions)
+    launcherPanelWidth = LauncherPanelWidth(rawValue: defaults.string(forKey: Keys.launcherPanelWidth) ?? "")
+      ?? .default
+    appearance = AppAppearance(rawValue: defaults.string(forKey: Keys.appearance) ?? "") ?? .system
 
     clipboardEnabled = defaults.object(forKey: Keys.clipboardEnabled) as? Bool ?? true
     clipboardRetention = ClipboardRetention(
@@ -279,6 +316,12 @@ final class SettingsStore: ObservableObject {
     }
     return HotkeyCombo(keyCode: UInt32(code), carbonModifiers: UInt32(mods))
   }
+}
+
+/// The launcher-facing part of the settings, compared by value so the panel only reacts to real changes.
+struct LauncherPreferences: Equatable {
+  var showsSuggestions: Bool
+  var width: LauncherPanelWidth
 }
 
 extension HotkeyCombo {

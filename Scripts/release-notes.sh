@@ -23,7 +23,9 @@ changelog_section() {
       if (index($0, "## [" version "]") == 1) { printing = 1; next }
     }
     printing { print }
-  ' "$CHANGELOG" | sed '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'
+  ' "$CHANGELOG" \
+    | grep -vE '^\[(Unreleased|[0-9]+\.[0-9]+\.[0-9]+)\]: ' \
+    | sed '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'
 }
 
 body="$(changelog_section || true)"
@@ -78,6 +80,8 @@ cat <<EOF
 brew tap ryanstoffel/taps
 brew install --cask ryanstoffel/taps/photon
 \`\`\`
+
+On Homebrew 7 or later, run \`brew trust ryanstoffel/taps\` once so that \`brew upgrade\` can load the cask.
 
 Or download \`Photon-${VERSION}.zip\` (or the \`.dmg\`) below and move \`Photon.app\` to \`/Applications\`. Verify a download with \`shasum -a 256 -c SHA256SUMS\` after placing the file next to it.
 

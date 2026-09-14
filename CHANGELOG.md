@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-14
+
+UI polish release: redesigned launcher, Appearance settings, real app icons, Notes sidebar, and a screenshot harness for visual QA on macOS.
+
+### Added
+
+- Settings > Appearance: show suggestions before typing (off by default), panel width (Compact / Regular / Wide), and appearance (System / Light / Dark) for every Photon window.
+- Developer: `Scripts/screenshots.sh` and CI wiring to capture launcher and settings screenshots on macOS for PR visual QA.
+
+### Changed
+
+- Launcher: redesigned panel. A wider (740 pt), rounded panel on the system popover material with a hairline border; a 20 pt search field with the placeholder "Search apps, files, notes and more…"; a footer with the app name and the key hint for the selected row. The panel opens as a single search field and grows as results arrive; suggestions before typing are an option.
+- Launcher rows: icon and name only for applications (no path); subtitles stay where they carry meaning (System Settings, file location, command descriptions, window shortcuts) and render as secondary text on the same line. Rows are 40 pt with a rounded selection highlight; commands without an app icon get a small symbol tile.
+- Notes: the window now has a collapsible sidebar (`NSSplitViewController`, system sidebar material) listing every note with its title, a one-line snippet, and a Notes-style date, newest first. `Cmd+P` focuses the list instead of opening a popover; `Ctrl+Cmd+S` hides or shows the sidebar; the sidebar's width and collapsed state are remembered. The toolbar uses the unified style with the standard sidebar toggle, "New Note" beside it, and an `ellipsis.circle` menu (Float on Top, Reveal in Finder, Delete Note). The editor styles the first line as a title, uses wider insets, and sits on the standard text background. The window title is the current note's title. Text size commands moved out of the menu; `Cmd+=` / `Cmd+-` / `Cmd+0` and the Notes settings tab still control it.
+
+### Fixed
+
+- Launcher: application rows show the app's real icon instead of a placeholder square. The launcher never asked the system for app icons; commands now carry an icon description that the launcher resolves and caches. System Settings panes use their own pane icon and fall back to the System Settings icon; clipboard, notes, file, and window commands have fitting icons too.
+- Notes: full-height sidebar and tracking separator when the window uses `fullSizeContentView`.
+
+### Known limitations
+
+- The build is ad-hoc signed and not notarized. macOS blocks the first launch of a downloaded copy until you allow it (Control-click > Open on macOS 14; System Settings > Privacy & Security > Open Anyway on macOS 15 and later; or `xattr -dr com.apple.quarantine /Applications/Photon.app`).
+
 ## [0.1.0] - 2026-09-14
 
 First public build. Photon is a menu-bar launcher for macOS 14 and later; it has no Dock icon, no account, no cloud sync, and no telemetry.
@@ -28,5 +52,6 @@ First public build. Photon is a menu-bar launcher for macOS 14 and later; it has
 - The Intel slice of the universal binary has only been compiled, not run.
 - The Hyper key and window management need Accessibility access. The Caps Lock remap uses a per-login-session `hidutil` mapping; Settings > Keybinds > Reset Key Mapping restores the key if Photon quits abnormally.
 
-[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/RyanStoffel/photon/releases/tag/v0.1.1
 [0.1.0]: https://github.com/RyanStoffel/photon/releases/tag/v0.1.0

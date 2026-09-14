@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Check branch name
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -37,7 +37,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Install lint tools
         run: |
           if ! command -v swiftformat >/dev/null; then brew install swiftformat; fi
@@ -52,9 +52,9 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Cache SwiftPM
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .build
           key: test-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift', 'Sources/**/*.swift', 'Tests/**/*.swift') }}
@@ -68,9 +68,9 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Cache SwiftPM
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .build
           key: build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift', 'Sources/**/*.swift') }}
@@ -82,7 +82,7 @@ jobs:
         # ditto keeps executable bits and the code signature; upload-artifact alone does not.
         run: ditto -c -k --keepParent build/Photon.app build/Photon.app.zip
       - name: Upload Photon.app
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Photon.app
           path: build/Photon.app.zip
@@ -94,7 +94,7 @@ jobs:
     needs: build
     steps:
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Download Photon.app
         uses: actions/download-artifact@v4
         with:
@@ -108,7 +108,7 @@ jobs:
         run: Scripts/smoke-test.sh build/Photon.app
       - name: Upload smoke test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-test-log
           path: ${{ runner.temp }}/photon-smoke.log

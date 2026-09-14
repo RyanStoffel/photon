@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationDidFinishLaunching(_: Notification) {
     runtime.start()
+    runtime.runUIScenarioIfNeeded()
   }
 
   func applicationWillTerminate(_: Notification) {

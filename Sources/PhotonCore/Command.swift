@@ -5,19 +5,23 @@ public struct Command: Identifiable, Hashable, Sendable {
   public let subtitle: String
   public let keywords: [String]
   public let providerID: String
+  /// Optional picture for the row. `nil` leaves the launcher to pick a provider default.
+  public let icon: CommandIcon?
 
   public init(
     id: String,
     title: String,
     subtitle: String = "",
     keywords: [String] = [],
-    providerID: String
+    providerID: String,
+    icon: CommandIcon? = nil
   ) {
     self.id = id
     self.title = title
     self.subtitle = subtitle
     self.keywords = keywords
     self.providerID = providerID
+    self.icon = icon
   }
 }
 

@@ -23,7 +23,7 @@ jobs:
       TAP_REPO: homebrew-taps
     steps:
       - name: Check out
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Read version
         id: version
@@ -61,7 +61,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Cache SwiftPM
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .build
           key: release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift', 'Sources/**/*.swift') }}
@@ -114,7 +114,7 @@ jobs:
 
       - name: Upload release artifacts
         if: always() && steps.sign.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Photon-${{ steps.version.outputs.version }}${{ steps.version.outputs.dry_run == 'true' && '-dry-run' || '' }}
           path: |
@@ -126,7 +126,7 @@ jobs:
 
       - name: Upload smoke test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-test-log
           path: ${{ runner.temp }}/photon-smoke.log

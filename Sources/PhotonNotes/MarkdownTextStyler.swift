@@ -13,14 +13,30 @@ struct MarkdownTextStyler {
     .monospacedSystemFont(ofSize: (baseSize * 0.92).rounded(), weight: .regular)
   }
 
+  /// The first line of a note, sized like the Notes title style relative to the body.
+  var titleFont: NSFont {
+    .systemFont(ofSize: (baseSize * 1.7).rounded(), weight: .bold)
+  }
+
   var baseAttributes: [NSAttributedString.Key: Any] {
-    let paragraph = NSMutableParagraphStyle()
-    paragraph.lineSpacing = (baseSize * 0.22).rounded()
-    return [
+    [
       .font: baseFont,
       .foregroundColor: NSColor.labelColor,
-      .paragraphStyle: paragraph
+      .paragraphStyle: baseParagraphStyle
     ]
+  }
+
+  private var baseParagraphStyle: NSParagraphStyle {
+    let paragraph = NSMutableParagraphStyle()
+    paragraph.lineSpacing = (baseSize * 0.22).rounded()
+    return paragraph
+  }
+
+  private var titleParagraphStyle: NSParagraphStyle {
+    let paragraph = NSMutableParagraphStyle()
+    paragraph.lineSpacing = (baseSize * 0.22).rounded()
+    paragraph.paragraphSpacing = (baseSize * 0.5).rounded()
+    return paragraph
   }
 
   /// Resets `range` to the base look, then layers the spans that intersect it.
@@ -36,6 +52,10 @@ struct MarkdownTextStyler {
         attributes[.font] = font
       }
       storage.addAttributes(attributes, range: clipped)
+      if span.kind == .title {
+        let paragraph = (storage.string as NSString).paragraphRange(for: clipped)
+        storage.addAttribute(.paragraphStyle, value: titleParagraphStyle, range: paragraph)
+      }
     }
   }
 
@@ -47,6 +67,8 @@ struct MarkdownTextStyler {
 
   private func font(for kind: MarkdownSpanKind, at location: Int, in storage: NSTextStorage) -> NSFont? {
     switch kind {
+    case .title:
+      return titleFont
     case let .heading(level), let .headingMarker(level):
       return headingFont(level: level)
     case .bold:
