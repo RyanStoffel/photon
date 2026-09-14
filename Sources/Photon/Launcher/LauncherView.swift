@@ -1,4 +1,3 @@
-import AppKit
 import PhotonClipboard
 import PhotonCore
 import SwiftUI
@@ -102,7 +101,7 @@ struct LauncherView: View {
     }
   }
 
-  // MARK: Feature views (file search and other modes)
+  // MARK: Command list
 
   private var resultsList: some View {
     ScrollViewReader { proxy in
