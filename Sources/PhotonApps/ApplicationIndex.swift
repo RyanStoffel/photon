@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import PhotonCore
 
 public struct IndexedApplication: Hashable, Sendable {
   public let id: String
@@ -7,6 +8,7 @@ public struct IndexedApplication: Hashable, Sendable {
   public let subtitle: String
   public let url: URL
   public let keywords: [String]
+  public let icon: CommandIcon
 }
 
 public final class ApplicationIndex: @unchecked Sendable {
@@ -101,7 +103,8 @@ public final class ApplicationIndex: @unchecked Sendable {
       name: name,
       subtitle: url.path,
       url: url,
-      keywords: [identifier, url.lastPathComponent]
+      keywords: [identifier, url.lastPathComponent],
+      icon: .fileIcon(path: url.path)
     )
   }
 
@@ -109,12 +112,18 @@ public final class ApplicationIndex: @unchecked Sendable {
     let bundle = Bundle(url: url)
     let name = displayName(in: bundle, fallback: url.deletingPathExtension().lastPathComponent)
     let identifier = bundle?.bundleIdentifier ?? url.path
+    let icon = PaneIconPolicy.icon(
+      forPaneAt: url,
+      info: bundle?.infoDictionary ?? [:],
+      fileExists: { FileManager.default.fileExists(atPath: $0) }
+    )
     return IndexedApplication(
       id: "pane:\(identifier)",
       name: name,
       subtitle: "System Settings",
       url: url,
-      keywords: [identifier, "settings", "preferences"]
+      keywords: [identifier, "settings", "preferences"],
+      icon: icon
     )
   }
 
