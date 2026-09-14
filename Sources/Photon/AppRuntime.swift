@@ -22,7 +22,6 @@ final class AppRuntime: ObservableObject {
       ?? URL(fileURLWithPath: NSTemporaryDirectory())
     let dir = support.appendingPathComponent("Photon", isDirectory: true)
     frecencyURL = dir.appendingPathComponent("frecency.json")
-    frecency = FrecencyStore.load(from: frecencyURL)
     launcher = LauncherPanelController(settings: settings, registry: registry, frecencyURL: frecencyURL)
     registerProviders()
   }
