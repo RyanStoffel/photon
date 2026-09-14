@@ -62,7 +62,7 @@ apply() {
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["branch-name", "lint", "build", "test"]
+    "contexts": ["branch-name", "lint", "build", "test", "smoke"]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": {
