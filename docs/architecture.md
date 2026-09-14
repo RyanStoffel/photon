@@ -13,11 +13,12 @@ Sources/
   PhotonApps/           Application + System Settings pane provider
   PhotonClipboard/      Clipboard history: monitor, store, search, panel view
   PhotonNotes/          Phase 2 stub
-  PhotonFiles/          Phase 2 stub
+  PhotonFiles/          Spotlight file search: provider, launcher file mode, Quick Look
   PhotonKeybinds/       Phase 2 stub (hotkeys + window management)
 Tests/
   PhotonCoreTests/      FuzzyMatcher + FrecencyStore
   PhotonClipboardTests/ History rules (dedupe, retention), search ranking, store round trip
+  PhotonFilesTests/     Spotlight query strings, ranking, path truncation
 ```
 
 `Package.swift` only adds the AppKit modules and the `Photon` executable when `os(macOS)` is true. `PhotonCore` compiles everywhere. `PhotonClipboard` is also declared for every platform: its AppKit files are wrapped in `#if canImport(AppKit)`, so the models, history rules, search, and store build and test on Linux while the monitor, paster, and views only compile on macOS.
@@ -27,7 +28,8 @@ Tests/
 | PhotonCore | -- | no |
 | PhotonApps | PhotonCore | yes |
 | PhotonClipboard | PhotonCore | partly (guarded) |
-| PhotonNotes / Files / Keybinds | PhotonCore | reserved; stubs are empty |
+| PhotonFiles | PhotonCore | yes (plus QuickLookUI) |
+| PhotonNotes / Keybinds | PhotonCore | reserved; stubs are empty |
 | Photon | all of the above | yes |
 
 ## How a provider plugs in
@@ -68,14 +70,33 @@ Shared files that every feature touches today:
 
 Avoid editing `Command.swift` or `CommandRegistry.swift` unless the protocol itself is insufficient. Prefer a new file in your module.
 
+### Launcher sessions and modes
+
+Clipboard history is a `LauncherSession.clipboard` beside the command list: same search field, its own view model, prefix (`cb ` / `clipboard `), and keys. File search uses a generic `LauncherMode` protocol (`Sources/Photon/Launcher/LauncherMode.swift`): typed prefixes (`/`, `f `), an activation command id, and optional inline results after the primary list. While a mode is active the launcher shows a badge, renders `makeResultsView()`, and forwards leftover keys to `handle(_:)`. Escape or Backspace on an empty query leaves the session or mode; a second Escape hides the launcher. A mode reaches back through `LauncherModeHost` (focus, dismiss, activate the app for an auxiliary panel).
+
+Register a mode next to the provider: `launcher.register(mode:)`. Clipboard still uses `attachClipboard` rather than this hook; a chore issue tracks unifying the two.
+
+## File search (PhotonFiles)
+
+Pipeline, all off the main thread except the final publish:
+
+1. `SpotlightQueryBuilder` turns the typed text into a raw Spotlight query string (`kMDItemDisplayName == "*term*"cd || kMDItemFSName == ...`; every term must match; terms shorter than three characters only match word prefixes; `kMDItemTextContent` is added when "search file contents" is on).
+2. `FileSearchEngine` (main actor) debounces 120 ms, cancels the in-flight query, and runs a `SpotlightQueryRunner`: one `NSMetadataQuery` with an `operationQueue`, scopes from settings (`NSMetadataQueryLocalComputerScope` or the home folder plus extra folders), sorted by last-used date. The query is stopped after the gathering phase; up to `max(500, 20 x limit)` hits are converted to plain `FileResult` values on the query's queue.
+3. `FileRanker` scores name relevance (exact > prefix > word start > substring > file name > content), drops user-excluded folders, dedupes, sorts by relevance, last-used, modified, name, and caps at the configured limit. `FileIconCache` prefetches Finder icons before results are published so rows never pop.
+4. `FileSearchController` publishes results and owns selection, Quick Look (`QuickLookCoordinator`, `QLPreviewPanel` data source found through the launcher panel's responder chain), and actions (`FileActions`: open, reveal, copy path). `FileSearchView` renders rows (icon, name, middle-truncated parent path, kind), the `Cmd+I` info strip, and the key hints.
+
+`FilesProvider` contributes the *Search Files* command and, for queries of three or more characters, up to three strong name matches to the default list. It never blocks `CommandRegistry.search`: it returns what is cached for the exact query and otherwise starts a background search that asks the launcher to refresh when it finishes.
+
+Spotlight privacy exclusions apply automatically because Spotlight never indexes them. The Files settings tab (`FilesSettingsView`, bound to `SettingsStore.files*` keys and bridged to `FileSearchSettings` by `FileSearchIntegration`) adds scope, content search, result limit, default action, inline results, extra folders, and excluded folders.
+
 ## Process shape
 
 - `PhotonApp` is a SwiftUI `@main` app with `NSApplicationDelegateAdaptor`.
 - `LSUIElement` keeps it out of the Dock. A `MenuBarExtra` is the visible affordance.
 - `HotkeyManager` wraps Carbon `RegisterEventHotKey`. The default shortcut is `Cmd+Space`. First launch compares that shortcut to Spotlight (`com.apple.symbolichotkeys`, id 64) and shows guidance if they collide.
-- `LauncherPanelController` owns a non-activating floating `NSPanel` (native material, centered). The panel is created at launch so the hotkey only has to order it front. Esc and losing key focus hide it. The panel has two modes (`LauncherMode`): the command list, and clipboard history, which reuses the same search field.
+- `LauncherPanelController` owns a non-activating floating `NSPanel` (native material, centered). The panel is created at launch so the hotkey only has to order it front. Esc and losing key focus hide it. The panel has a command list, a clipboard session (`LauncherSession.clipboard`), and protocol-based feature modes (`LauncherMode`; file search today).
 - `HotkeyManager` registers several Carbon hotkeys keyed by id: `1` is the launcher, `2` opens clipboard history.
-- Settings is a regular SwiftUI `Settings` scene: General, Clipboard, and About are implemented; Notes, Files, and Keybinds are placeholders bound to `SettingsStore`.
+- Settings is a regular SwiftUI `Settings` scene: General, Clipboard, Files, and About are implemented; Notes and Keybinds are placeholders bound to `SettingsStore`.
 
 ## Clipboard history (`PhotonClipboard`)
 
@@ -101,7 +122,7 @@ Avoid editing `Command.swift` or `CommandRegistry.swift` unless the protocol its
 | --- | --- | --- |
 | `branch-name` | ubuntu-latest | Enforces `feature/GH-<n>-*`, `bug/GH-<n>-*`, `chore/*`, `docs/*`, `release/*` (passes for `develop`/`main` themselves). |
 | `lint` | macos-latest | `swiftformat --lint` and `swiftlint lint --strict`. |
-| `test` | macos-latest | `swift test` (PhotonCoreTests, PhotonClipboardTests). |
+| `test` | macos-latest | `swift test` (PhotonCoreTests, PhotonClipboardTests, PhotonFilesTests). |
 | `build` | macos-latest | `Scripts/package_app.sh`, uploads `Photon.app`. |
 
 Those four job names are the required status checks. SwiftPM `.build` is cached per job.

@@ -14,7 +14,7 @@ It is not an extension platform. There is no AI, no account, no cloud sync, and 
 - **Applications** — fuzzy search over `/Applications`, `/System/Applications`, `~/Applications`, and System Settings panes, ranked by frecency.
 - **Clipboard history** — `Cmd+Shift+V`, or type `cb ` in the launcher. Text (with rich text), links, images, and files; searchable, pin, paste back or copy. Retention of 1/7/30 days or forever, an item limit, and excluded apps (password managers by default).
 - **Notes** — quick floating notes with lightweight markdown (Phase 2).
-- **File search** — whole-Mac search via Spotlight, with Quick Look (Phase 2).
+- **File search** — type `/` or `f ` (or run *Search Files*) to search the whole Mac through Spotlight. Enter opens, `Cmd+Enter` reveals in Finder, Space or `Cmd+Y` toggles Quick Look, `Cmd+C` copies the path, `Cmd+I` shows size and dates. Strong file matches also appear below applications in the main list.
 - **Keybinds** — Hyper key, app hotkeys, and window management (Phase 2).
 
 ## Install
@@ -37,7 +37,7 @@ Photon is a menu-bar agent (`LSUIElement`). It does not appear in the Dock.
 | Keyboard shortcuts | first launch | macOS Spotlight also defaults to `Cmd+Space`. Photon detects the conflict and tells you how to disable Spotlight's shortcut under **System Settings > Keyboard > Keyboard Shortcuts > Spotlight**. |
 | Login Item | optional | "Launch at login" on the General settings tab uses `SMAppService`. |
 | Accessibility | optional | Pasting a clipboard item into the frontmost app (Photon sends `Cmd+V`). Without it, Return copies the item and shows a hint. Also window management and the Hyper key (Phase 2). |
-| Full Disk Access | Phase 2 (optional) | Broader file search than Spotlight's default index. |
+| Full Disk Access | optional | File search only sees what Spotlight indexes; folders in Spotlight Privacy stay hidden. Photon adds its own excluded-folders list under **Settings > Files**. |
 
 ## Development
 
