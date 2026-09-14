@@ -35,6 +35,7 @@ Tests/
 | PhotonNotes | PhotonCore | yes (AppKit panel and split view, SwiftUI sidebar list) |
 | PhotonFiles | PhotonCore | yes (plus QuickLookUI) |
 | PhotonKeybinds | PhotonCore | yes (plus ApplicationServices, CoreGraphics, IOKit) |
+| PhotonCalculator | PhotonCore | partly (pasteboard copy guarded) |
 | Photon | all of the above | yes |
 
 ## How a provider plugs in
