@@ -35,7 +35,7 @@ public enum FileDefaultAction: String, CaseIterable, Sendable {
 public struct FileSearchSettings: Equatable, Sendable {
   public static let defaultMaxResults = 50
   public static let maxResultsRange = 10 ... 200
-  public static let inlineLimit = 3
+  public static let inlineLimit = 8
   public static let inlineMinimumQueryLength = 3
 
   public var scope: FileSearchScope

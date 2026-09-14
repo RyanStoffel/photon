@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import PhotonCore
 import PhotonFiles
 import QuickLookUI
@@ -16,6 +17,7 @@ final class FileSearchMode: LauncherMode {
 
   let controller: FileSearchController
   private weak var host: (any LauncherModeHost)?
+  private var layoutCancellable: AnyCancellable?
 
   init(controller: FileSearchController) {
     self.controller = controller
@@ -40,6 +42,11 @@ final class FileSearchMode: LauncherMode {
     controller.onRequestActivation = { [weak host] in
       host?.modeRequestsActivation()
     }
+    layoutCancellable = controller.objectWillChange
+      .receive(on: RunLoop.main)
+      .sink { [weak host] in
+        host?.modeRequestsLayoutUpdate()
+      }
   }
 
   func activate(query: String) {

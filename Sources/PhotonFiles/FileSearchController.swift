@@ -54,7 +54,7 @@ public final class FileSearchController: ObservableObject {
   private var selectionMovedByUser = false
 
   public var prefersCompactLauncherLayout: Bool {
-    query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    results.isEmpty
   }
 
   public init(settings: FileSearchSettings = FileSearchSettings(), engine: FileSearchEngine = FileSearchEngine()) {
@@ -123,10 +123,17 @@ public final class FileSearchController: ObservableObject {
 
   private func runSearch(_ query: String) async {
     let request = FileSearchEngine.Request(query: query, settings: settings, limit: settings.clampedMaxResults)
-    guard let response = await engine.search(request), response.query == self.query else {
+    let response = await engine.search(request)
+    guard !Task.isCancelled, query == self.query else {
       return
     }
     isSearching = false
+    guard let response else {
+      if results.isEmpty {
+        status = .empty(query)
+      }
+      return
+    }
     results = response.files
     if !response.spotlightAvailable {
       status = .unavailable

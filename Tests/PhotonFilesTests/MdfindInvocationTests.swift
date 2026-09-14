@@ -27,6 +27,13 @@ final class MdfindInvocationTests: XCTestCase {
     )
   }
 
+  func testNameSearchUsesDashNameThenNullTerminatedOutput() {
+    XCTAssertEqual(
+      MdfindInvocation.nameArguments(fileName: "ember", onlyIn: ["/Users/ryan"]),
+      ["-onlyin", "/Users/ryan", "-name", "ember", "-0", "ember"]
+    )
+  }
+
   func testNullTerminatedPathsRespectLimit() {
     let data = Data("/Users/ryan/a.pdf\0/Users/ryan/b.pdf\0/Users/ryan/c.pdf\0".utf8)
     XCTAssertEqual(
