@@ -14,6 +14,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   private var panel: LauncherPanel?
   private var localMonitor: Any?
   private var cancellables: Set<AnyCancellable> = []
+  private let centerGuides = LauncherCenterGuidesOverlay()
+  private var searchBarDragInitialOrigin: NSPoint?
+  private var isDraggingLauncher = false
   /// App that was frontmost before a mode asked us to activate; restored on hide.
   private var previousApplication: NSRunningApplication?
 
@@ -57,6 +60,15 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
           return
         }
         model.preferences = settings.launcherPreferences
+      }
+      .store(in: &cancellables)
+    settings.$launcherStoredPosition
+      .removeDuplicates()
+      .sink { [weak self] _ in
+        guard let self, let panel, panel.isVisible, !isDraggingLauncher else {
+          return
+        }
+        position(panel)
       }
       .store(in: &cancellables)
   }
@@ -260,7 +272,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     panel.animationBehavior = .none
     panel.titleVisibility = .hidden
     panel.titlebarAppearsTransparent = true
-    panel.isMovableByWindowBackground = true
+    panel.isMovableByWindowBackground = false
     panel.delegate = self
     panel.activeMode = { [weak self] in
       self?.model.activeMode
@@ -278,9 +290,15 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     background.layer?.masksToBounds = true
     background.autoresizingMask = [.width, .height]
 
-    let host = NSHostingView(rootView: LauncherView(model: model, onRun: { [weak self] in
-      self?.hide()
-    }))
+    let host = NSHostingView(rootView: LauncherView(
+      model: model,
+      onRun: { [weak self] in
+        self?.hide()
+      },
+      onSearchBarDrag: { [weak self] phase in
+        self?.handleSearchBarDrag(phase)
+      }
+    ).environmentObject(settings))
     host.safeAreaRegions = []
     host.frame = background.bounds
     host.autoresizingMask = [.width, .height]
@@ -289,7 +307,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     return panel
   }
 
-  /// Keeps the top edge where it is (so the search field never jumps) and the panel centred.
+  /// Keeps the top edge where it is (so the search field never jumps). Recentres horizontally only when snapped to center.
   private func resize(width: Double, content: LauncherContent) {
     guard let panel else {
       return
@@ -299,7 +317,10 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     guard frame.size != size else {
       return
     }
-    frame.origin.x = frame.midX - size.width / 2
+    let keepsCenter = settings.launcherStoredPosition?.isHorizontallyCentered ?? true
+    if keepsCenter, !isDraggingLauncher {
+      frame.origin.x = frame.midX - size.width / 2
+    }
     frame.origin.y = frame.maxY - size.height
     frame.size = size
     // No animation: the resize and SwiftUI's relayout land in the same display cycle.
@@ -307,19 +328,77 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     panel.invalidateShadow()
   }
 
-  /// Centred horizontally, top edge a little above the middle of the screen, like Spotlight.
+  private func visibleFrame(for panel: NSPanel) -> ScreenVisibleFrame {
+    let rect = (panel.screen ?? NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? .zero
+    return ScreenVisibleFrame(
+      minX: rect.minX,
+      minY: rect.minY,
+      width: rect.width,
+      height: rect.height
+    )
+  }
+
+  /// Centred horizontally by default; uses a stored origin when the user has repositioned the panel.
   private func position(_ panel: NSPanel) {
-    guard let screen = NSScreen.main ?? NSScreen.screens.first else {
+    guard panel.screen != nil || NSScreen.main != nil || !NSScreen.screens.isEmpty else {
       return
     }
-    let visible = screen.visibleFrame
-    let size = panel.frame.size
-    let top = min(visible.minY + visible.height * 0.74, visible.maxY - 8)
-    let origin = NSPoint(
-      x: visible.midX - size.width / 2,
-      y: top - size.height
+    let visible = visibleFrame(for: panel)
+    let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
+    let origin = LauncherPosition.origin(
+      panelSize: size,
+      visible: visible,
+      stored: settings.launcherStoredPosition
     )
-    panel.setFrameOrigin(origin)
+    panel.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
+  }
+
+  private func handleSearchBarDrag(_ phase: LauncherSearchBarDragPhase) {
+    guard let panel else {
+      return
+    }
+    switch phase {
+    case .began:
+      isDraggingLauncher = true
+      searchBarDragInitialOrigin = panel.frame.origin
+      let visible = visibleFrame(for: panel)
+      let guides = LauncherPosition.snapGuideXPositions(visible: visible)
+      let screen = panel.screen ?? NSScreen.main ?? NSScreen.screens.first
+      if let screen {
+        centerGuides.show(
+          visibleFrame: screen.visibleFrame,
+          guideXLeft: guides.left,
+          guideXRight: guides.right
+        )
+      }
+    case let .changed(translation):
+      guard let initial = searchBarDragInitialOrigin else {
+        return
+      }
+      var origin = PanelOrigin(
+        x: initial.x + translation.width,
+        y: initial.y - translation.height
+      )
+      let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
+      origin = LauncherPosition.clampedOrigin(origin, panelSize: size, visible: visibleFrame(for: panel))
+      panel.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
+    case .ended:
+      centerGuides.hide()
+      isDraggingLauncher = false
+      searchBarDragInitialOrigin = nil
+      let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
+      let origin = PanelOrigin(x: panel.frame.origin.x, y: panel.frame.origin.y)
+      let stored = LauncherPosition.storedPosition(
+        origin: origin,
+        panelWidth: size.width,
+        visible: visibleFrame(for: panel)
+      )
+      settings.launcherStoredPosition = stored
+      var frame = panel.frame
+      frame.origin.x = stored.originX
+      frame.origin.y = stored.originY
+      panel.setFrame(frame, display: false, animate: false)
+    }
   }
 }
 

@@ -1,3 +1,4 @@
+import AppKit
 import PhotonClipboard
 import PhotonCore
 import SwiftUI
@@ -7,6 +8,10 @@ import SwiftUI
 struct LauncherView: View {
   @ObservedObject var model: LauncherViewModel
   var onRun: () -> Void
+  var onSearchBarDrag: ((LauncherSearchBarDragPhase) -> Void)?
+  @EnvironmentObject private var settings: SettingsStore
+
+  @State private var dragActive = false
 
   static let defaultPlaceholder = "Search apps, files, notes and more\u{2026}"
 
@@ -61,6 +66,35 @@ struct LauncherView: View {
     }
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
+    .contentShape(Rectangle())
+    .gesture(searchBarDragGesture)
+  }
+
+  private var searchBarDragGesture: some Gesture {
+    DragGesture(minimumDistance: 2)
+      .onChanged { value in
+        guard onSearchBarDrag != nil else {
+          return
+        }
+        if !dragActive {
+          guard settings.hotkey.holdsRequiredModifiers(NSEvent.modifierFlags) else {
+            return
+          }
+          dragActive = true
+          onSearchBarDrag?(.began)
+        }
+        if dragActive {
+          onSearchBarDrag?(.changed(translation: value.translation))
+        }
+      }
+      .onEnded { value in
+        guard dragActive else {
+          return
+        }
+        dragActive = false
+        onSearchBarDrag?(.changed(translation: value.translation))
+        onSearchBarDrag?(.ended)
+      }
   }
 
   @ViewBuilder

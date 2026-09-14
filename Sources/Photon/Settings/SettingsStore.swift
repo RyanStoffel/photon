@@ -23,6 +23,7 @@ final class SettingsStore: ObservableObject {
     static let launchAtLogin = "launchAtLogin"
     static let launcherShowsSuggestions = "launcherShowsSuggestions"
     static let launcherPanelWidth = "launcherPanelWidth"
+    static let launcherStoredPosition = "launcherStoredPosition"
     static let appearance = "appearance"
     static let clipboardEnabled = "clipboardEnabled"
     static let clipboardRetentionDays = "clipboardRetentionDays"
@@ -80,6 +81,21 @@ final class SettingsStore: ObservableObject {
 
   @Published var launcherPanelWidth: LauncherPanelWidth {
     didSet { defaults.set(launcherPanelWidth.rawValue, forKey: Keys.launcherPanelWidth) }
+  }
+
+  /// Custom launcher placement. `nil` uses the default Spotlight-like position.
+  @Published var launcherStoredPosition: LauncherStoredPosition? {
+    didSet {
+      if let launcherStoredPosition, let data = try? JSONEncoder().encode(launcherStoredPosition) {
+        defaults.set(data, forKey: Keys.launcherStoredPosition)
+      } else {
+        defaults.removeObject(forKey: Keys.launcherStoredPosition)
+      }
+    }
+  }
+
+  func resetLauncherPositionToCenter() {
+    launcherStoredPosition = nil
   }
 
   @Published var appearance: AppAppearance {
@@ -243,6 +259,9 @@ final class SettingsStore: ObservableObject {
     launcherShowsSuggestions = defaults.bool(forKey: Keys.launcherShowsSuggestions)
     launcherPanelWidth = LauncherPanelWidth(rawValue: defaults.string(forKey: Keys.launcherPanelWidth) ?? "")
       ?? .default
+    launcherStoredPosition = defaults.data(forKey: Keys.launcherStoredPosition).flatMap {
+      try? JSONDecoder().decode(LauncherStoredPosition.self, from: $0)
+    }
     appearance = AppAppearance(rawValue: defaults.string(forKey: Keys.appearance) ?? "") ?? .system
 
     clipboardEnabled = defaults.object(forKey: Keys.clipboardEnabled) as? Bool ?? true
