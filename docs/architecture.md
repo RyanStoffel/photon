@@ -14,12 +14,13 @@ Sources/
   PhotonClipboard/      Clipboard history: monitor, store, search, panel view
   PhotonNotes/          Floating markdown notes (see below)
   PhotonFiles/          Spotlight file search: provider, launcher file mode, Quick Look
-  PhotonKeybinds/       Phase 2 stub (hotkeys + window management)
+  PhotonKeybinds/       Hyper key, app hotkeys, window management
 Tests/
   PhotonCoreTests/      FuzzyMatcher + FrecencyStore
   PhotonClipboardTests/ History rules (dedupe, retention), search ranking, store round trip
   PhotonNotesTests/     Title extraction, markdown spans, store, debounce, query parsing
   PhotonFilesTests/     Spotlight query strings, ranking, path truncation
+  PhotonKeybindsTests/  Frame math, shortcut parsing, conflicts, hidutil mapping format
 ```
 
 `Package.swift` only adds the AppKit modules and the `Photon` executable when `os(macOS)` is true. `PhotonCore` compiles everywhere. `PhotonClipboard` is also declared for every platform: its AppKit files are wrapped in `#if canImport(AppKit)`, so the models, history rules, search, and store build and test on Linux while the monitor, paster, and views only compile on macOS.
@@ -31,7 +32,7 @@ Tests/
 | PhotonClipboard | PhotonCore | partly (guarded) |
 | PhotonNotes | PhotonCore | yes (AppKit panel, SwiftUI switcher) |
 | PhotonFiles | PhotonCore | yes (plus QuickLookUI) |
-| PhotonKeybinds | PhotonCore | reserved; stub is empty |
+| PhotonKeybinds | PhotonCore | yes (plus ApplicationServices, CoreGraphics, IOKit) |
 | Photon | all of the above | yes |
 
 ## How a provider plugs in
@@ -116,8 +117,8 @@ App-side wiring lives in `Sources/Photon/Notes/NotesIntegration.swift`: it maps 
 - `LSUIElement` keeps it out of the Dock. A `MenuBarExtra` is the visible affordance.
 - `HotkeyManager` wraps Carbon `RegisterEventHotKey`. The default shortcut is `Cmd+Space`. First launch compares that shortcut to Spotlight (`com.apple.symbolichotkeys`, id 64) and shows guidance if they collide.
 - `LauncherPanelController` owns a non-activating floating `NSPanel` (native material, centered). The panel is created at launch so the hotkey only has to order it front. Esc and losing key focus hide it. The panel has a command list, a clipboard session (`LauncherSession.clipboard`), and protocol-based feature modes (`LauncherMode`; file search today).
-- `HotkeyManager` registers several Carbon hotkeys keyed by id: `1` is the launcher, `2` opens clipboard history, `3` toggles the notes window (off by default).
-- Settings is a regular SwiftUI `Settings` scene: General, Clipboard, Notes, Files, and About are implemented; Keybinds is a placeholder bound to `SettingsStore`.
+- `HotkeyManager` registers several Carbon hotkeys keyed by id: `1` is the launcher, `2` opens clipboard history, `3` toggles the notes window (off by default), and `add(combo:handler:)` hands out ids from `1000` for features with a dynamic number of shortcuts (app hotkeys, window commands).
+- Settings is a regular SwiftUI `Settings` scene: General, Clipboard, Notes, Files, Keybinds, and About are all implemented and bound to `SettingsStore`.
 
 ## Clipboard history (`PhotonClipboard`)
 
@@ -135,6 +136,26 @@ App-side wiring lives in `Sources/Photon/Notes/NotesIntegration.swift`: it maps 
 
 `AppRuntime` creates one `ClipboardManager`, hands it to `LauncherPanelController.attachClipboard`, registers the provider, and mirrors `SettingsStore` into `ClipboardSettings` through `onClipboardChange`. The Clipboard settings tab (`ClipboardSettingsView`) binds to `SettingsStore` and reads storage size from the manager.
 
+## PhotonKeybinds
+
+`KeybindsController` (`@MainActor`, an `ObservableObject` the Keybinds tab observes) owns everything and is driven by one value, `KeybindsConfiguration`, which `SettingsStore` persists as JSON (`keybindsConfiguration`). `apply(_:)` is idempotent and runs after every settings change.
+
+| Piece | Role |
+| --- | --- |
+| `KeyShortcut` / `KeyModifiers` | Key code + modifiers. `⌃⌥⇧⌘` together is the Hyper key (`isHyper`, shown as `✦`). Parses `hyper+left`, `cmd+shift+k`, `⌃⌥⇧⌘Return`; converts to Carbon and `CGEventFlags` masks. Pure. |
+| `WindowAction` / `WindowLayout` | The 19 window commands and their frame math (grid cells, translate between displays, fit, screen lookup, coordinate flip). Pure, bottom-left coordinates. |
+| `KeybindsConfiguration` | Hyper key settings, app hotkeys, window bindings, conflict detection. Pure. |
+| `HIDKeyMapping` / `HIDKeyRemapper` | The `hidutil` `UserKeyMapping` format (pure parser and JSON argument) and the process that runs `/usr/bin/hidutil` to map the chosen key to F18 and back. Photon only ever removes its own entries. |
+| `HyperKeyEngine` | Session `CGEventTap` on the main run loop. Swallows F18, adds the four modifier flags to keys typed while it is held, dispatches keys that have a Hyper shortcut, and runs the tap behaviour (nothing / Escape / Caps Lock via `IOHIDSetModifierLockState`) on a quick press. Re-enables itself when macOS disables the tap. |
+| `WindowManager` | Accessibility API: frontmost app's focused window, `kAXPosition`/`kAXSize` (set size, position, size again; `AXEnhancedUserInterface` off while moving), multi-display via `NSScreen.visibleFrame`, per-window restore history. |
+| `AppActivator` | App hotkey behaviour: hide when frontmost, otherwise launch or focus through `NSWorkspace`. |
+| `AccessibilityPermission` | `AXIsProcessTrusted(WithOptions)`, `CGPreflightListenEventAccess`, System Settings deep links. |
+| `KeybindsProvider` | Puts the window commands in the launcher (`window:<action>` ids). |
+
+Shortcut routing: plain combinations go through the app's `HotkeyManager` (Carbon) via the `GlobalHotkeyRegistrar` protocol the app implements; Hyper combinations fire from the event tap while the Hyper key is held and are also registered with Carbon so pressing the four modifiers by hand works. While a recorder is active the controller pauses dispatch so bound shortcuts can be re-recorded.
+
+Safety: the HID remap is only installed after the event tap exists, is removed on quit, disable, permission loss, or failure, is cleaned up on the next launch after a crash, and is never persistent (macOS drops it at logout). Nothing in the module prompts for Accessibility except a one-time first-run alert and explicit user actions on the Keybinds tab.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `develop` / `main`:
@@ -143,7 +164,7 @@ App-side wiring lives in `Sources/Photon/Notes/NotesIntegration.swift`: it maps 
 | --- | --- | --- |
 | `branch-name` | ubuntu-latest | Enforces `feature/GH-<n>-*`, `bug/GH-<n>-*`, `chore/*`, `docs/*`, `release/*` (passes for `develop`/`main` themselves). |
 | `lint` | macos-latest | `swiftformat --lint` and `swiftlint lint --strict`. |
-| `test` | macos-latest | `swift test` (PhotonCoreTests, PhotonClipboardTests, PhotonNotesTests, PhotonFilesTests). |
+| `test` | macos-latest | `swift test` (PhotonCoreTests, PhotonClipboardTests, PhotonNotesTests, PhotonFilesTests, PhotonKeybindsTests). |
 | `build` | macos-latest | `Scripts/package_app.sh`, uploads `Photon.app`. |
 
 Those four job names are the required status checks. SwiftPM `.build` is cached per job.
