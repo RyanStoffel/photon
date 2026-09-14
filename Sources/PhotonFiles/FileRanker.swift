@@ -83,8 +83,9 @@ public enum FileRanker: Sendable {
     }
     let relative = PathFormatter.relativeToHome(file.path, home: home) ?? file.path
     let whole = score(query: wholeQuery, stem: file.stem, fileName: file.fileName, relativePath: relative)
+    let bonus = terms.count == 1 ? firstTokenBonus(for: file, foldedQuery: terms[0]) : 0
     if terms.count == 1 {
-      return whole
+      return min(max(whole, bonus), 1)
     }
     let perTerm = terms.map { term in
       score(query: term, stem: file.stem, fileName: file.fileName, relativePath: relative)
@@ -93,7 +94,7 @@ public enum FileRanker: Sendable {
       return 0
     }
     let averaged = perTerm.reduce(0, +) / Double(perTerm.count)
-    return max(whole, averaged)
+    return min(max(whole, averaged, bonus), 1)
   }
 
   private static func score(query: String, stem: String, fileName: String, relativePath: String) -> Double {
@@ -127,6 +128,19 @@ public enum FileRanker: Sendable {
       weighted = max(weighted, 0.7)
     }
     return min(weighted, 1)
+  }
+
+  /// Documents whose first filename token equals the query (Ember_Individual_Pitch
+  /// for `ember`) outrank a screenful of similarly prefixed folders.
+  static func firstTokenBonus(for file: FileResult, foldedQuery: String) -> Double {
+    guard !file.isFolder, !foldedQuery.isEmpty else {
+      return 0
+    }
+    let token = SpotlightQueryBuilder.terms(from: file.stem).first.map(fold)
+    guard token == foldedQuery else {
+      return 0
+    }
+    return 0.93
   }
 
   /// Indices where a new word begins: after separators and at camelCase humps.

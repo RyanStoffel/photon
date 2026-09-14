@@ -133,6 +133,10 @@ final class LauncherViewModel: ObservableObject {
     modes.append(mode)
   }
 
+  func refreshLayout() {
+    updateContent()
+  }
+
   func resetForShow() {
     resetTransientUI()
     selectedID = results.first?.id
@@ -341,14 +345,16 @@ final class LauncherViewModel: ObservableObject {
     selectedID = nil
   }
 
-  /// Primary results first; a mode's inline results (never its activation command) trail them.
+  /// Primary results first; a mode's inline results (never its activation command) trail them
+  /// except files, which mix into the main list so a query like `ember` shows Documents
+  /// hits without typing "files" first.
   /// An empty query lists suggestions: the few best-ranked (frecency) commands.
   private func arrange(_ ranked: [RankedCommand], forEmptyQuery isSuggestions: Bool) -> [RankedCommand] {
     var primary: [RankedCommand] = []
     var trailing: [RankedCommand] = []
     for item in ranked {
       let mode = mode(forInlineProvider: item.command.providerID)
-      if let mode, item.command.id != mode.activationCommandID {
+      if let mode, item.command.id != mode.activationCommandID, mode.id != "files" {
         trailing.append(item)
       } else {
         primary.append(item)

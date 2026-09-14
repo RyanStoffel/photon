@@ -363,4 +363,8 @@ extension LauncherPanelController: LauncherModeHost {
     }
     NSApp.activate()
   }
+
+  func modeRequestsLayoutUpdate() {
+    model.refreshLayout()
+  }
 }

@@ -5,9 +5,24 @@ import Foundation
 /// soon as a newer query lands.
 final class MdfindQueryRunner: @unchecked Sendable {
   struct Request: Sendable {
-    let queryString: String
+    let queryString: String?
+    let fileName: String?
     let onlyIn: [String]
     let scanLimit: Int
+
+    init(queryString: String, onlyIn: [String], scanLimit: Int) {
+      self.queryString = queryString
+      fileName = nil
+      self.onlyIn = onlyIn
+      self.scanLimit = scanLimit
+    }
+
+    init(fileName: String, onlyIn: [String], scanLimit: Int) {
+      queryString = nil
+      self.fileName = fileName
+      self.onlyIn = onlyIn
+      self.scanLimit = scanLimit
+    }
   }
 
   struct Outcome: Sendable {
@@ -19,16 +34,19 @@ final class MdfindQueryRunner: @unchecked Sendable {
   private let lock = NSLock()
   private var process: Process?
   private var completion: (@Sendable (Outcome) -> Void)?
+  private var timedOut = false
 
   func start(_ request: Request, completion: @escaping @Sendable (Outcome) -> Void) {
     lock.lock()
     self.completion = completion
+    timedOut = false
     lock.unlock()
 
     let process = Process()
     process.executableURL = URL(fileURLWithPath: MdfindInvocation.executable)
     process.arguments = MdfindInvocation.arguments(
       queryString: request.queryString,
+      fileName: request.fileName,
       onlyIn: request.onlyIn
     )
     process.standardOutput = Pipe()
@@ -63,19 +81,29 @@ final class MdfindQueryRunner: @unchecked Sendable {
     finish(Outcome(cancelled: true))
   }
 
+  /// Stops a hung `mdfind` and keeps whatever paths it already printed.
+  func expire() {
+    lock.lock()
+    timedOut = true
+    let process = process
+    lock.unlock()
+    process?.terminate()
+  }
+
   private func processFinished(_ process: Process, data: Data, scanLimit: Int) {
     lock.lock()
     let stillCurrent = self.process === process
+    let didTimeOut = timedOut
     lock.unlock()
     guard stillCurrent else {
       return
     }
 
-    if process.terminationReason == .uncaughtSignal {
+    if process.terminationReason == .uncaughtSignal, !didTimeOut {
       finish(Outcome(cancelled: true))
       return
     }
-    let available = process.terminationStatus == 0
+    let available = didTimeOut || process.terminationStatus == 0
     let paths = MdfindInvocation.paths(fromNullTerminated: data, limit: scanLimit)
     finish(Outcome(paths: paths, spotlightAvailable: available))
   }

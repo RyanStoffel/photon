@@ -64,11 +64,15 @@ public enum SpotlightQueryBuilder: Sendable {
 
   static func clause(for term: String, searchContents: Bool) -> String {
     let escaped = escape(term)
-    let pattern = term.count >= substringMinimumLength ? "\"*\(escaped)*\"cd" : "\"\(escaped)*\"cdw"
-    var parts = [
-      "kMDItemDisplayName == \(pattern)",
-      "kMDItemFSName == \(pattern)"
-    ]
+    var parts: [String] = []
+    if term.count >= substringMinimumLength {
+      let anywhere = "\"*\(escaped)*\"cd"
+      parts.append("kMDItemDisplayName == \(anywhere)")
+      parts.append("kMDItemFSName == \(anywhere)")
+    }
+    let prefix = "\"\(escaped)*\"cdw"
+    parts.append("kMDItemDisplayName == \(prefix)")
+    parts.append("kMDItemFSName == \(prefix)")
     if searchContents {
       parts.append("kMDItemTextContent == \"\(escaped)*\"cdw")
     }

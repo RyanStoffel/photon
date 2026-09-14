@@ -26,23 +26,26 @@ public final class FileSearchEngine {
   }
 
   public static let defaultDebounce: Duration = .milliseconds(120)
+  /// `mdfind` on a short substring can scan the whole home folder; expire it so
+  /// Files never sits on a stuck Searching panel.
+  public static let queryTimeout: Duration = .milliseconds(1800)
 
   private let debounce: Duration
   private var generation = 0
-  private var runner: MdfindQueryRunner?
+  private var runners: [MdfindQueryRunner] = []
 
   public init(debounce: Duration = FileSearchEngine.defaultDebounce) {
     self.debounce = debounce
   }
 
   /// Waits out the debounce window, cancels any in-flight query, runs
-  /// `mdfind`, and ranks off the main thread. Returns `nil` when a newer
-  /// search superseded this one, in which case the caller should do nothing.
+  /// `mdfind` (metadata plus `-name` fallback), and ranks off the main thread.
+  /// Returns `nil` when a newer search superseded this one, in which case the
+  /// caller should do nothing.
   public func search(_ request: Request) async -> Response? {
     generation += 1
     let token = generation
-    runner?.cancel()
-    runner = nil
+    cancelRunners()
 
     let trimmed = request.query.trimmingCharacters(in: .whitespacesAndNewlines)
     guard let queryString = SpotlightQueryBuilder.queryString(
@@ -59,27 +62,41 @@ public final class FileSearchEngine {
       return nil
     }
 
-    let runner = MdfindQueryRunner()
-    self.runner = runner
-    let mdfindRequest = MdfindQueryRunner.Request(
-      queryString: queryString,
-      onlyIn: onlyInFolders(for: request.settings),
-      scanLimit: max(500, request.limit * 20)
-    )
-    let outcome: MdfindQueryRunner.Outcome = await withCheckedContinuation { continuation in
-      runner.start(mdfindRequest) { outcome in
-        continuation.resume(returning: outcome)
+    let folders = onlyInFolders(for: request.settings)
+    let scanLimit = max(500, request.limit * 20)
+    let terms = SpotlightQueryBuilder.terms(from: trimmed)
+    var invocations: [MdfindQueryRunner.Request] = [
+      MdfindQueryRunner.Request(queryString: queryString, onlyIn: folders, scanLimit: scanLimit)
+    ]
+    for term in terms {
+      invocations.append(
+        MdfindQueryRunner.Request(fileName: term, onlyIn: folders, scanLimit: scanLimit)
+      )
+    }
+
+    var paths: [String] = []
+    var spotlightAvailable = true
+    for invocation in invocations {
+      guard token == generation, !Task.isCancelled else {
+        return nil
       }
+      let outcome = await runMdfind(invocation)
+      guard token == generation else {
+        return nil
+      }
+      if outcome.cancelled {
+        continue
+      }
+      spotlightAvailable = spotlightAvailable && outcome.spotlightAvailable
+      paths.append(contentsOf: outcome.paths)
     }
-    if self.runner === runner {
-      self.runner = nil
-    }
-    guard token == generation, !outcome.cancelled else {
+    guard token == generation else {
       return nil
     }
 
+    let uniquePaths = uniqued(paths)
     let ranked = await Task.detached(priority: .userInitiated) {
-      let files = outcome.paths.compactMap(FileResultFactory.file(at:))
+      let files = uniquePaths.compactMap(FileResultFactory.file(at:))
       let ranked = FileRanker.rank(
         files,
         query: trimmed,
@@ -95,13 +112,12 @@ public final class FileSearchEngine {
     guard token == generation else {
       return nil
     }
-    return Response(query: trimmed, files: ranked, spotlightAvailable: outcome.spotlightAvailable)
+    return Response(query: trimmed, files: ranked, spotlightAvailable: spotlightAvailable)
   }
 
   public func cancel() {
     generation += 1
-    runner?.cancel()
-    runner = nil
+    cancelRunners()
   }
 
   /// Home scope uses `mdfind -onlyin $HOME` (plus extra folders). Computer
@@ -116,5 +132,33 @@ public final class FileSearchEngine {
       folders.append(folder)
     }
     return folders
+  }
+
+  private func runMdfind(_ request: MdfindQueryRunner.Request) async -> MdfindQueryRunner.Outcome {
+    let runner = MdfindQueryRunner()
+    runners.append(runner)
+    let outcome: MdfindQueryRunner.Outcome = await withCheckedContinuation { continuation in
+      runner.start(request) { outcome in
+        continuation.resume(returning: outcome)
+      }
+      Task {
+        try? await Task.sleep(for: FileSearchEngine.queryTimeout)
+        runner.expire()
+      }
+    }
+    runners.removeAll { $0 === runner }
+    return outcome
+  }
+
+  private func cancelRunners() {
+    for runner in runners {
+      runner.cancel()
+    }
+    runners = []
+  }
+
+  private func uniqued(_ paths: [String]) -> [String] {
+    var seen = Set<String>()
+    return paths.filter { seen.insert($0).inserted }
   }
 }
