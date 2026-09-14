@@ -1,8 +1,9 @@
 import AppKit
 import SwiftUI
 
+/// Drag the launcher by its search bar chrome. No modifier keys required; mouse-up
+/// always ends the drag and hides snap guides.
 struct LauncherSearchBarDragModifier: ViewModifier {
-  let hotkey: HotkeyCombo
   let onSearchBarDrag: ((LauncherSearchBarDragPhase) -> Void)?
 
   @State private var dragActive = false
@@ -10,40 +11,34 @@ struct LauncherSearchBarDragModifier: ViewModifier {
   func body(content: Content) -> some View {
     content
       .contentShape(Rectangle())
-      .highPriorityGesture(
-        DragGesture(minimumDistance: 2)
-          .onChanged { value in
-            guard onSearchBarDrag != nil else {
-              return
-            }
-            if !dragActive {
-              guard hotkey.holdsRequiredModifiers(NSEvent.modifierFlags) else {
-                return
-              }
-              dragActive = true
-              onSearchBarDrag?(.began)
-            }
-            if dragActive {
-              onSearchBarDrag?(.changed(translation: value.translation))
-            }
-          }
-          .onEnded { value in
-            guard dragActive else {
-              return
-            }
-            dragActive = false
-            onSearchBarDrag?(.changed(translation: value.translation))
-            onSearchBarDrag?(.ended)
-          }
-      )
+      .highPriorityGesture(dragGesture)
+  }
+
+  private var dragGesture: some Gesture {
+    DragGesture(minimumDistance: 3)
+      .onChanged { value in
+        guard onSearchBarDrag != nil else {
+          return
+        }
+        if !dragActive {
+          dragActive = true
+          onSearchBarDrag?(.began)
+        }
+        onSearchBarDrag?(.changed(translation: value.translation))
+      }
+      .onEnded { value in
+        guard dragActive else {
+          return
+        }
+        onSearchBarDrag?(.changed(translation: value.translation))
+        onSearchBarDrag?(.ended)
+        dragActive = false
+      }
   }
 }
 
 extension View {
-  func launcherSearchBarDrag(
-    hotkey: HotkeyCombo,
-    onSearchBarDrag: ((LauncherSearchBarDragPhase) -> Void)?
-  ) -> some View {
-    modifier(LauncherSearchBarDragModifier(hotkey: hotkey, onSearchBarDrag: onSearchBarDrag))
+  func launcherSearchBarDrag(onSearchBarDrag: ((LauncherSearchBarDragPhase) -> Void)?) -> some View {
+    modifier(LauncherSearchBarDragModifier(onSearchBarDrag: onSearchBarDrag))
   }
 }

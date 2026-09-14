@@ -12,7 +12,6 @@ enum LauncherSession: Equatable {
 }
 
 @MainActor
-// swiftlint:disable:next type_body_length
 final class LauncherViewModel: ObservableObject {
   @Published var query = "" {
     didSet {
@@ -184,6 +183,7 @@ final class LauncherViewModel: ObservableObject {
     }
     if let activeMode {
       activeMode.moveSelection(delta)
+      updateContent()
       return
     }
     guard !results.isEmpty else {
@@ -336,8 +336,12 @@ final class LauncherViewModel: ObservableObject {
     case .clipboard:
       clipboardContent()
     case .commands:
-      if activeMode != nil {
-        .fullHeight
+      if let activeMode {
+        if activeMode.prefersCompactLauncherLayout {
+          .searchOnly
+        } else {
+          .fullHeight
+        }
       } else if query.isEmpty, !preferences.showsSuggestions {
         .searchOnly
       } else {
