@@ -19,23 +19,30 @@ struct HotkeyRecorder: NSViewRepresentable {
 }
 
 /// Recorder for an optional shortcut. Shows "None" when unset; Delete while recording clears it.
+/// `title` overrides how a shortcut is displayed; `onRecordingChanged` reports when recording starts and stops.
 struct OptionalHotkeyRecorder: NSViewRepresentable {
   @Binding var combo: HotkeyCombo?
+  var title: ((HotkeyCombo) -> String)?
+  var onRecordingChanged: ((Bool) -> Void)?
 
   func makeNSView(context _: Context) -> HotkeyRecorderView {
     let view = HotkeyRecorderView()
     view.allowsClear = true
-    view.combo = combo
-    view.onChange = { combo = $0 }
-    view.onClear = { combo = nil }
+    configure(view)
     return view
   }
 
   func updateNSView(_ nsView: HotkeyRecorderView, context _: Context) {
-    nsView.combo = combo
-    nsView.onChange = { combo = $0 }
-    nsView.onClear = { combo = nil }
+    configure(nsView)
     nsView.refresh()
+  }
+
+  private func configure(_ view: HotkeyRecorderView) {
+    view.combo = combo
+    view.titleProvider = title
+    view.onRecordingChanged = onRecordingChanged
+    view.onChange = { combo = $0 }
+    view.onClear = { combo = nil }
   }
 }
 
@@ -43,8 +50,18 @@ final class HotkeyRecorderView: NSView {
   var combo: HotkeyCombo? = .defaultCombo
   var onChange: ((HotkeyCombo) -> Void)?
   var onClear: (() -> Void)?
+  var onRecordingChanged: ((Bool) -> Void)?
+  var titleProvider: ((HotkeyCombo) -> String)?
   var allowsClear = false
-  private var recording = false
+
+  private var recording = false {
+    didSet {
+      if recording != oldValue {
+        onRecordingChanged?(recording)
+      }
+    }
+  }
+
   private let button = NSButton(title: "", target: nil, action: nil)
 
   override init(frame frameRect: NSRect) {
@@ -75,14 +92,23 @@ final class HotkeyRecorderView: NSView {
   }
 
   func refresh() {
-    button.title = recording ? "Press a shortcut" : combo?.displayString ?? "None"
+    if recording {
+      button.title = "Press a shortcut"
+    } else if let combo {
+      button.title = titleProvider?(combo) ?? combo.displayString
+    } else {
+      button.title = "None"
+    }
   }
 
   @objc
   private func toggle() {
-    recording.toggle()
     if recording {
+      recording = false
+    } else {
+      // Take focus first so a recorder that is still active resigns before this one reports recording.
       window?.makeFirstResponder(self)
+      recording = true
     }
     refresh()
   }
@@ -121,6 +147,14 @@ final class HotkeyRecorderView: NSView {
       return
     }
     super.flagsChanged(with: event)
+  }
+
+  override func resignFirstResponder() -> Bool {
+    if recording {
+      recording = false
+      refresh()
+    }
+    return super.resignFirstResponder()
   }
 }
 

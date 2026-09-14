@@ -10,7 +10,8 @@ private let photonHotKeySignature: OSType = 0x5048_544e
 /// Abstraction over Carbon `RegisterEventHotKey`.
 ///
 /// Id `1` is the launcher shortcut (`register(combo:)` / `onPressed`). Features
-/// register additional shortcuts with their own id and handler.
+/// register additional shortcuts with their own id and handler, or ask for a
+/// fresh id with `add(combo:handler:)` when the number of shortcuts is dynamic.
 @MainActor
 final class HotkeyManager {
   static let shared = HotkeyManager()
@@ -20,6 +21,8 @@ final class HotkeyManager {
     static let launcher: UInt32 = 1
     static let clipboard: UInt32 = 2
     static let notes: UInt32 = 3
+    /// Ids handed out by `add(combo:handler:)` start here.
+    static let firstDynamic: UInt32 = 1000
   }
 
   var onPressed: (() -> Void)?
@@ -27,6 +30,7 @@ final class HotkeyManager {
   private var hotKeyRefs: [UInt32: EventHotKeyRef] = [:]
   private var handlers: [UInt32: () -> Void] = [:]
   private var handlerRef: EventHandlerRef?
+  private var nextDynamicID = HotkeyID.firstDynamic
 
   private init() {}
 
@@ -57,6 +61,14 @@ final class HotkeyManager {
     }
     hotKeyRefs[id] = ref
     handlers[id] = handler
+  }
+
+  /// Registers a shortcut under a fresh id and returns that id for `unregister(id:)`.
+  func add(combo: HotkeyCombo, handler: @escaping () -> Void) throws -> UInt32 {
+    let id = nextDynamicID
+    try register(combo: combo, id: id, handler: handler)
+    nextDynamicID += 1
+    return id
   }
 
   /// Unregisters the launcher shortcut.
