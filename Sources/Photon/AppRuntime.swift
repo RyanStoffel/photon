@@ -13,6 +13,7 @@ final class AppRuntime: ObservableObject {
   let registry = CommandRegistry()
   let launcher: LauncherPanelController
   let clipboard: ClipboardManager
+  let notes: NotesIntegration
   private let hotkey = HotkeyManager.shared
   private let frecencyURL: URL
   private var fileSearch: FileSearchIntegration?
@@ -30,6 +31,7 @@ final class AppRuntime: ObservableObject {
       directory: dir.appendingPathComponent("Clipboard", isDirectory: true)
     )
     launcher.attachClipboard(clipboard)
+    notes = NotesIntegration(settings: settings)
     registerProviders()
   }
 
@@ -47,10 +49,12 @@ final class AppRuntime: ObservableObject {
     settings.onClipboardChange = { [weak self] in
       self?.applyClipboardSettings()
     }
+    notes.start()
     SpotlightConflict.adviseIfNeeded(current: settings.hotkey)
   }
 
   func stop() {
+    notes.stop()
     hotkey.unregisterAll()
     clipboard.stop()
     persistFrecency()
@@ -64,6 +68,10 @@ final class AppRuntime: ObservableObject {
 
   func showClipboardHistory() {
     launcher.showClipboard()
+  }
+
+  func toggleNotes() {
+    notes.controller.toggle()
   }
 
   func openSettings() {
@@ -81,7 +89,7 @@ final class AppRuntime: ObservableObject {
       }
     }
     registry.register(clipboardProvider)
-    registry.register(NotesProvider())
+    registry.register(notes.provider)
     fileSearch = FileSearchIntegration(settings: settings, registry: registry, launcher: launcher)
     registry.register(KeybindsProvider())
   }

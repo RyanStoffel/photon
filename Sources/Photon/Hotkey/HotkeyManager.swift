@@ -19,6 +19,7 @@ final class HotkeyManager {
   enum HotkeyID {
     static let launcher: UInt32 = 1
     static let clipboard: UInt32 = 2
+    static let notes: UInt32 = 3
   }
 
   var onPressed: (() -> Void)?
