@@ -7,16 +7,16 @@ import SwiftUI
 
 @MainActor
 final class LauncherPanelController: NSObject, NSWindowDelegate {
-  private let settings: SettingsStore
+  let settings: SettingsStore
   private let registry: CommandRegistry
   private let frecencyURL: URL
-  private let model: LauncherViewModel
-  private var panel: LauncherPanel?
-  private var localMonitor: Any?
+  let model: LauncherViewModel
+  var panel: LauncherPanel?
+  var localMonitor: Any?
   private var cancellables: Set<AnyCancellable> = []
-  private let centerGuides = LauncherCenterGuidesOverlay()
-  private var searchBarDragInitialOrigin: NSPoint?
-  private var isDraggingLauncher = false
+  let centerGuides = LauncherCenterGuidesOverlay()
+  var searchBarDragInitialOrigin: NSPoint?
+  var isDraggingLauncher = false
   /// App that was frontmost before a mode asked us to activate; restored on hide.
   private var previousApplication: NSRunningApplication?
 
@@ -327,179 +327,6 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     // No animation: the resize and SwiftUI's relayout land in the same display cycle.
     panel.setFrame(frame, display: false, animate: false)
     panel.invalidateShadow()
-  }
-
-  private func visibleFrame(for panel: NSPanel) -> ScreenVisibleFrame {
-    let rect = (panel.screen ?? NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? .zero
-    return ScreenVisibleFrame(
-      minX: rect.minX,
-      minY: rect.minY,
-      width: rect.width,
-      height: rect.height
-    )
-  }
-
-  /// Centred horizontally by default.
-  /// Uses a stored origin when the user has repositioned the panel.
-  private func position(_ panel: NSPanel) {
-    guard panel.screen != nil || NSScreen.main != nil || !NSScreen.screens.isEmpty else {
-      return
-    }
-    let visible = visibleFrame(for: panel)
-    let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
-    let origin = LauncherPosition.origin(
-      panelSize: size,
-      visible: visible,
-      stored: settings.launcherStoredPosition
-    )
-    panel.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
-  }
-
-  private func handleSearchBarDrag(_ phase: LauncherSearchBarDragPhase) {
-    guard let panel else {
-      return
-    }
-    switch phase {
-    case .began:
-      isDraggingLauncher = true
-      searchBarDragInitialOrigin = panel.frame.origin
-      let visible = visibleFrame(for: panel)
-      let guides = LauncherPosition.snapGuideXPositions(visible: visible)
-      let screen = panel.screen ?? NSScreen.main ?? NSScreen.screens.first
-      if let screen {
-        centerGuides.show(
-          visibleFrame: screen.visibleFrame,
-          guideXLeft: guides.left,
-          guideXRight: guides.right
-        )
-      }
-    case let .changed(translation):
-      guard let initial = searchBarDragInitialOrigin else {
-        return
-      }
-      var origin = PanelOrigin(
-        x: initial.x + translation.width,
-        y: initial.y - translation.height
-      )
-      let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
-      origin = LauncherPosition.clampedOrigin(origin, panelSize: size, visible: visibleFrame(for: panel))
-      panel.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
-    case .ended:
-      centerGuides.hide()
-      isDraggingLauncher = false
-      searchBarDragInitialOrigin = nil
-      let size = PanelSize(width: panel.frame.width, height: panel.frame.height)
-      let origin = PanelOrigin(x: panel.frame.origin.x, y: panel.frame.origin.y)
-      let stored = LauncherPosition.storedPosition(
-        origin: origin,
-        panelWidth: size.width,
-        visible: visibleFrame(for: panel)
-      )
-      settings.launcherStoredPosition = stored
-      var frame = panel.frame
-      frame.origin.x = stored.originX
-      frame.origin.y = stored.originY
-      panel.setFrame(frame, display: false, animate: false)
-    }
-  }
-}
-
-// MARK: Keys
-
-extension LauncherPanelController {
-  private func startMonitor() {
-    stopMonitor()
-    localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-      guard let self else {
-        return event
-      }
-      switch model.session {
-      case .clipboard:
-        return handleClipboardKey(event)
-      case .commands:
-        return handle(event) ? nil : event
-      }
-    }
-  }
-
-  /// Returns true when the launcher consumed the key event.
-  private func handle(_ event: NSEvent) -> Bool {
-    if let mode = model.activeMode, mode.handle(event) {
-      return true
-    }
-    switch event.keyCode {
-    case 53:
-      escape()
-      return true
-    case 51:
-      return deleteOnEmptyQuery()
-    case 126:
-      model.moveSelection(-1)
-      return true
-    case 125:
-      model.moveSelection(1)
-      return true
-    case 36, 76:
-      runSelection()
-      return true
-    default:
-      return false
-    }
-  }
-
-  /// Escape leaves the active mode first and hides the launcher second.
-  private func escape() {
-    if model.activeMode != nil {
-      model.exitMode()
-    } else {
-      hide()
-    }
-  }
-
-  /// Backspace on an empty query leaves the active mode, like deleting a token.
-  private func deleteOnEmptyQuery() -> Bool {
-    guard model.activeMode != nil, model.query.isEmpty else {
-      return false
-    }
-    model.exitMode()
-    return true
-  }
-
-  private func runSelection() {
-    Task {
-      if await model.runSelection() {
-        hide()
-      }
-    }
-  }
-
-  /// Clipboard session: the clipboard view model owns navigation and actions.
-  /// Esc, or Delete on an empty query, returns to the command list.
-  private func handleClipboardKey(_ event: NSEvent) -> NSEvent? {
-    guard let clipboard = model.clipboard else {
-      return handle(event) ? nil : event
-    }
-    if clipboard.handleKeyDown(event) {
-      return nil
-    }
-    let command = event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command)
-    switch event.keyCode {
-    case 53:
-      model.exitClipboard()
-      return nil
-    case 51 where !command && model.query.isEmpty:
-      model.exitClipboard()
-      return nil
-    default:
-      return event
-    }
-  }
-
-  private func stopMonitor() {
-    if let localMonitor {
-      NSEvent.removeMonitor(localMonitor)
-      self.localMonitor = nil
-    }
   }
 }
 
