@@ -166,10 +166,10 @@ struct LauncherView: View {
   private func resolvedIcon(for command: Command) -> ResolvedCommandIcon {
     let fallback = symbolName(for: command)
     let resolved = CommandIconCache.shared.resolve(command, fallbackSymbol: fallback)
-    if case .symbol = resolved, command.icon == nil,
-       let image = model.mode(forInlineProvider: command.providerID)?.icon(for: command)
-    {
-      return .image(image)
+    if case .symbol = resolved, command.icon == nil {
+      if let image = model.mode(forInlineProvider: command.providerID)?.icon(for: command) {
+        return .image(image)
+      }
     }
     return resolved
   }
