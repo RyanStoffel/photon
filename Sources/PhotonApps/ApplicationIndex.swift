@@ -36,6 +36,11 @@ public final class ApplicationIndex: @unchecked Sendable {
     for root in roots {
       collectApps(at: root, depth: 2, into: &found)
     }
+    if let extra = ProcessInfo.processInfo.environment["PHOTON_APPLICATIONS_EXTRA"] {
+      for segment in extra.split(separator: ":") where !segment.isEmpty {
+        collectApps(at: URL(fileURLWithPath: String(segment), isDirectory: true), depth: 2, into: &found)
+      }
+    }
 
     let paneRoots = [
       URL(fileURLWithPath: "/System/Library/PreferencePanes", isDirectory: true),

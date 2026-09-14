@@ -13,10 +13,10 @@ final class NotesIntegration {
   private let hotkey: HotkeyManager
   private var registeredCombo: HotkeyCombo?
 
-  init(settings: SettingsStore, hotkey: HotkeyManager = .shared) {
+  init(settings: SettingsStore, notesDirectory: URL = NoteStore.defaultDirectory(), hotkey: HotkeyManager = .shared) {
     self.settings = settings
     self.hotkey = hotkey
-    controller = NotesController(preferences: Self.preferences(from: settings))
+    controller = NotesController(directory: notesDirectory, preferences: Self.preferences(from: settings))
     provider = NotesProvider(controller: controller)
     controller.onPreferencesChange = { [weak self] preferences in
       self?.store(preferences)
@@ -30,6 +30,13 @@ final class NotesIntegration {
     applyHotkey()
     if settings.notesOpenOnLaunch {
       controller.show(focus: false)
+    }
+  }
+
+  /// UI scenario mode: wire settings without opening notes on launch.
+  func startWithoutOpenOnLaunch() {
+    settings.onNotesChange = { [weak self] in
+      self?.applySettings()
     }
   }
 

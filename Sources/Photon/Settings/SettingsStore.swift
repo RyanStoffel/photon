@@ -12,6 +12,11 @@ final class SettingsStore: ObservableObject {
   var onKeybindsChange: (() -> Void)?
   var onAppearanceChange: (() -> Void)?
 
+  /// Selected settings tab (`UIScenario` and screenshot harness).
+  @Published var selectedPane: SettingsPaneID = .general
+  /// Applied once when the settings window opens for a scenario.
+  var pendingSettingsPane: SettingsPaneID?
+
   private enum Keys {
     static let hotkeyKeyCode = "hotkeyKeyCode"
     static let hotkeyModifiers = "hotkeyModifiers"

@@ -12,4 +12,4 @@
 --commas inline
 --disable trailingCommas
 --hexliteralcase lowercase
---exclude .build,.swiftpm,build
+--exclude .build,.swiftpm,build,Scripts/photon-window-id.swift
