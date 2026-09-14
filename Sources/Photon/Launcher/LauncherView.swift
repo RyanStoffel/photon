@@ -150,15 +150,28 @@ struct LauncherView: View {
 
   @ViewBuilder
   private func resultIcon(for command: Command) -> some View {
-    if let icon = model.mode(forInlineProvider: command.providerID)?.icon(for: command) {
-      Image(nsImage: icon)
+    switch resolvedIcon(for: command) {
+    case let .image(image):
+      Image(nsImage: image)
         .resizable()
         .interpolation(.high)
         .frame(width: 24, height: 24)
-    } else {
-      Image(systemName: symbolName(for: command))
+    case let .symbol(name):
+      Image(systemName: name)
         .foregroundStyle(.secondary)
     }
+  }
+
+  /// The command's declared icon first; a mode may still supply one for its inline rows.
+  private func resolvedIcon(for command: Command) -> ResolvedCommandIcon {
+    let fallback = symbolName(for: command)
+    let resolved = CommandIconCache.shared.resolve(command, fallbackSymbol: fallback)
+    if case .symbol = resolved, command.icon == nil {
+      if let image = model.mode(forInlineProvider: command.providerID)?.icon(for: command) {
+        return .image(image)
+      }
+    }
+    return resolved
   }
 
   private func symbolName(for command: Command) -> String {

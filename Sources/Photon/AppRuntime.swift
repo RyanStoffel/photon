@@ -42,6 +42,7 @@ final class AppRuntime: ObservableObject {
     clipboard.start()
     Task {
       await registry.reloadAll()
+      launcher.warmIcons()
     }
     applyHotkey()
     applyClipboardHotkey()

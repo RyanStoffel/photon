@@ -30,7 +30,8 @@ public final class KeybindsProvider: CommandProvider, Sendable {
         title: action.title,
         subtitle: shortcut.map { "Window · \($0)" } ?? "Window",
         keywords: keywords,
-        providerID: id
+        providerID: id,
+        icon: .symbol(name: action.symbolName)
       )
     }
   }
@@ -47,4 +48,27 @@ public final class KeybindsProvider: CommandProvider, Sendable {
 
 public enum KeybindsProviderError: Error, Sendable {
   case unknownCommand(String)
+}
+
+public extension WindowAction {
+  /// SF Symbol that sketches the layout in the launcher row.
+  var symbolName: String {
+    switch self {
+    case .leftHalf, .leftTwoThirds: "rectangle.lefthalf.inset.filled"
+    case .rightHalf, .rightTwoThirds: "rectangle.righthalf.inset.filled"
+    case .topHalf: "rectangle.tophalf.inset.filled"
+    case .bottomHalf: "rectangle.bottomhalf.inset.filled"
+    case .topLeftQuarter: "rectangle.inset.topleft.filled"
+    case .topRightQuarter: "rectangle.inset.topright.filled"
+    case .bottomLeftQuarter: "rectangle.inset.bottomleft.filled"
+    case .bottomRightQuarter: "rectangle.inset.bottomright.filled"
+    case .leftThird: "rectangle.leadingthird.inset.filled"
+    case .centerThird, .center: "rectangle.center.inset.filled"
+    case .rightThird: "rectangle.trailingthird.inset.filled"
+    case .maximize, .almostMaximize: "rectangle.inset.filled"
+    case .nextDisplay: "rectangle.righthalf.inset.filled.arrow.right"
+    case .previousDisplay: "rectangle.lefthalf.inset.filled.arrow.left"
+    case .restore: "arrow.uturn.backward"
+    }
+  }
 }

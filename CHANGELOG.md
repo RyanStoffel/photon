@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Launcher: application rows show the app's real icon instead of a placeholder square. The launcher never asked the system for app icons; commands now carry an icon description that the launcher resolves and caches. System Settings panes use their own pane icon and fall back to the System Settings icon; clipboard, notes, file, and window commands have fitting icons too.
+
 ## [0.1.0] - 2026-09-14
 
 First public build. Photon is a menu-bar launcher for macOS 14 and later; it has no Dock icon, no account, no cloud sync, and no telemetry.
