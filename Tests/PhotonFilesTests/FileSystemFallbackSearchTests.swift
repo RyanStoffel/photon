@@ -18,8 +18,8 @@ final class FileSystemFallbackSearchTests: XCTestCase {
 
     let matches = FileSystemFallbackSearch.paths(
       matching: "ember",
+      roots: [root.appendingPathComponent("Documents").path],
       home: root.path,
-      extraFolders: [],
       resultLimit: 20
     )
     XCTAssertEqual(matches.map(resolvedPath), [resolvedPath(document.path)])
@@ -39,12 +39,33 @@ final class FileSystemFallbackSearchTests: XCTestCase {
 
     let matches = FileSystemFallbackSearch.paths(
       matching: "ember",
+      roots: [root.path],
       home: root.path,
-      extraFolders: [],
       resultLimit: 1
     )
     XCTAssertEqual(matches.count, 1)
     XCTAssertTrue(resolvedPath(matches[0]).hasPrefix(resolvedPath(documents.path)))
+  }
+
+  func testDoesNotWalkProtectedFoldersWithoutExplicitRoots() throws {
+    let root = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let document = root.appendingPathComponent("Documents/ember-private.pdf")
+    try FileManager.default.createDirectory(
+      at: document.deletingLastPathComponent(),
+      withIntermediateDirectories: true
+    )
+    try Data().write(to: document)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let matches = FileSystemFallbackSearch.paths(
+      matching: "ember",
+      roots: [],
+      home: root.path,
+      resultLimit: 20
+    )
+
+    XCTAssertTrue(matches.isEmpty)
   }
 
   private func resolvedPath(_ path: String) -> String {

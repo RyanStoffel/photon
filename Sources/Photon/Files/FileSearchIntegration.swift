@@ -9,10 +9,20 @@ import PhotonFiles
 final class FileSearchIntegration {
   let provider: FilesProvider
   let controller: FileSearchController
-  private var cancellable: AnyCancellable?
+  private var cancellables: Set<AnyCancellable> = []
+  private let settings: SettingsStore
+  private let access: FileAccessCoordinator
 
-  init(settings: SettingsStore, registry: CommandRegistry, launcher: LauncherPanelController) {
-    let current = settings.fileSearchSettings
+  init(
+    settings: SettingsStore,
+    access: FileAccessCoordinator,
+    registry: CommandRegistry,
+    launcher: LauncherPanelController
+  ) {
+    self.settings = settings
+    self.access = access
+    var current = settings.fileSearchSettings
+    current.grantedFolders = access.folders
     provider = FilesProvider()
     provider.update(settings: current)
     controller = FileSearchController(settings: current)
@@ -24,22 +34,40 @@ final class FileSearchIntegration {
     }
 
     // objectWillChange fires before the write lands; hop once through the run loop to read the new values.
-    cancellable = settings.objectWillChange
+    settings.objectWillChange
       .receive(on: RunLoop.main)
       .sink { [weak self, weak settings] _ in
         guard let self, let settings else {
           return
         }
-        apply(settings.fileSearchSettings)
+        self.refreshConfiguration()
       }
+      .store(in: &cancellables)
+    access.$grants
+      .dropFirst()
+      .receive(on: RunLoop.main)
+      .sink { [weak self] _ in
+        self?.refreshConfiguration()
+      }
+      .store(in: &cancellables)
+    access.$status
+      .dropFirst()
+      .receive(on: RunLoop.main)
+      .sink { [weak self] _ in
+        self?.refreshConfiguration()
+      }
+      .store(in: &cancellables)
   }
 
   private func apply(_ next: FileSearchSettings) {
-    guard next != controller.settings else {
-      return
-    }
-    controller.settings = next
+    controller.update(settings: next, accessNotice: access.statusMessage)
     provider.update(settings: next)
+  }
+
+  private func refreshConfiguration() {
+    var next = settings.fileSearchSettings
+    next.grantedFolders = access.folders
+    apply(next)
   }
 }
 

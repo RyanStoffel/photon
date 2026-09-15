@@ -4,6 +4,7 @@ import SwiftUI
 
 struct FilesSettingsView: View {
   @EnvironmentObject private var settings: SettingsStore
+  @EnvironmentObject private var fileAccess: FileAccessCoordinator
 
   var body: some View {
     Form {
@@ -37,11 +38,42 @@ struct FilesSettingsView: View {
           .foregroundStyle(.secondary)
       }
 
-      Section("Also search") {
-        FolderListEditor(
-          folders: $settings.filesExtraFolders,
-          emptyText: "Searched in addition to the scope above, for example an external drive."
-        )
+      Section("Folder Access") {
+        if fileAccess.grants.isEmpty {
+          Text("Choose only the folders Photon may search directly when Spotlight has no match.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        ForEach(fileAccess.grants) { grant in
+          HStack(spacing: 8) {
+            Image(nsImage: NSWorkspace.shared.icon(forFile: grant.path))
+              .resizable()
+              .frame(width: 16, height: 16)
+            Text(PathFormatter.abbreviatingHome(grant.path))
+              .lineLimit(1)
+              .truncationMode(.middle)
+            Spacer()
+            Button("Remove", systemImage: "minus.circle") {
+              fileAccess.remove(path: grant.path)
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+          }
+        }
+        Button(fileAccess.grants.isEmpty ? "Choose Folders…" : "Add Folder…") {
+          fileAccess.requestAccess()
+        }
+        if fileAccess.status == .requesting {
+          ProgressView()
+            .controlSize(.small)
+        } else if let message = fileAccess.statusMessage {
+          Text(message)
+            .font(.caption)
+            .foregroundStyle(.orange)
+        }
+        Text("Photon stores security-scoped bookmarks so access survives relaunch.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
       }
 
       Section("Never search") {

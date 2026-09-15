@@ -41,6 +41,9 @@ public struct FileSearchSettings: Equatable, Sendable {
   public var scope: FileSearchScope
   /// Extra folders searched in addition to the scope (external volumes, for example).
   public var extraFolders: [String]
+  /// User-selected roots whose security-scoped bookmarks are active. Only
+  /// these paths may be traversed by the filesystem fallback.
+  public var grantedFolders: [String]
   /// Folders whose contents never appear in results. Spotlight privacy
   /// exclusions are applied by Spotlight itself and need no entry here.
   public var excludedFolders: [String]
@@ -52,6 +55,7 @@ public struct FileSearchSettings: Equatable, Sendable {
   public init(
     scope: FileSearchScope = .home,
     extraFolders: [String] = [],
+    grantedFolders: [String] = [],
     excludedFolders: [String] = [],
     searchContents: Bool = false,
     maxResults: Int = FileSearchSettings.defaultMaxResults,
@@ -60,6 +64,7 @@ public struct FileSearchSettings: Equatable, Sendable {
   ) {
     self.scope = scope
     self.extraFolders = extraFolders
+    self.grantedFolders = grantedFolders
     self.excludedFolders = excludedFolders
     self.searchContents = searchContents
     self.maxResults = maxResults

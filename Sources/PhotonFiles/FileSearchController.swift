@@ -13,6 +13,7 @@ public final class FileSearchController: ObservableObject {
     case results
     case empty(String)
     case unavailable
+    case needsAccess(String)
   }
 
   public struct KeyHint: Identifiable, Equatable, Sendable {
@@ -30,12 +31,15 @@ public final class FileSearchController: ObservableObject {
   public var onRequestDismiss: (@MainActor () -> Void)?
   /// Ask the host to activate the app so an auxiliary panel can take keyboard focus.
   public var onRequestActivation: (@MainActor () -> Void)?
+  /// Opens the normal guided folder-selection flow without dismissing Photon.
+  public var onRequestAccess: (@MainActor () -> Void)?
 
   @Published public private(set) var results: [RankedFile] = []
   @Published public private(set) var status: Status = .idle
   @Published public private(set) var isSearching = false
   @Published public private(set) var showsInfo = false
   @Published public private(set) var notice: String?
+  @Published public private(set) var accessNotice: String?
   @Published public var selectedID: String? {
     didSet {
       if selectedID != oldValue {
@@ -54,7 +58,11 @@ public final class FileSearchController: ObservableObject {
   private var selectionMovedByUser = false
 
   public var prefersCompactLauncherLayout: Bool {
-    results.isEmpty
+    status == .idle
+  }
+
+  public var currentQuery: String {
+    query
   }
 
   public init(settings: FileSearchSettings = FileSearchSettings(), engine: FileSearchEngine = FileSearchEngine()) {
@@ -109,6 +117,19 @@ public final class FileSearchController: ObservableObject {
     }
   }
 
+  public func update(settings: FileSearchSettings, accessNotice: String? = nil) {
+    let changed = self.settings != settings
+    self.settings = settings
+    self.accessNotice = accessNotice
+    if changed, !query.isEmpty {
+      update(query: query)
+    }
+  }
+
+  public func requestFileAccess() {
+    onRequestAccess?()
+  }
+
   public func deactivate() {
     searchTask?.cancel()
     searchTask = nil
@@ -138,7 +159,7 @@ public final class FileSearchController: ObservableObject {
     if !response.spotlightAvailable {
       status = .unavailable
     } else if results.isEmpty {
-      status = .empty(response.query)
+      status = settings.grantedFolders.isEmpty ? .needsAccess(response.query) : .empty(response.query)
     } else {
       status = .results
     }

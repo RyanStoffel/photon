@@ -79,8 +79,8 @@ public final class FileSearchEngine {
     let fallbackTask = Task.detached(priority: .userInitiated) {
       FileSystemFallbackSearch.paths(
         matching: trimmed,
+        roots: request.settings.grantedFolders,
         home: home,
-        extraFolders: request.settings.extraFolders,
         resultLimit: scanLimit
       )
     }
@@ -117,7 +117,7 @@ public final class FileSearchEngine {
         includeApplications: request.includeApplications,
         limit: request.limit,
         scope: request.settings.scope,
-        extraFolders: request.settings.extraFolders
+        extraFolders: request.settings.extraFolders + request.settings.grantedFolders
       )
       FileIconCache.shared.prefetch(ranked.map(\.file))
       return ranked
@@ -140,7 +140,10 @@ public final class FileSearchEngine {
     if settings.scope == .home {
       folders.append(NSHomeDirectory())
     }
-    let extras = FileRanker.normalizedFolders(settings.extraFolders, home: NSHomeDirectory())
+    let extras = FileRanker.normalizedFolders(
+      settings.extraFolders + settings.grantedFolders,
+      home: NSHomeDirectory()
+    )
     for folder in extras where folder.hasPrefix("/") && !folders.contains(folder) {
       folders.append(folder)
     }

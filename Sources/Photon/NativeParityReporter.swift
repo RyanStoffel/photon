@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import PhotonCore
+import PhotonFiles
 
 /// Writes live state from the packaged app for the macOS runtime parity harness.
 /// It is completely inert outside CI's explicit `PHOTON_NATIVE_PARITY_REPORT_PATH`.
@@ -130,6 +131,11 @@ final class NativeParityReporter: NSObject {
       "launcher": launcherReport(panel: panel, model: model, resolvedAppIcons: resolvedAppIcons),
       "clipboardCaptureCount": runtime.clipboard.items.count,
       "appIconProbeCount": appIconProbeCount,
+      "fileAccess": [
+        "grantCount": runtime.fileAccess.grants.count,
+        "folders": runtime.fileAccess.folders,
+        "status": fileAccessStatus(runtime.fileAccess.status),
+      ],
       "settings": [
         "appearance": runtime.settings.appearance.rawValue,
         "launcherHotkey": "\(launcherHotkey.keyCode):\(launcherHotkey.carbonModifiers)",
@@ -159,6 +165,12 @@ final class NativeParityReporter: NSObject {
       runtime.launcher.hide()
     } else if command == "showLauncher" {
       runtime.launcher.show()
+    } else if command.hasPrefix("showFiles:") {
+      let query = String(command.dropFirst("showFiles:".count))
+      runtime.launcher.show()
+      if let mode = runtime.launcher.model.modes.first(where: { $0.id == "files" }) {
+        runtime.launcher.model.enter(mode: mode, query: query)
+      }
     }
   }
 
@@ -215,6 +227,7 @@ final class NativeParityReporter: NSObject {
       "clipboardSelectedIndex": model.clipboard?.selectedIndex ?? -1,
       "clipboardSelectedTitle": model.clipboard?.selectedItem?.title ?? "",
       "resolvedAppIconCount": resolvedAppIcons,
+      "fileStatus": fileStatus(runtime?.fileSearch?.controller.status),
     ]
   }
 
@@ -226,6 +239,40 @@ final class NativeParityReporter: NSObject {
       "rows"
     case .fullHeight:
       "fullHeight"
+    }
+  }
+
+  private func fileStatus(_ status: FileSearchController.Status?) -> String {
+    switch status {
+    case .idle:
+      "idle"
+    case .searching:
+      "searching"
+    case .results:
+      "results"
+    case .empty:
+      "empty"
+    case .unavailable:
+      "unavailable"
+    case .needsAccess:
+      "needsAccess"
+    case nil:
+      ""
+    }
+  }
+
+  private func fileAccessStatus(_ status: FileAccessCoordinator.Status) -> String {
+    switch status {
+    case .idle:
+      "idle"
+    case .requesting:
+      "requesting"
+    case .granted:
+      "granted"
+    case .cancelled:
+      "cancelled"
+    case .failed:
+      "failed"
     }
   }
 

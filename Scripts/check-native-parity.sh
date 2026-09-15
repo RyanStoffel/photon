@@ -31,6 +31,9 @@ COMMAND="$DATA_ROOT/native-command"
 APP_LOG="$DATA_ROOT/photon.log"
 SCREENSHOT_DIR="${NATIVE_PARITY_SCREENSHOT_DIR:-$DATA_ROOT/screenshots}"
 SEED_FILE="$HOME/Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf"
+GRANT_DIR="$DATA_ROOT/guided-file-access"
+GRANT_FILE="$GRANT_DIR/Photon_Bookmark_Ember_Proof.pdf"
+GRANT_QUERY="bookmark ember proof"
 SEED_CREATED=0
 PID=""
 
@@ -63,10 +66,15 @@ if [[ ! -e "$SEED_FILE" ]]; then
   SEED_CREATED=1
 fi
 /usr/bin/mdimport "$SEED_FILE" >/dev/null 2>&1 || true
+mkdir -p "$GRANT_DIR"
+printf 'Photon guided file access fixture\n' >"$GRANT_FILE"
 
 PHOTON_NATIVE_PARITY_REPORT_PATH="$REPORT" \
 PHOTON_NATIVE_PARITY_COMMAND_PATH="$COMMAND" \
 PHOTON_ISOLATED_DATA_ROOT="$DATA_ROOT/data" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION="$GRANT_DIR" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY="$GRANT_QUERY" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT="$(basename "$GRANT_FILE")" \
 PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
   "$EXECUTABLE" >"$APP_LOG" 2>&1 &
 PID=$!
@@ -83,6 +91,36 @@ swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" "$COMMAND" "$SCREENSHO
 
 kill -0 "$PID" 2>/dev/null || {
   echo "Photon exited during native parity checks." >&2
+  cat "$APP_LOG" >&2
+  exit 1
+}
+
+kill -TERM "$PID"
+wait "$PID" 2>/dev/null || true
+PID=""
+rm -f "$REPORT" "$COMMAND"
+PHOTON_NATIVE_PARITY_REPORT_PATH="$REPORT" \
+PHOTON_NATIVE_PARITY_COMMAND_PATH="$COMMAND" \
+PHOTON_ISOLATED_DATA_ROOT="$DATA_ROOT/data" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION="$GRANT_DIR" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY="$GRANT_QUERY" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT="$(basename "$GRANT_FILE")" \
+PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
+  "$EXECUTABLE" >>"$APP_LOG" 2>&1 &
+PID=$!
+
+swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" "$COMMAND" "$SCREENSHOT_DIR" relaunch || {
+  echo "--- Photon relaunch runtime log ---" >&2
+  cat "$APP_LOG" >&2
+  echo "--- Native relaunch report ---" >&2
+  if [[ -f "$REPORT" ]]; then
+    cat "$REPORT" >&2
+  fi
+  exit 1
+}
+
+kill -0 "$PID" 2>/dev/null || {
+  echo "Photon exited during file-access relaunch checks." >&2
   cat "$APP_LOG" >&2
   exit 1
 }
