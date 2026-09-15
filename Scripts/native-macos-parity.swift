@@ -42,6 +42,9 @@ let pasteInjectionURL = URL(
 let pasteTargetPID = pid_t(
   Int32(ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_TARGET_PID"] ?? "") ?? 0
 )
+let pasteTargetCommandURL = URL(
+  fileURLWithPath: ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_TARGET_COMMAND"] ?? ""
+)
 
 func readReport() -> [String: Any]? {
   guard let data = try? Data(contentsOf: reportURL),
@@ -183,6 +186,7 @@ func fulfillPasteInjectionIfNeeded() {
   }
   try? FileManager.default.removeItem(at: pasteInjectionURL)
   postKey(9, flags: .maskCommand)
+  try? "paste".write(to: pasteTargetCommandURL, atomically: true, encoding: .utf8)
 }
 
 func postText(_ text: String) {
