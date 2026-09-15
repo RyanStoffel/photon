@@ -236,6 +236,93 @@ func clickSearchField(_ report: [String: Any]) {
   Thread.sleep(forTimeInterval: 0.2)
 }
 
+func windowPoint(_ report: [String: Any], xFromLeft: Double, yFromTop: Double) -> CGPoint {
+  let windowFrame = frame(report)
+  let display = CGDisplayBounds(CGMainDisplayID())
+  return CGPoint(
+    x: double(windowFrame["x"]) + xFromLeft,
+    y: display.maxY - double(windowFrame["top"]) + yFromTop
+  )
+}
+
+func clickLauncher(_ report: [String: Any], xFromLeft: Double, yFromTop: Double) {
+  let point = windowPoint(report, xFromLeft: xFromLeft, yFromTop: yFromTop)
+  guard let source = CGEventSource(stateID: .combinedSessionState),
+        let down = CGEvent(
+          mouseEventSource: source,
+          mouseType: .leftMouseDown,
+          mouseCursorPosition: point,
+          mouseButton: .left
+        ),
+        let up = CGEvent(
+          mouseEventSource: source,
+          mouseType: .leftMouseUp,
+          mouseCursorPosition: point,
+          mouseButton: .left
+        )
+  else {
+    return
+  }
+  down.post(tap: .cghidEventTap)
+  up.post(tap: .cghidEventTap)
+  Thread.sleep(forTimeInterval: 0.2)
+}
+
+func dragLauncher(
+  _ report: [String: Any],
+  xFromLeft: Double,
+  yFromTop: Double,
+  deltaX: Double,
+  deltaY: Double
+) -> Bool {
+  let start = windowPoint(report, xFromLeft: xFromLeft, yFromTop: yFromTop)
+  guard let source = CGEventSource(stateID: .combinedSessionState),
+        let down = CGEvent(
+          mouseEventSource: source,
+          mouseType: .leftMouseDown,
+          mouseCursorPosition: start,
+          mouseButton: .left
+        )
+  else {
+    return false
+  }
+  var sawGuides = false
+  down.post(tap: .cghidEventTap)
+  for step in 1 ... 12 {
+    let fraction = Double(step) / 12
+    let point = CGPoint(
+      x: start.x + deltaX * fraction,
+      y: start.y + deltaY * fraction
+    )
+    guard let dragged = CGEvent(
+      mouseEventSource: source,
+      mouseType: .leftMouseDragged,
+      mouseCursorPosition: point,
+      mouseButton: .left
+    ) else {
+      continue
+    }
+    dragged.post(tap: .cghidEventTap)
+    Thread.sleep(forTimeInterval: 0.04)
+    if let liveReport = readReport(),
+       bool(dictionary(liveReport["launcherDrag"])["guidesVisible"])
+    {
+      sawGuides = true
+    }
+  }
+  let end = CGPoint(x: start.x + deltaX, y: start.y + deltaY)
+  if let up = CGEvent(
+    mouseEventSource: source,
+    mouseType: .leftMouseUp,
+    mouseCursorPosition: end,
+    mouseButton: .left
+  ) {
+    up.post(tap: .cghidEventTap)
+  }
+  Thread.sleep(forTimeInterval: 0.25)
+  return sawGuides
+}
+
 func runningWindowBounds(pid: pid_t, expectedSize: CGSize) -> CGRect? {
   let windows = CGWindowListCopyWindowInfo(
     .optionAll,
@@ -381,6 +468,77 @@ do {
 
   _ = try wait("application bundle icon resolves in the packaged app", timeout: 30) {
     int($0["appIconProbeCount"]) > 0
+  }
+
+  try sendRuntimeCommand("showLauncher")
+  report = try wait("drag checks open the compact launcher") {
+    bool(launcher($0)["visible"])
+      && bool(launcher($0)["key"])
+      && string(launcher($0)["content"]) == "searchOnly"
+  }
+  let centeredX = double(frame(report)["x"])
+  let firstY = double(frame(report)["y"])
+  let panelWidth = double(frame(report)["width"])
+  let firstGuides = dragLauncher(
+    report,
+    xFromLeft: 12,
+    yFromTop: 30,
+    deltaX: -430,
+    deltaY: 70
+  )
+  report = try wait("left chrome drag keeps outside-corridor X free and adjusts Y") {
+    abs(double(frame($0)["x"]) - centeredX) > 120
+      && abs(double(frame($0)["y"]) - firstY) > 30
+      && bool(dictionary(dictionary($0["settings"])["launcherPosition"])["centered"]) == false
+  }
+  try require(firstGuides, "left chrome drag displays center guides")
+
+  let freeX = double(frame(report)["x"])
+  let freeY = double(frame(report)["y"])
+  let secondGuides = dragLauncher(
+    report,
+    xFromLeft: 12,
+    yFromTop: 30,
+    deltaX: centeredX - freeX,
+    deltaY: -55
+  )
+  report = try wait("left chrome drag snaps X inside corridor while preserving chosen Y") {
+    abs(double(frame($0)["x"]) - centeredX) < 1
+      && abs(double(frame($0)["y"]) - freeY) > 25
+      && bool(dictionary(dictionary($0["settings"])["launcherPosition"])["centered"])
+  }
+  try require(secondGuides, "left chrome drag displays center guides")
+
+  let snappedY = double(frame(report)["y"])
+  _ = dragLauncher(
+    report,
+    xFromLeft: panelWidth - 12,
+    yFromTop: 30,
+    deltaX: 0,
+    deltaY: 45
+  )
+  report = try wait("right chrome drag tracks vertically without frame drift") {
+    abs(double(frame($0)["x"]) - centeredX) < 1
+      && abs(double(frame($0)["y"]) - snappedY) > 20
+  }
+
+  clickSearchField(report)
+  try require(focusPhotonTextField(pid: pid), "drag chrome does not hijack the search field")
+  try require(setPhotonTextFieldValue(pid: pid, value: "clipboard"), "search field remains editable after dragging")
+  report = try wait("row remains clickable after dragging") {
+    string(launcher($0)["query"]) == "clipboard" && int(launcher($0)["resultCount"]) > 0
+  }
+  clickLauncher(
+    report,
+    xFromLeft: panelWidth / 2,
+    yFromTop: 56 + 1 + 6 + 20
+  )
+  _ = try wait("row click enters clipboard instead of starting a drag") {
+    string(launcher($0)["session"]) == "clipboard"
+  }
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("drag interaction checks close cleanly") {
+    !bool(launcher($0)["visible"])
   }
 
   report = try wait("clipboard monitor captured text and image runtime fixtures") {

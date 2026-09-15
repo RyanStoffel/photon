@@ -58,6 +58,8 @@ public struct LauncherStoredPosition: Equatable, Codable, Sendable {
 
 /// Default placement and snap geometry for the launcher panel.
 public enum LauncherPosition {
+  public static let snapCorridorHalfWidth: Double = 60
+
   /// Spotlight-like default: centred horizontally, top edge ~74% up the visible frame.
   public static func defaultOrigin(panelSize: PanelSize, visible: ScreenVisibleFrame) -> PanelOrigin {
     let top = min(visible.minY + visible.height * 0.74, visible.maxY - 8)
@@ -97,14 +99,15 @@ public enum LauncherPosition {
   }
 
   /// Horizontal positions of the two snap guides in screen coordinates.
-  /// When the panel is centred, guides sit on the panel's left and right edges.
+  /// The narrow corridor stays usable even when the launcher occupies most of
+  /// a small display; entering it snaps the panel's horizontal center.
   public static func snapGuideXPositions(
     visible: ScreenVisibleFrame,
-    panelWidth: Double
+    panelWidth _: Double
   ) -> (left: Double, right: Double) {
     (
-      visible.midX - panelWidth / 2,
-      visible.midX + panelWidth / 2
+      visible.midX - snapCorridorHalfWidth,
+      visible.midX + snapCorridorHalfWidth
     )
   }
 

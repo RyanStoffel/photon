@@ -10,10 +10,10 @@ final class LauncherPositionTests: XCTestCase {
     XCTAssertEqual(origin.x + panel.width / 2, visible.midX, accuracy: 0.001)
   }
 
-  func testSnapGuidesMatchCenteredPanelEdges() {
+  func testSnapGuidesFormANarrowCorridorAroundScreenCenter() {
     let guides = LauncherPosition.snapGuideXPositions(visible: visible, panelWidth: panel.width)
-    XCTAssertEqual(guides.left, visible.midX - panel.width / 2)
-    XCTAssertEqual(guides.right, visible.midX + panel.width / 2)
+    XCTAssertEqual(guides.left, visible.midX - LauncherPosition.snapCorridorHalfWidth)
+    XCTAssertEqual(guides.right, visible.midX + LauncherPosition.snapCorridorHalfWidth)
   }
 
   func testResolveHorizontalSnapSnapsInsideGuides() {
