@@ -227,8 +227,7 @@ final class AppRuntime: ObservableObject {
     settings.selectedPane = .files
     openSettings()
     if NativeParityReporter.isRequested,
-       let path = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION"]
-    {
+       let path = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION"] {
       fileAccess.requestAccess(using: NativeParityFileAccessPanel(path: path))
     } else {
       fileAccess.requestAccess()

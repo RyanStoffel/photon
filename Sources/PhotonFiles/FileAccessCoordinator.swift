@@ -180,8 +180,7 @@ public final class FileAccessCoordinator: ObservableObject {
            options: [.withSecurityScope],
            includingResourceValuesForKeys: nil,
            relativeTo: nil
-         )
-      {
+         ) {
         refreshed.append(Grant(path: url.standardizedFileURL.path, bookmark: bookmark))
       } else {
         refreshed.append(Grant(path: url.standardizedFileURL.path, bookmark: grant.bookmark))
