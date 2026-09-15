@@ -93,7 +93,9 @@ struct LauncherView: View {
 
   @ViewBuilder
   private var featureContent: some View {
-    if let mode = model.activeMode {
+    if model.session == .clipboard {
+      LauncherClipboardDetailSplitView(model: model)
+    } else if let mode = model.activeMode {
       mode.makeResultsView()
     }
   }

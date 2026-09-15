@@ -64,16 +64,50 @@ final class NativeParityReporter: NSObject {
     Task { @MainActor in
       try? await Task.sleep(for: .milliseconds(500))
       let pasteboard = NSPasteboard.general
+      let longText = [
+        "Photon v0.3.3 long clipboard detail sentinel.",
+        "",
+        "This entry proves that Photon renders the complete selected copy in the detail pane, not only the",
+        "truncated row title. Keyboard selection must update this preview while the compact hotkey entry",
+        "remains unchanged.",
+        "",
+        "Full preview tail sentinel: PHOTON-COMPLETE-TEXT-3391",
+      ].joined(separator: "\n")
       for value in [
         "Photon parity clipboard alpha",
         "Photon parity clipboard bravo",
-        "Photon parity clipboard needle",
+        longText,
         "Photon parity clipboard delta",
+        ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_SENTINEL"] ?? "Photon paste sentinel",
       ] {
         pasteboard.clearContents()
         pasteboard.setString(value, forType: .string)
         try? await Task.sleep(for: .milliseconds(500))
       }
+      let image = NSImage(size: NSSize(width: 536, height: 440))
+      image.lockFocus()
+      NSColor.white.setFill()
+      NSRect(origin: .zero, size: image.size).fill()
+      let text = "Photon Image Detail"
+      text.draw(
+        at: NSPoint(x: 136, y: 205),
+        withAttributes: [
+          .font: NSFont.systemFont(ofSize: 28, weight: .semibold),
+          .foregroundColor: NSColor.black,
+        ]
+      )
+      image.unlockFocus()
+      guard let tiff = image.tiffRepresentation else {
+        return
+      }
+      guard let bitmap = NSBitmapImageRep(data: tiff) else {
+        return
+      }
+      guard let png = bitmap.representation(using: .png, properties: [:]) else {
+        return
+      }
+      pasteboard.clearContents()
+      pasteboard.setData(png, forType: .png)
     }
   }
 
@@ -136,6 +170,7 @@ final class NativeParityReporter: NSObject {
         "mouseDownCount": runtime.launcher.chromeMouseDownCount,
       ],
       "clipboardCaptureCount": runtime.clipboard.items.count,
+      "clipboardAccessibilityTrusted": runtime.clipboard.isAccessibilityTrusted,
       "appIconProbeCount": appIconProbeCount,
       "fileAccess": [
         "grantCount": runtime.fileAccess.grants.count,
@@ -241,6 +276,8 @@ final class NativeParityReporter: NSObject {
       "clipboardResultCount": model.clipboard?.results.count ?? 0,
       "clipboardSelectedIndex": model.clipboard?.selectedIndex ?? -1,
       "clipboardSelectedTitle": model.clipboard?.selectedItem?.title ?? "",
+      "clipboardSelectedKind": model.clipboard?.selectedItem?.kind.rawValue ?? "",
+      "clipboardNotice": model.clipboard?.notice?.message ?? "",
       "resolvedAppIconCount": resolvedAppIcons,
       "fileStatus": fileStatus(runtime?.fileSearch?.controller.status),
     ]
