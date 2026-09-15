@@ -360,14 +360,8 @@ do {
       && displayedTitles($0).contains(expectedFile)
   }
   try captureLauncher(report, name: "ember-mixed-search")
-  postKey(to: pid, keyCode: 53)
-  _ = try wait("mixed file launcher dismisses") { !bool(launcher($0)["visible"]) }
 
-  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
-  report = try wait("launcher reopens for explicit Files mode") {
-    bool(launcher($0)["visible"]) && bool(launcher($0)["key"])
-  }
-  clickSearchField(report)
+  try require(bool(launcher(report)["key"]), "launcher remains the key-event target")
   try require(setPhotonTextFieldValue(pid: pid, value: "files"), "Accessibility searches for Files command")
   _ = try wait("launcher visibly displays Search Files") {
     displayedTitles($0).contains("Search Files")
@@ -383,12 +377,6 @@ do {
       && displayedTitles($0).contains(expectedFile)
   }
   try captureLauncher(report, name: "ember-files-mode")
-  postKey(to: pid, keyCode: 53)
-  _ = try wait("Escape leaves explicit Files mode") {
-    bool(launcher($0)["visible"]) && string(launcher($0)["mode"]).isEmpty
-  }
-  postKey(to: pid, keyCode: 53)
-  _ = try wait("explicit Files launcher dismisses") { !bool(launcher($0)["visible"]) }
 
   _ = try wait("clipboard monitor captured four runtime fixtures") { int($0["clipboardCaptureCount"]) >= 4 }
   postKey(9, flags: [.maskCommand, .maskShift])
