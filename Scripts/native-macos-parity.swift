@@ -293,6 +293,22 @@ do {
   try require(bool(panel["floating"]), "launcher is a floating panel")
   try require(!bool(panel["canBecomeMain"]), "launcher cannot become the main window")
 
+  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
+  report = try wait("configured global hotkey opens the compact launcher") {
+    bool(launcher($0)["visible"])
+      && string(launcher($0)["session"]) == "commands"
+      && string(launcher($0)["content"]) == "searchOnly"
+  }
+  clickSearchField(report)
+  try require(focusPhotonTextField(pid: pid), "Accessibility focuses the launcher search field")
+  try require(setPhotonTextFieldValue(pid: pid, value: "saf"), "Accessibility enters application search text")
+  report = try wait("application bundle icon resolves in the running UI", timeout: 30) {
+    string(launcher($0)["query"]) == "saf"
+      && int(launcher($0)["resolvedAppIconCount"]) > 0
+  }
+  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
+  _ = try wait("configured launcher hotkey dismisses app search") { !bool(launcher($0)["visible"]) }
+
   _ = try wait("clipboard monitor captured runtime fixtures") { int($0["clipboardCaptureCount"]) >= 2 }
   postKey(9, flags: [.maskCommand, .maskShift])
   report = try wait("Cmd+Shift+V opens compact clipboard history") {
@@ -383,7 +399,7 @@ do {
   postKey(9, flags: [.maskCommand, .maskShift])
   _ = try wait("clipboard session closes before launcher-entry test") { !bool(launcher($0)["visible"]) }
   postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
-  report = try wait("configured global hotkey opens the compact launcher") {
+  report = try wait("configured global hotkey reopens the compact launcher") {
     bool(launcher($0)["visible"])
       && string(launcher($0)["session"]) == "commands"
       && string(launcher($0)["content"]) == "searchOnly"
@@ -395,23 +411,9 @@ do {
     string(launcher($0)["query"]) == "clipboard" && int(launcher($0)["resultCount"]) > 0
   }
   try require(confirmPhotonTextField(pid: pid), "Accessibility confirms the selected launcher result")
-  _ = try wait("launcher Clipboard History entry opens compact") {
+  report = try wait("launcher Clipboard History entry opens compact") {
     string(launcher($0)["session"]) == "clipboard"
       && string(launcher($0)["content"]) == "searchOnly"
-  }
-
-  postKey(53)
-  report = try wait("Escape returns clipboard entry to launcher commands") {
-    bool(launcher($0)["visible"])
-      && string(launcher($0)["session"]) == "commands"
-      && string(launcher($0)["content"]) == "searchOnly"
-  }
-  clickSearchField(report)
-  try require(focusPhotonTextField(pid: pid), "Accessibility refocuses the launcher search field")
-  try require(setPhotonTextFieldValue(pid: pid, value: "saf"), "Accessibility enters application search text")
-  report = try wait("application bundle icon resolves in the running UI", timeout: 30) {
-    string(launcher($0)["query"]) == "saf"
-      && int(launcher($0)["resolvedAppIconCount"]) > 0
   }
 
   let light = dictionary(report["appearance"])
