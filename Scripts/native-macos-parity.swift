@@ -456,6 +456,14 @@ do {
     string(launcher($0)["session"]) == "clipboard"
       && string(launcher($0)["content"]) == "searchOnly"
   }
+  clickSearchField(report)
+  report = try wait("launcher-entry clipboard panel is the key-event target") {
+    bool(launcher($0)["key"])
+  }
+  try require(
+    focusPhotonTextField(pid: pid),
+    "Accessibility focuses launcher-entry clipboard search field"
+  )
   postKey(125)
   report = try wait("launcher-entry Down expands clipboard history") {
     string(launcher($0)["content"]) == "rows"
