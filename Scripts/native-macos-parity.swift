@@ -400,10 +400,12 @@ do {
       && string(launcher($0)["content"]) == "searchOnly"
   }
 
-  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
-  _ = try wait("clipboard closes before icon test") { !bool(launcher($0)["visible"]) }
-  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
-  report = try wait("launcher reopens for app icon test") { bool(launcher($0)["visible"]) }
+  postKey(53)
+  report = try wait("Escape returns clipboard entry to launcher commands") {
+    bool(launcher($0)["visible"])
+      && string(launcher($0)["session"]) == "commands"
+      && string(launcher($0)["content"]) == "searchOnly"
+  }
   clickSearchField(report)
   try require(focusPhotonTextField(pid: pid), "Accessibility refocuses the launcher search field")
   try require(setPhotonTextFieldValue(pid: pid, value: "saf"), "Accessibility enters application search text")
