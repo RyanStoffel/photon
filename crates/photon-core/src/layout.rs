@@ -79,7 +79,7 @@ impl LauncherLayout {
         if shows_calculator_hero && data_rows == 0 {
             return hero_height;
         }
-        let visible = data_rows.max(1).min(Self::MAX_VISIBLE_ROWS);
+        let visible = data_rows.clamp(1, Self::MAX_VISIBLE_ROWS);
         hero_height + visible as f64 * Self::ROW_HEIGHT + 2.0 * Self::LIST_INSET
     }
 

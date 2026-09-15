@@ -180,9 +180,9 @@ fn word_start_indices(text: &str) -> Vec<usize> {
             if current.is_alphanumeric() {
                 starts.push(index);
             }
-        } else if previous.is_lowercase() && current.is_uppercase() {
-            starts.push(index);
-        } else if previous.is_alphabetic() && current.is_ascii_digit() {
+        } else if (previous.is_lowercase() && current.is_uppercase())
+            || (previous.is_alphabetic() && current.is_ascii_digit())
+        {
             starts.push(index);
         }
     }

@@ -430,11 +430,7 @@ fn parse_amount_unit(text: &str) -> Option<(f64, Unit)> {
 fn evaluate_conversion(input: &str) -> Option<CalculatorResult> {
     let lowered = input.to_lowercase();
     let sep = lowered.find(" to ").or_else(|| lowered.find(" in "))?;
-    let sep_len = if lowered[sep..].starts_with(" to ") {
-        4
-    } else {
-        4
-    };
+    let sep_len = 4;
     let left = input[..sep].trim();
     let right = input[sep + sep_len..].trim();
     let (amount, from) = parse_amount_unit(left)?;

@@ -45,7 +45,7 @@ jobs:
       - name: rustfmt
         run: cargo fmt --all -- --check
       - name: clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings -A dead_code -A unused_imports -A unused_variables -A clippy::too_many_arguments
+        run: cargo clippy --workspace --all-targets -- -D warnings -A dead_code -A unused_imports -A unused_variables -A clippy::too_many_arguments -A clippy::field_reassign_with_default
 
   test:
     name: test

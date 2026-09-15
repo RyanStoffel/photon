@@ -95,7 +95,7 @@ impl FileSearchEngine {
         let files: Vec<FileResult> = paths
             .into_iter()
             .filter(|p| seen.insert(p.clone()))
-            .filter_map(|p| FileResult::from_path(p))
+            .filter_map(FileResult::from_path)
             .collect();
 
         let ranked = FileRanker::rank(

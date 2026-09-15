@@ -453,6 +453,7 @@ impl IgnoreCalc for Content {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::field_reassign_with_default)]
     use super::*;
 
     fn seeded_clipboard() -> LauncherState {
