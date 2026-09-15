@@ -310,11 +310,12 @@ do {
   postKey(9, flags: [.maskCommand, .maskShift])
   _ = try wait("clipboard session closes before launcher-entry test") { !bool(launcher($0)["visible"]) }
   postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
-  _ = try wait("configured global hotkey opens the compact launcher") {
+  report = try wait("configured global hotkey opens the compact launcher") {
     bool(launcher($0)["visible"])
       && string(launcher($0)["session"]) == "commands"
       && string(launcher($0)["content"]) == "searchOnly"
   }
+  clickSearchField(report)
   postText("clipboard")
   _ = try wait("launcher search finds Clipboard History") {
     string(launcher($0)["query"]) == "clipboard" && int(launcher($0)["resultCount"]) > 0
@@ -328,7 +329,8 @@ do {
   postKey(9, flags: [.maskCommand, .maskShift])
   _ = try wait("clipboard closes before icon test") { !bool(launcher($0)["visible"]) }
   postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
-  _ = try wait("launcher reopens for app icon test") { bool(launcher($0)["visible"]) }
+  report = try wait("launcher reopens for app icon test") { bool(launcher($0)["visible"]) }
+  clickSearchField(report)
   postText("saf")
   report = try wait("application bundle icon resolves in the running UI", timeout: 30) {
     string(launcher($0)["query"]) == "saf"
