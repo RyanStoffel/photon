@@ -599,14 +599,18 @@ do {
     "packaged app starts with no folder grant"
   )
   try sendRuntimeCommand("requestFileAccess:\(fileAccessQuery)")
-  report = try wait("folder grant keeps Photon alive and resumes the search", timeout: 8) {
+  report = try wait("controlled folder grant is persisted while Photon remains alive", timeout: 8) {
     int($0["pid"]) == Int(pid)
-      && bool(launcher($0)["visible"])
-      && string(launcher($0)["mode"]) == "files"
-      && string(launcher($0)["query"]) == fileAccessQuery
-      && displayedTitles($0).contains(fileAccessResult)
       && int(dictionary($0["fileAccess"])["grantCount"]) == 1
       && string(dictionary($0["fileAccess"])["status"]) == "granted"
+  }
+  report = try wait("guided setup restores the pending Files session", timeout: 8) {
+    bool(launcher($0)["visible"])
+      && string(launcher($0)["mode"]) == "files"
+      && string(launcher($0)["query"]) == fileAccessQuery
+  }
+  report = try wait("guided setup resumes the pending file search", timeout: 12) {
+    displayedTitles($0).contains(fileAccessResult)
   }
   try captureLauncher(report, name: "guided-file-access-resumed", expectedText: fileAccessResult)
 
