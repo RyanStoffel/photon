@@ -122,7 +122,10 @@ final class LauncherViewModel: ObservableObject {
   }
 
   var panelWidth: Double {
-    preferences.width.points
+    if let activeMode, !activeMode.prefersCompactLauncherLayout {
+      return max(preferences.width.points, LauncherLayout.detailWidth)
+    }
+    return preferences.width.points
   }
 
   var rows: [LauncherRow] {

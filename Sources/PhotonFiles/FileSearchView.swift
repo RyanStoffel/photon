@@ -1,3 +1,4 @@
+import AppKit
 import PhotonCore
 import SwiftUI
 
@@ -11,11 +12,15 @@ public struct FileSearchView: View {
 
   public var body: some View {
     VStack(spacing: 0) {
-      content
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-      if controller.showsInfo, let file = controller.selected {
+      HStack(spacing: 0) {
+        content
+          .frame(width: 350)
         Divider()
-        FileInfoView(file: file)
+        if let file = controller.selected {
+          FileDetailView(file: file)
+        } else {
+          ContentUnavailableView("No File Selected", systemImage: "doc")
+        }
       }
       Divider()
       footer
@@ -33,6 +38,14 @@ public struct FileSearchView: View {
       )
     case .searching:
       searchingState
+    case .recents:
+      list(title: "Recent Files")
+    case .noRecents:
+      emptyState(
+        symbol: "clock",
+        title: "No recent files",
+        detail: "Files you open or modify will appear here."
+      )
     case .unavailable:
       emptyState(
         symbol: "exclamationmark.triangle",
@@ -46,7 +59,7 @@ public struct FileSearchView: View {
         detail: "Nothing in your search scope matches \u{201C}\(query)\u{201D}."
       )
     case .results:
-      list
+      list(title: "Results")
     }
   }
 
@@ -64,18 +77,27 @@ public struct FileSearchView: View {
     .padding(.vertical, LauncherLayout.listInset)
   }
 
-  private var list: some View {
+  private func list(title: String) -> some View {
     ScrollViewReader { proxy in
       ScrollView(.vertical) {
         LazyVStack(spacing: 0) {
+          Text(title)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
           ForEach(controller.results) { item in
             FileResultRow(file: item.file, selected: item.id == controller.selectedID)
               .id(item.id)
-              .onTapGesture {
+              .onTapGesture(count: 2) {
                 controller.select(item.file)
                 if controller.performPrimaryAction() {
                   controller.onRequestDismiss?()
                 }
+              }
+              .onTapGesture {
+                controller.select(item.file)
               }
           }
         }
@@ -185,9 +207,9 @@ struct KeyHintView: View {
   }
 }
 
-/// Compact metadata strip shown below the list (Cmd+I).
-struct FileInfoView: View {
+struct FileDetailView: View {
   let file: FileResult
+  @StateObject private var loader = FilePreviewLoader()
 
   private struct Row: Identifiable {
     let label: String
@@ -199,37 +221,75 @@ struct FileInfoView: View {
   }
 
   var body: some View {
-    HStack(alignment: .top, spacing: 24) {
-      column([
-        Row(label: "Kind", value: file.kind),
-        Row(label: "Size", value: sizeText),
-        Row(label: "Where", value: PathFormatter.abbreviatingHome(file.parentPath))
-      ])
-      column([
-        Row(label: "Created", value: dateText(file.created)),
-        Row(label: "Modified", value: dateText(file.modified)),
-        Row(label: "Last opened", value: dateText(file.lastUsed))
-      ])
+    VStack(spacing: 0) {
+      preview
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+      Divider()
+      metadata
+        .frame(height: 210, alignment: .top)
     }
-    .font(.caption)
-    .padding(.horizontal, 16)
-    .padding(.vertical, 8)
+    .task(id: file.id) {
+      loader.load(file, size: CGSize(width: 420, height: 300), scale: NSScreen.main?.backingScaleFactor ?? 2)
+    }
   }
 
-  private func column(_ rows: [Row]) -> some View {
-    VStack(alignment: .leading, spacing: 3) {
+  @ViewBuilder
+  private var preview: some View {
+    if let image = loader.image {
+      Image(nsImage: image)
+        .resizable()
+        .interpolation(.high)
+        .scaledToFit()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(22)
+    } else if loader.isLoading {
+      ProgressView()
+        .controlSize(.small)
+    } else {
+      Image(nsImage: FileIconCache.shared.icon(for: file))
+        .resizable()
+        .interpolation(.high)
+        .scaledToFit()
+        .frame(width: 96, height: 96)
+    }
+  }
+
+  private var metadata: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      Text("Metadata")
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(.secondary)
+        .padding(.bottom, 6)
       ForEach(rows) { row in
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
           Text(row.label)
             .foregroundStyle(.secondary)
-            .frame(width: 76, alignment: .trailing)
+          Spacer(minLength: 12)
           Text(row.value)
             .lineLimit(1)
             .truncationMode(.middle)
+            .textSelection(.enabled)
+        }
+        .font(.system(size: 13))
+        .padding(.vertical, 4)
+        .overlay(alignment: .bottom) {
+          Divider()
         }
       }
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.horizontal, 20)
+    .padding(.vertical, 12)
+  }
+
+  private var rows: [Row] {
+    [
+      Row(label: "Name", value: file.displayName),
+      Row(label: "Where", value: PathFormatter.abbreviatingHome(file.parentPath)),
+      Row(label: "Type", value: file.kind),
+      Row(label: "Size", value: sizeText),
+      Row(label: "Created", value: dateText(file.created)),
+      Row(label: "Modified", value: dateText(file.modified)),
+    ]
   }
 
   private var sizeText: String {
