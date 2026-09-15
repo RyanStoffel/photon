@@ -71,6 +71,8 @@ final class NativeParityReporter: NSObject {
     let model = runtime.launcher.model
     let statusItem = statusItemController?.statusItem
     let appearance = panel?.effectiveAppearance ?? NSApp.effectiveAppearance
+    let launcherHotkey = runtime.settings.hotkey
+    let clipboardHotkey = runtime.settings.clipboardHotkey
 
     let resolvedAppIcons = model.results.filter { result in
       guard result.command.providerID == "apps", let icon = result.command.icon else {
@@ -98,8 +100,8 @@ final class NativeParityReporter: NSObject {
       "clipboardCaptureCount": runtime.clipboard.items.count,
       "settings": [
         "appearance": runtime.settings.appearance.rawValue,
-        "launcherHotkey": "\(runtime.settings.hotkey.keyCode):\(runtime.settings.hotkey.carbonModifiers)",
-        "clipboardHotkey": "\(runtime.settings.clipboardHotkey.keyCode):\(runtime.settings.clipboardHotkey.carbonModifiers)",
+        "launcherHotkey": "\(launcherHotkey.keyCode):\(launcherHotkey.carbonModifiers)",
+        "clipboardHotkey": "\(clipboardHotkey.keyCode):\(clipboardHotkey.carbonModifiers)",
       ],
       "features": [
         "notesRegistered": model.results.contains { $0.command.providerID == "notes" },
