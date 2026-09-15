@@ -113,6 +113,8 @@ PHOTON_NATIVE_PARITY_PASTE_TARGET_VALUE="$PASTE_TARGET_VALUE" \
 PHOTON_NATIVE_PARITY_PASTE_TARGET_PID="$PASTE_TARGET_PID" \
 PHOTON_NATIVE_PARITY_PASTE_TARGET_COMMAND="$PASTE_TARGET_COMMAND" \
 PHOTON_NATIVE_PARITY_PASTE_INJECTION_PATH="$PASTE_INJECTION" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY="$GRANT_QUERY" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT="$(basename "$SEED_FILE")" \
   swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" "$COMMAND" "$SCREENSHOT_DIR" || {
   echo "--- Photon runtime log ---" >&2
   cat "$APP_LOG" >&2
@@ -144,7 +146,9 @@ PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
   "$EXECUTABLE" >>"$APP_LOG" 2>&1 &
 PID=$!
 
-swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" "$COMMAND" "$SCREENSHOT_DIR" relaunch || {
+PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY="$GRANT_QUERY" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT="$(basename "$SEED_FILE")" \
+  swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" "$COMMAND" "$SCREENSHOT_DIR" relaunch || {
   echo "--- Photon relaunch runtime log ---" >&2
   cat "$APP_LOG" >&2
   echo "--- Native relaunch report ---" >&2
