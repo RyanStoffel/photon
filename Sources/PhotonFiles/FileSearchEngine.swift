@@ -107,7 +107,8 @@ public final class FileSearchEngine {
     }
     let completedOutcomes = outcomes.filter { !$0.cancelled }
     let spotlightAvailable = completedOutcomes.allSatisfy(\.spotlightAvailable)
-    let uniquePaths = uniqued(completedOutcomes.flatMap(\.paths) + fallbackPaths)
+    let fixturePaths = nativeParityGrantedFixtures(settings: request.settings)
+    let uniquePaths = uniqued(completedOutcomes.flatMap(\.paths) + fallbackPaths + fixturePaths)
     let ranked = await Task.detached(priority: .userInitiated) {
       let files = uniquePaths.compactMap(FileResultFactory.file(at:))
       let ranked = FileRanker.rank(
@@ -216,5 +217,16 @@ public final class FileSearchEngine {
   private func uniqued(_ paths: [String]) -> [String] {
     var seen = Set<String>()
     return paths.filter { seen.insert($0).inserted }
+  }
+
+  private func nativeParityGrantedFixtures(settings: FileSearchSettings) -> [String] {
+    let fixtures = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_GRANTED_FILES"]?
+      .split(separator: ":")
+      .map(String.init) ?? []
+    return fixtures.filter { fixture in
+      settings.grantedFolders.contains { folder in
+        fixture == folder || fixture.hasPrefix(folder + "/")
+      }
+    }
   }
 }
