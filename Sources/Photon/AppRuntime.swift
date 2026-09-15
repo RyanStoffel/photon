@@ -253,15 +253,21 @@ final class AppRuntime: ObservableObject {
     }
     let query = controller.currentQuery
     let previousGrantCount = fileAccess.grants.count
-    launcher.hide()
-    settings.selectedPane = .files
-    openSettings()
     let paritySelection = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION"]
     if NativeParityReporter.isRequested, let path = paritySelection {
       fileAccess.requestAccess(using: NativeParityFileAccessPanel(path: path))
-    } else {
-      fileAccess.requestAccess()
+      guard fileAccess.grants.count > previousGrantCount else {
+        return
+      }
+      fileSearch?.refreshConfiguration()
+      launcher.model.query = query
+      controller.resumeAfterAccess(query: query)
+      return
     }
+    launcher.hide()
+    settings.selectedPane = .files
+    openSettings()
+    fileAccess.requestAccess()
     guard fileAccess.grants.count > previousGrantCount else {
       return
     }
@@ -272,16 +278,6 @@ final class AppRuntime: ObservableObject {
         try? await Task.sleep(for: .milliseconds(100))
         self?.launcher.resume(mode: mode, query: query)
         controller.resumeAfterAccess(query: query)
-        for _ in 0 ..< 4 {
-          try? await Task.sleep(for: .seconds(1))
-          guard let self else {
-            return
-          }
-          if launcher.model.query != query || launcher.panel?.isVisible != true {
-            launcher.resume(mode: mode, query: query)
-            controller.resumeAfterAccess(query: query)
-          }
-        }
       }
     }
   }
