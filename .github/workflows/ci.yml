@@ -1,4 +1,4 @@
-name: CI
+# CI
 
 on:
   pull_request:
@@ -38,14 +38,14 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v7
-      - name: Install lint tools
-        run: |
-          if ! command -v swiftformat >/dev/null; then brew install swiftformat; fi
-          if ! command -v swiftlint >/dev/null; then brew install swiftlint; fi
-      - name: SwiftFormat
-        run: swiftformat --lint --config .swiftformat .
-      - name: SwiftLint
-        run: swiftlint lint --strict --config .swiftlint.yml
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          components: rustfmt, clippy
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings -A dead_code -A unused_imports -A unused_variables -A clippy::too_many_arguments -A clippy::field_reassign_with_default -A clippy::redundant_closure
 
   test:
     name: test
@@ -53,15 +53,22 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v7
-      - name: Cache SwiftPM
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.88.0
+      - name: Cache cargo
         uses: actions/cache@v6
         with:
-          path: .build
-          key: test-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift', 'Sources/**/*.swift', 'Tests/**/*.swift') }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: test-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'crates/**/*.rs', 'Cargo.toml') }}
           restore-keys: |
             test-${{ runner.os }}-${{ runner.arch }}-
-      - name: Run unit tests
-        run: swift test --package-path .
+      - name: Harness and unit tests
+        run: Scripts/check-harness.sh
+      - name: Workspace tests
+        run: cargo test --workspace
 
   build:
     name: build
@@ -69,17 +76,21 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v7
-      - name: Cache SwiftPM
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.88.0
+      - name: Cache cargo
         uses: actions/cache@v6
         with:
-          path: .build
-          key: build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift', 'Sources/**/*.swift') }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'crates/**/*.rs', 'Cargo.toml') }}
           restore-keys: |
             build-${{ runner.os }}-${{ runner.arch }}-
       - name: Release build
         run: Scripts/package_app.sh
       - name: Zip app bundle
-        # ditto keeps executable bits and the code signature; upload-artifact alone does not.
         run: ditto -c -k --keepParent build/Photon.app build/Photon.app.zip
       - name: Upload Photon.app
         uses: actions/upload-artifact@v7
