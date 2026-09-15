@@ -30,11 +30,13 @@ REPORT="$DATA_ROOT/native-report.json"
 COMMAND="$DATA_ROOT/native-command"
 APP_LOG="$DATA_ROOT/photon.log"
 SCREENSHOT_DIR="${NATIVE_PARITY_SCREENSHOT_DIR:-$DATA_ROOT/screenshots}"
-SEED_FILE="$HOME/Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf"
+SEED_FILE="$HOME/Documents/Photon Native Parity/Ember_Individual_Pitch.pdf"
+SEED_IMAGE="$HOME/Documents/Photon Native Parity/Photon_Recent_Image.png"
 GRANT_DIR="$(dirname "$SEED_FILE")"
 GRANT_FILE="$GRANT_DIR/Photon_Bookmark_Ember_Proof.pdf"
 GRANT_QUERY="bookmark ember proof"
 SEED_CREATED=0
+SEED_IMAGE_CREATED=0
 PID=""
 
 restore() {
@@ -48,6 +50,9 @@ restore() {
     rm -f "$SEED_FILE"
   fi
   rm -f "$GRANT_FILE"
+  if [[ "$SEED_IMAGE_CREATED" == "1" ]]; then
+    rm -f "$SEED_IMAGE"
+  fi
   if [[ "${KEEP_PARITY_ARTIFACTS:-0}" != "1" ]]; then
     rm -rf "$DATA_ROOT"
   else
@@ -62,11 +67,11 @@ killall cfprefsd 2>/dev/null || true
 sleep 1
 
 mkdir -p "$(dirname "$SEED_FILE")" "$SCREENSHOT_DIR"
-if [[ ! -e "$SEED_FILE" ]]; then
-  printf 'Photon native file-search fixture\n' >"$SEED_FILE"
-  SEED_CREATED=1
-fi
+SEED_CREATED=1
+SEED_IMAGE_CREATED=1
+swift "$ROOT/Scripts/create-preview-fixtures.swift" "$SEED_FILE" "$SEED_IMAGE"
 /usr/bin/mdimport "$SEED_FILE" >/dev/null 2>&1 || true
+/usr/bin/mdimport "$SEED_IMAGE" >/dev/null 2>&1 || true
 mkdir -p "$GRANT_DIR"
 printf 'Photon guided file access fixture\n' >"$GRANT_FILE"
 
@@ -76,6 +81,7 @@ PHOTON_ISOLATED_DATA_ROOT="$DATA_ROOT/data" \
 PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION="$GRANT_DIR" \
 PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY="$GRANT_QUERY" \
 PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT="$(basename "$GRANT_FILE")" \
+PHOTON_NATIVE_PARITY_RECENT_FILES="$SEED_FILE:$SEED_IMAGE" \
 PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
   "$EXECUTABLE" >"$APP_LOG" 2>&1 &
 PID=$!

@@ -109,7 +109,12 @@ func displayedTitles(_ report: [String: Any]) -> [String] {
   strings(launcher(report)["displayedRowTitles"])
 }
 
-func captureLauncher(_ report: [String: Any], name: String, expectedText: String) throws {
+func captureLauncher(
+  _ report: [String: Any],
+  name: String,
+  expectedText: String,
+  additionalExpectedText: [String] = []
+) throws {
   try FileManager.default.createDirectory(
     at: screenshotDirectory,
     withIntermediateDirectories: true
@@ -139,6 +144,12 @@ func captureLauncher(_ report: [String: Any], name: String, expectedText: String
     renderedText.localizedCaseInsensitiveContains(expectedText),
     "\(name).png visibly contains \(expectedText)"
   )
+  for expected in additionalExpectedText {
+    try require(
+      renderedText.localizedCaseInsensitiveContains(expected),
+      "\(name).png visibly contains \(expected)"
+    )
+  }
 }
 
 func sendRuntimeCommand(_ command: String) throws {
@@ -632,8 +643,32 @@ do {
     displayedTitles($0).contains("Search Files")
   }
   try require(confirmPhotonTextField(pid: pid), "Accessibility invokes Search Files")
-  report = try wait("explicit Files mode opens") {
-    string(launcher($0)["mode"]) == "files" && bool(launcher($0)["key"])
+  report = try wait("empty Files mode shows seeded recents and selects the PDF") {
+    string(launcher($0)["mode"]) == "files"
+      && bool(launcher($0)["key"])
+      && displayedTitles($0).contains("Ember_Individual_Pitch.pdf")
+      && displayedTitles($0).contains("Photon_Recent_Image.png")
+      && string(launcher($0)["fileSelectedName"]) == "Ember_Individual_Pitch.pdf"
+  }
+  try captureLauncher(
+    report,
+    name: "files-recents-pdf-preview",
+    expectedText: "EMBER PDF PREVIEW",
+    additionalExpectedText: ["Recent Files", "Name", "Where", "Type", "Size", "Created", "Modified"]
+  )
+  postKey(125)
+  report = try wait("Down updates the recents preview to the seeded image") {
+    string(launcher($0)["fileSelectedName"]) == "Photon_Recent_Image.png"
+  }
+  try captureLauncher(
+    report,
+    name: "files-recents-image-preview",
+    expectedText: "PHOTON IMAGE PREVIEW",
+    additionalExpectedText: ["Metadata", "PNG"]
+  )
+  postKey(126)
+  _ = try wait("Up restores the recent PDF preview") {
+    string(launcher($0)["fileSelectedName"]) == "Ember_Individual_Pitch.pdf"
   }
   try require(setPhotonTextFieldValue(pid: pid, value: "ember"), "Accessibility enters explicit Files query")
   report = try wait("explicit Files mode visibly displays the seeded PDF", timeout: 8) {
@@ -648,6 +683,12 @@ do {
   report = try wait("running UI follows live dark appearance") {
     string(dictionary($0["appearance"])["name"]).contains("DarkAqua")
   }
+  try captureLauncher(
+    report,
+    name: "files-query-dark",
+    expectedText: expectedFile,
+    additionalExpectedText: ["Metadata"]
+  )
   let dark = dictionary(report["appearance"])
   let lightBackground = dictionary(light["controlBackground"])
   let darkBackground = dictionary(dark["controlBackground"])

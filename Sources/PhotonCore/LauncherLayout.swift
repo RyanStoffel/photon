@@ -54,6 +54,8 @@ public enum LauncherLayout {
   public static let hairline: Double = 1
   public static let cornerRadius: Double = 12
   public static let iconSize: Double = 28
+  public static let detailWidth: Double = 980
+  public static let detailHeight: Double = 620
   /// Raycast-style calculator hero card (section label + split card).
   public static let calculatorSectionSpacing: Double = 8
   public static let calculatorCardHeight: Double = 108
@@ -90,7 +92,7 @@ public enum LauncherLayout {
       searchFieldHeight + hairline + listHeight(rowCount: count, showsCalculatorHero: showsCalculatorHero)
         + hairline + footerHeight
     case .fullHeight:
-      maxHeight
+      detailHeight
     }
   }
 }

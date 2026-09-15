@@ -10,6 +10,8 @@ public final class FileSearchController: ObservableObject {
   public enum Status: Equatable, Sendable {
     case idle
     case searching
+    case recents
+    case noRecents
     case results
     case empty(String)
     case unavailable
@@ -58,7 +60,7 @@ public final class FileSearchController: ObservableObject {
   private var selectionMovedByUser = false
 
   public var prefersCompactLauncherLayout: Bool {
-    status == .idle
+    false
   }
 
   public var currentQuery: String {
@@ -105,7 +107,7 @@ public final class FileSearchController: ObservableObject {
     searchTask?.cancel()
     guard !trimmed.isEmpty else {
       engine.cancel()
-      clearResults()
+      loadRecents()
       return
     }
     isSearching = true
@@ -128,6 +130,25 @@ public final class FileSearchController: ObservableObject {
 
   public func requestFileAccess() {
     onRequestAccess?()
+  }
+
+  private func loadRecents() {
+    isSearching = true
+    status = .searching
+    searchTask = Task { [weak self] in
+      guard let self else {
+        return
+      }
+      let response = await engine.recent(settings: settings, limit: settings.clampedMaxResults)
+      guard !Task.isCancelled, query.isEmpty else {
+        return
+      }
+      isSearching = false
+      results = response?.files ?? []
+      status = results.isEmpty ? .noRecents : .recents
+      selectedID = results.first?.id
+      selectionMovedByUser = false
+    }
   }
 
   public func deactivate() {
