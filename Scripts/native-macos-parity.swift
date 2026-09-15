@@ -502,6 +502,13 @@ do {
     NSPasteboard.general.string(forType: .string) == pasteSentinel,
     "Enter copied the selected clipboard item"
   )
+  _ = try wait("Photon restores the previously focused paste target") { _ in
+    NSWorkspace.shared.frontmostApplication?.processIdentifier == pasteTargetPID
+  }
+  try require(
+    focusPhotonTextField(pid: pasteTargetPID),
+    "paste target text field regains keyboard focus"
+  )
   _ = try wait("packaged Photon pastes into the previously focused target") { _ in
     fulfillPasteInjectionIfNeeded()
     return (try? String(contentsOf: pasteTargetValueURL, encoding: .utf8)) == pasteSentinel
