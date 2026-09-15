@@ -64,7 +64,7 @@ final class FileSearchIntegration {
     provider.update(settings: next)
   }
 
-  private func refreshConfiguration() {
+  func refreshConfiguration() {
     var next = settings.fileSearchSettings
     next.grantedFolders = access.folders
     apply(next)

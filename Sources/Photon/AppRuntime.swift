@@ -235,6 +235,7 @@ final class AppRuntime: ObservableObject {
     guard fileAccess.grants.count > previousGrantCount else {
       return
     }
+    fileSearch?.refreshConfiguration()
     settingsWindowController?.window?.orderOut(nil)
     launcher.show()
     if let mode = launcher.model.modes.first(where: { $0.id == "files" }) {
