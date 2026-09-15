@@ -134,7 +134,21 @@ func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags = []) {
   Thread.sleep(forTimeInterval: 0.12)
 }
 
-func postText(_ text: String) {
+func postKey(to pid: pid_t, keyCode: CGKeyCode, flags: CGEventFlags = []) {
+  guard let source = CGEventSource(stateID: .combinedSessionState),
+        let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+        let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
+  else {
+    return
+  }
+  down.flags = flags
+  up.flags = flags
+  down.postToPid(pid)
+  up.postToPid(pid)
+  Thread.sleep(forTimeInterval: 0.12)
+}
+
+func postText(_ text: String, to pid: pid_t) {
   guard let source = CGEventSource(stateID: .combinedSessionState) else {
     return
   }
@@ -147,8 +161,8 @@ func postText(_ text: String) {
     var value = UniChar(scalar.value)
     down.keyboardSetUnicodeString(stringLength: 1, unicodeString: &value)
     up.keyboardSetUnicodeString(stringLength: 1, unicodeString: &value)
-    down.post(tap: .cghidEventTap)
-    up.post(tap: .cghidEventTap)
+    down.postToPid(pid)
+    up.postToPid(pid)
     Thread.sleep(forTimeInterval: 0.04)
   }
 }
@@ -346,7 +360,7 @@ do {
       && displayedTitles($0).contains(expectedFile)
   }
   try captureLauncher(report, name: "ember-mixed-search")
-  postKey(53)
+  postKey(to: pid, keyCode: 53)
   _ = try wait("mixed file launcher dismisses") { !bool(launcher($0)["visible"]) }
 
   postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
@@ -369,11 +383,11 @@ do {
       && displayedTitles($0).contains(expectedFile)
   }
   try captureLauncher(report, name: "ember-files-mode")
-  postKey(53)
+  postKey(to: pid, keyCode: 53)
   _ = try wait("Escape leaves explicit Files mode") {
     bool(launcher($0)["visible"]) && string(launcher($0)["mode"]).isEmpty
   }
-  postKey(53)
+  postKey(to: pid, keyCode: 53)
   _ = try wait("explicit Files launcher dismisses") { !bool(launcher($0)["visible"]) }
 
   _ = try wait("clipboard monitor captured four runtime fixtures") { int($0["clipboardCaptureCount"]) >= 4 }
@@ -429,14 +443,14 @@ do {
     bool(launcher($0)["key"]) && abs(top($0) - anchoredTop) < 0.5
   }
 
-  postKey(125)
+  postKey(to: pid, keyCode: 125)
   report = try wait("Down expands clipboard results without moving the top edge") {
     string(launcher($0)["content"]) == "rows"
       && int(launcher($0)["clipboardSelectedIndex"]) >= 0
       && abs(top($0) - anchoredTop) < 0.5
   }
   let firstSelection = int(launcher(report)["clipboardSelectedIndex"])
-  postKey(125)
+  postKey(to: pid, keyCode: 125)
   report = try wait("Down cycles clipboard selection") {
     int(launcher($0)["clipboardSelectedIndex"]) != firstSelection
   }
@@ -445,19 +459,19 @@ do {
     "expanded clipboard exposes the visibly selected row"
   )
   try captureLauncher(report, name: "clipboard-hotkey-selection")
-  postKey(126)
+  postKey(to: pid, keyCode: 126)
   _ = try wait("Up cycles clipboard selection") {
     int(launcher($0)["clipboardSelectedIndex"]) == firstSelection
   }
 
-  postText("needle")
+  postText("needle", to: pid)
   _ = try wait("typing filters clipboard and preserves the anchor") {
     string(launcher($0)["query"]) == "needle"
       && int(launcher($0)["clipboardResultCount"]) == 1
       && abs(top($0) - anchoredTop) < 0.5
   }
 
-  postKey(36)
+  postKey(to: pid, keyCode: 36)
   _ = try wait("Enter uses the selected clipboard item and dismisses") {
     !bool(launcher($0)["visible"])
   }
@@ -494,20 +508,20 @@ do {
     string(launcher($0)["session"]) == "clipboard"
       && string(launcher($0)["content"]) == "searchOnly"
   }
-  postKey(125)
+  postKey(to: pid, keyCode: 125)
   report = try wait("launcher-entry Down expands clipboard history") {
     string(launcher($0)["content"]) == "rows"
       && int(launcher($0)["clipboardSelectedIndex"]) >= 0
       && bool(launcher($0)["key"])
   }
   let launcherEntryFirstSelection = int(launcher(report)["clipboardSelectedIndex"])
-  postKey(125)
+  postKey(to: pid, keyCode: 125)
   report = try wait("launcher-entry Down visibly moves selection") {
     int(launcher($0)["clipboardSelectedIndex"]) != launcherEntryFirstSelection
       && !string(launcher($0)["clipboardSelectedTitle"]).isEmpty
   }
   try captureLauncher(report, name: "clipboard-launcher-selection")
-  postKey(126)
+  postKey(to: pid, keyCode: 126)
   _ = try wait("launcher-entry Up visibly restores selection") {
     int(launcher($0)["clipboardSelectedIndex"]) == launcherEntryFirstSelection
   }
