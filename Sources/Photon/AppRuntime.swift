@@ -20,6 +20,7 @@ final class AppRuntime: ObservableObject {
   private let hotkey = HotkeyManager.shared
   private let frecencyURL: URL
   private var fileSearch: FileSearchIntegration?
+  private var appearanceObserver: NSObjectProtocol?
 
   init() {
     let defaults = Self.userDefaultsForLaunch()
@@ -49,6 +50,7 @@ final class AppRuntime: ObservableObject {
       )
       settings.appearance = .system
     }
+    observeSystemAppearance()
     applyAppearance()
     settings.onAppearanceChange = { [weak self] in
       self?.applyAppearance()
@@ -123,11 +125,32 @@ final class AppRuntime: ObservableObject {
     settings.onClipboardChange = nil
     settings.onKeybindsChange = nil
     settings.onAppearanceChange = nil
+    if let appearanceObserver {
+      DistributedNotificationCenter.default().removeObserver(appearanceObserver)
+      self.appearanceObserver = nil
+    }
   }
 
   /// Settings > Appearance applies to every Photon window, including the launcher panel.
   private func applyAppearance() {
-    NSApp.appearance = settings.appearance.nsAppearance
+    if settings.appearance == .system {
+      let followsDarkSystem = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+      NSApp.appearance = NSAppearance(named: followsDarkSystem ? .darkAqua : .aqua)
+    } else {
+      NSApp.appearance = settings.appearance.nsAppearance
+    }
+  }
+
+  private func observeSystemAppearance() {
+    appearanceObserver = DistributedNotificationCenter.default().addObserver(
+      forName: Notification.Name("AppleInterfaceThemeChangedNotification"),
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      Task { @MainActor [weak self] in
+        self?.applyAppearance()
+      }
+    }
   }
 
   func toggleLauncher() {
