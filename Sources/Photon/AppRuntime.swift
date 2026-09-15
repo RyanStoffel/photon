@@ -20,7 +20,7 @@ final class AppRuntime: ObservableObject {
   let keybinds: KeybindsController
   private let hotkey = HotkeyManager.shared
   private let frecencyURL: URL
-  private var fileSearch: FileSearchIntegration?
+  var fileSearch: FileSearchIntegration?
   private var appearanceObserver: NSObjectProtocol?
   private var settingsWindowController: NSWindowController?
 
@@ -50,6 +50,8 @@ final class AppRuntime: ObservableObject {
         keyCode: UInt32(kVK_ANSI_P),
         carbonModifiers: UInt32(cmdKey | optionKey | controlKey)
       )
+      settings.clipboardPasteBehavior = .copy
+      clipboard.settings = settings.clipboardSettings
       settings.appearance = .system
     }
     observeSystemAppearance()

@@ -7,15 +7,15 @@ import PhotonCore
 extension LauncherPanelController {
   func startMonitor() {
     stopMonitor()
-    localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+    panel?.keyDownHandler = { [weak self] event in
       guard let self else {
-        return event
+        return false
       }
       switch model.session {
       case .clipboard:
-        return handleClipboardKey(event)
+        return handleClipboardKey(event) == nil
       case .commands:
-        return handle(event) ? nil : event
+        return handle(event)
       }
     }
   }
@@ -153,9 +153,6 @@ extension LauncherPanelController {
   }
 
   func stopMonitor() {
-    if let localMonitor {
-      NSEvent.removeMonitor(localMonitor)
-      self.localMonitor = nil
-    }
+    panel?.keyDownHandler = nil
   }
 }

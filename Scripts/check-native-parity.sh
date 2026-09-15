@@ -27,7 +27,11 @@ EXECUTABLE="$APP/Contents/MacOS/Photon"
 
 DATA_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/photon-native-parity.XXXXXX")"
 REPORT="$DATA_ROOT/native-report.json"
+COMMAND="$DATA_ROOT/native-command"
 APP_LOG="$DATA_ROOT/photon.log"
+SCREENSHOT_DIR="${NATIVE_PARITY_SCREENSHOT_DIR:-$DATA_ROOT/screenshots}"
+SEED_FILE="$HOME/Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf"
+SEED_CREATED=0
 PID=""
 
 restore() {
@@ -37,6 +41,9 @@ restore() {
   pkill -x Photon 2>/dev/null || true
   defaults delete -g AppleInterfaceStyle 2>/dev/null || true
   killall cfprefsd 2>/dev/null || true
+  if [[ "$SEED_CREATED" == "1" ]]; then
+    rm -f "$SEED_FILE"
+  fi
   if [[ "${KEEP_PARITY_ARTIFACTS:-0}" != "1" ]]; then
     rm -rf "$DATA_ROOT"
   else
@@ -50,13 +57,21 @@ defaults delete -g AppleInterfaceStyle 2>/dev/null || true
 killall cfprefsd 2>/dev/null || true
 sleep 1
 
+mkdir -p "$(dirname "$SEED_FILE")" "$SCREENSHOT_DIR"
+if [[ ! -e "$SEED_FILE" ]]; then
+  printf 'Photon native file-search fixture\n' >"$SEED_FILE"
+  SEED_CREATED=1
+fi
+/usr/bin/mdimport "$SEED_FILE" >/dev/null 2>&1 || true
+
 PHOTON_NATIVE_PARITY_REPORT_PATH="$REPORT" \
+PHOTON_NATIVE_PARITY_COMMAND_PATH="$COMMAND" \
 PHOTON_ISOLATED_DATA_ROOT="$DATA_ROOT/data" \
 PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
   "$EXECUTABLE" >"$APP_LOG" 2>&1 &
 PID=$!
 
-swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" || {
+swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" "$COMMAND" "$SCREENSHOT_DIR" || {
   echo "--- Photon runtime log ---" >&2
   cat "$APP_LOG" >&2
   echo "--- Native report ---" >&2
@@ -73,3 +88,4 @@ kill -0 "$PID" 2>/dev/null || {
 }
 
 echo "Native macOS runtime parity green for $APP"
+echo "Native parity screenshots: $SCREENSHOT_DIR"

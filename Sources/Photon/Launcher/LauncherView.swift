@@ -74,14 +74,6 @@ struct LauncherView: View {
         .onSubmit {
           Task { await run() }
         }
-        .onKeyPress(.downArrow) {
-          model.moveSelection(1)
-          return .handled
-        }
-        .onKeyPress(.upArrow) {
-          model.moveSelection(-1)
-          return .handled
-        }
     }
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
