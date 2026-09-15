@@ -50,6 +50,7 @@ struct LauncherView: View {
     .overlay(
       RoundedRectangle(cornerRadius: LauncherLayout.cornerRadius, style: .continuous)
         .strokeBorder(Color.primary.opacity(0.1), lineWidth: LauncherLayout.hairline)
+        .allowsHitTesting(false)
     )
     .onAppear {
       searchFocused = true
