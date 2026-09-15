@@ -30,8 +30,10 @@ REPORT="$DATA_ROOT/native-report.json"
 COMMAND="$DATA_ROOT/native-command"
 APP_LOG="$DATA_ROOT/photon.log"
 SCREENSHOT_DIR="${NATIVE_PARITY_SCREENSHOT_DIR:-$DATA_ROOT/screenshots}"
-SEED_FILE="$HOME/Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf"
+SEED_FILE="$HOME/Documents/Photon Native Parity/Ember_Individual_Pitch.pdf"
+SEED_IMAGE="$HOME/Documents/Photon Native Parity/Photon_Recent_Image.png"
 SEED_CREATED=0
+SEED_IMAGE_CREATED=0
 PID=""
 
 restore() {
@@ -43,6 +45,9 @@ restore() {
   killall cfprefsd 2>/dev/null || true
   if [[ "$SEED_CREATED" == "1" ]]; then
     rm -f "$SEED_FILE"
+  fi
+  if [[ "$SEED_IMAGE_CREATED" == "1" ]]; then
+    rm -f "$SEED_IMAGE"
   fi
   if [[ "${KEEP_PARITY_ARTIFACTS:-0}" != "1" ]]; then
     rm -rf "$DATA_ROOT"
@@ -58,15 +63,16 @@ killall cfprefsd 2>/dev/null || true
 sleep 1
 
 mkdir -p "$(dirname "$SEED_FILE")" "$SCREENSHOT_DIR"
-if [[ ! -e "$SEED_FILE" ]]; then
-  printf 'Photon native file-search fixture\n' >"$SEED_FILE"
-  SEED_CREATED=1
-fi
+SEED_CREATED=1
+SEED_IMAGE_CREATED=1
+swift "$ROOT/Scripts/create-preview-fixtures.swift" "$SEED_FILE" "$SEED_IMAGE"
 /usr/bin/mdimport "$SEED_FILE" >/dev/null 2>&1 || true
+/usr/bin/mdimport "$SEED_IMAGE" >/dev/null 2>&1 || true
 
 PHOTON_NATIVE_PARITY_REPORT_PATH="$REPORT" \
 PHOTON_NATIVE_PARITY_COMMAND_PATH="$COMMAND" \
 PHOTON_ISOLATED_DATA_ROOT="$DATA_ROOT/data" \
+PHOTON_NATIVE_PARITY_RECENT_FILES="$SEED_FILE:$SEED_IMAGE" \
 PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
   "$EXECUTABLE" >"$APP_LOG" 2>&1 &
 PID=$!
