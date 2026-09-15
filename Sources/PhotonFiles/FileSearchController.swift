@@ -59,6 +59,7 @@ public final class FileSearchController: ObservableObject {
   private var noticeTask: Task<Void, Never>?
   private var selectionMovedByUser = false
   private var protectedResumeQuery: String?
+  private var resumeProtectionTask: Task<Void, Never>?
 
   public var prefersCompactLauncherLayout: Bool {
     false
@@ -135,8 +136,16 @@ public final class FileSearchController: ObservableObject {
   }
 
   public func resumeAfterAccess(query: String) {
+    resumeProtectionTask?.cancel()
     protectedResumeQuery = query
     update(query: query)
+    resumeProtectionTask = Task { [weak self] in
+      try? await Task.sleep(for: .seconds(5))
+      guard !Task.isCancelled else {
+        return
+      }
+      self?.protectedResumeQuery = nil
+    }
   }
 
   private func loadRecents() {
@@ -194,9 +203,6 @@ public final class FileSearchController: ObservableObject {
       status = settings.grantedFolders.isEmpty ? .needsAccess(response.query) : .empty(response.query)
     } else {
       status = .results
-    }
-    if !results.isEmpty {
-      protectedResumeQuery = nil
     }
     selectionMovedByUser = false
     if let selectedID, results.contains(where: { $0.id == selectedID }) {
