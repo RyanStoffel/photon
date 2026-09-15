@@ -5,6 +5,8 @@ final class LauncherPanel: NSPanel {
   /// Supplies the active launcher mode so Quick Look can find its data source
   /// through the responder chain (the panel is the key window).
   var activeMode: (@MainActor () -> (any LauncherMode)?)?
+  /// Intercepts navigation before SwiftUI's TextField responder consumes it.
+  var keyDownHandler: ((NSEvent) -> Bool)?
 
   override var canBecomeKey: Bool {
     true
@@ -12,6 +14,13 @@ final class LauncherPanel: NSPanel {
 
   override var canBecomeMain: Bool {
     false
+  }
+
+  override func sendEvent(_ event: NSEvent) {
+    if event.type == .keyDown, keyDownHandler?(event) == true {
+      return
+    }
+    super.sendEvent(event)
   }
 
   /// These NSObject category methods are nonisolated; Quick Look calls them on
