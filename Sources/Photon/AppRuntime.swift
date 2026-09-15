@@ -271,6 +271,7 @@ final class AppRuntime: ObservableObject {
       Task { [weak self] in
         try? await Task.sleep(for: .milliseconds(100))
         self?.launcher.resume(mode: mode, query: query)
+        controller.resumeAfterAccess(query: query)
         for _ in 0 ..< 4 {
           try? await Task.sleep(for: .seconds(1))
           guard let self else {
@@ -278,6 +279,7 @@ final class AppRuntime: ObservableObject {
           }
           if launcher.model.query != query || launcher.panel?.isVisible != true {
             launcher.resume(mode: mode, query: query)
+            controller.resumeAfterAccess(query: query)
           }
         }
       }

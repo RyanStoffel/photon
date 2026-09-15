@@ -58,6 +58,7 @@ public final class FileSearchController: ObservableObject {
   private var searchTask: Task<Void, Never>?
   private var noticeTask: Task<Void, Never>?
   private var selectionMovedByUser = false
+  private var protectedResumeQuery: String?
 
   public var prefersCompactLauncherLayout: Bool {
     false
@@ -102,7 +103,8 @@ public final class FileSearchController: ObservableObject {
   }
 
   public func update(query: String) {
-    let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    let requested = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    let trimmed = requested.isEmpty ? protectedResumeQuery ?? requested : requested
     self.query = trimmed
     searchTask?.cancel()
     guard !trimmed.isEmpty else {
@@ -132,6 +134,11 @@ public final class FileSearchController: ObservableObject {
     onRequestAccess?()
   }
 
+  public func resumeAfterAccess(query: String) {
+    protectedResumeQuery = query
+    update(query: query)
+  }
+
   private func loadRecents() {
     isSearching = true
     status = .searching
@@ -152,6 +159,10 @@ public final class FileSearchController: ObservableObject {
   }
 
   public func deactivate() {
+    if protectedResumeQuery != nil {
+      quickLook.hide()
+      return
+    }
     searchTask?.cancel()
     searchTask = nil
     engine.cancel()
@@ -183,6 +194,9 @@ public final class FileSearchController: ObservableObject {
       status = settings.grantedFolders.isEmpty ? .needsAccess(response.query) : .empty(response.query)
     } else {
       status = .results
+    }
+    if !results.isEmpty {
+      protectedResumeQuery = nil
     }
     selectionMovedByUser = false
     if let selectedID, results.contains(where: { $0.id == selectedID }) {
