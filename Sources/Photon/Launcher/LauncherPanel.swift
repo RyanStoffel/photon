@@ -7,6 +7,8 @@ final class LauncherPanel: NSPanel {
   var activeMode: (@MainActor () -> (any LauncherMode)?)?
   /// Intercepts navigation before SwiftUI's TextField responder consumes it.
   var keyDownHandler: ((NSEvent) -> Bool)?
+  /// Starts a window drag only from AppKit-classified safe chrome.
+  var mouseDownHandler: ((NSEvent) -> Bool)?
 
   override var canBecomeKey: Bool {
     true
@@ -18,6 +20,9 @@ final class LauncherPanel: NSPanel {
 
   override func sendEvent(_ event: NSEvent) {
     if event.type == .keyDown, keyDownHandler?(event) == true {
+      return
+    }
+    if event.type == .leftMouseDown, mouseDownHandler?(event) == true {
       return
     }
     super.sendEvent(event)

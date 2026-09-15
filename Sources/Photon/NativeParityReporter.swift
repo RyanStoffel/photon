@@ -128,12 +128,19 @@ final class NativeParityReporter: NSObject {
         "label": colorComponents(.labelColor, appearance: appearance),
       ],
       "launcher": launcherReport(panel: panel, model: model, resolvedAppIcons: resolvedAppIcons),
+      "launcherDrag": [
+        "acceptedCount": runtime.launcher.acceptedChromeDragCount,
+        "active": runtime.launcher.isDraggingLauncher,
+        "guidesVisible": runtime.launcher.centerGuides.isVisible,
+        "mouseDownCount": runtime.launcher.chromeMouseDownCount,
+      ],
       "clipboardCaptureCount": runtime.clipboard.items.count,
       "appIconProbeCount": appIconProbeCount,
       "settings": [
         "appearance": runtime.settings.appearance.rawValue,
         "launcherHotkey": "\(launcherHotkey.keyCode):\(launcherHotkey.carbonModifiers)",
         "clipboardHotkey": "\(clipboardHotkey.keyCode):\(clipboardHotkey.carbonModifiers)",
+        "launcherPosition": launcherPositionReport(runtime.settings.launcherStoredPosition),
       ],
       "features": [
         "notesRegistered": model.results.contains { $0.command.providerID == "notes" },
@@ -229,6 +236,18 @@ final class NativeParityReporter: NSObject {
     case .fullHeight:
       "fullHeight"
     }
+  }
+
+  private func launcherPositionReport(_ position: LauncherStoredPosition?) -> [String: Any] {
+    guard let position else {
+      return ["exists": false]
+    }
+    return [
+      "exists": true,
+      "x": position.originX,
+      "y": position.originY,
+      "centered": position.isHorizontallyCentered,
+    ]
   }
 
   private func colorComponents(_ color: NSColor, appearance: NSAppearance) -> [String: Double] {
