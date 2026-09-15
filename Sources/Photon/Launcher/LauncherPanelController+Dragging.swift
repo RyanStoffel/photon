@@ -3,16 +3,18 @@ import PhotonCore
 
 extension LauncherPanelController {
   func handleChromeMouseDown(_ event: NSEvent, panel: NSPanel) -> Bool {
+    chromeMouseDownCount += 1
     let point = event.locationInWindow
     let width = panel.frame.width
     let height = panel.frame.height
     let distanceFromTop = height - point.y
-    let isOuterChrome = distanceFromTop <= 7 || point.x <= 8 || point.x >= width - 8
+    let isOuterChrome = distanceFromTop <= 14 || point.x <= 8 || point.x >= width - 8
     let isSearchGutter = distanceFromTop <= LauncherLayout.searchFieldHeight
       && (point.x <= 20 || point.x >= width - 20)
     guard isOuterChrome || isSearchGutter else {
       return false
     }
+    acceptedChromeDragCount += 1
     trackLiveDrag(panel: panel)
     return true
   }

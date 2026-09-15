@@ -446,7 +446,7 @@ do {
   let firstGuides = dragLauncher(
     report,
     xFromLeft: panelWidth / 2,
-    yFromTop: 3,
+    yFromTop: 10,
     deltaX: -260,
     deltaY: 70
   )

@@ -129,8 +129,10 @@ final class NativeParityReporter: NSObject {
       ],
       "launcher": launcherReport(panel: panel, model: model, resolvedAppIcons: resolvedAppIcons),
       "launcherDrag": [
+        "acceptedCount": runtime.launcher.acceptedChromeDragCount,
         "active": runtime.launcher.isDraggingLauncher,
         "guidesVisible": runtime.launcher.centerGuides.isVisible,
+        "mouseDownCount": runtime.launcher.chromeMouseDownCount,
       ],
       "clipboardCaptureCount": runtime.clipboard.items.count,
       "appIconProbeCount": appIconProbeCount,

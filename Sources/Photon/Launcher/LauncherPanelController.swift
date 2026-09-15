@@ -16,6 +16,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   let centerGuides = LauncherCenterGuidesOverlay()
   var searchBarDragInitialOrigin: NSPoint?
   var isDraggingLauncher = false
+  var chromeMouseDownCount = 0
+  var acceptedChromeDragCount = 0
   /// App that was frontmost before a mode asked us to activate; restored on hide.
   private var previousApplication: NSRunningApplication?
 
