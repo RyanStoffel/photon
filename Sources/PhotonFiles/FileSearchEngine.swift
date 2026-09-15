@@ -128,6 +128,46 @@ public final class FileSearchEngine {
     return Response(query: trimmed, files: ranked, spotlightAvailable: spotlightAvailable)
   }
 
+  /// Loads recent documents for the empty Files view. Spotlight provides the
+  /// system-wide candidates; runtime fixtures may add explicit paths for the
+  /// packaged-app visual gate.
+  public func recent(settings: FileSearchSettings, limit: Int) async -> Response? {
+    generation += 1
+    let token = generation
+    cancelRunners()
+    let request = MdfindQueryRunner.Request(
+      queryString: "kMDItemLastUsedDate = '*' && kMDItemContentTypeTree = 'public.content'",
+      onlyIn: onlyInFolders(for: settings),
+      scanLimit: max(300, limit * 10)
+    )
+    let outcome = await runMdfind(request)
+    guard token == generation, !Task.isCancelled else {
+      return nil
+    }
+    let fixturePaths = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_RECENT_FILES"]?
+      .split(separator: ":")
+      .map(String.init) ?? []
+    let fixtureFiles = fixturePaths.compactMap(FileResultFactory.file(at:))
+    let fixtureSet = Set(fixtureFiles.map(\.path))
+    let discoveredFiles = uniqued(outcome.paths)
+      .compactMap(FileResultFactory.file(at:))
+      .filter { !$0.isApplication && !fixtureSet.contains($0.path) }
+      .sorted { lhs, rhs in
+        let left = lhs.lastUsed ?? lhs.modified ?? lhs.created ?? .distantPast
+        let right = rhs.lastUsed ?? rhs.modified ?? rhs.created ?? .distantPast
+        if left != right {
+          return left > right
+        }
+        return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+      }
+    let files = fixtureFiles + discoveredFiles
+    let recent = Array(files.prefix(limit)).enumerated().map { index, file in
+      RankedFile(file: file, relevance: Double(limit - index))
+    }
+    FileIconCache.shared.prefetch(recent.map(\.file))
+    return Response(query: "", files: recent, spotlightAvailable: outcome.spotlightAvailable)
+  }
+
   public func cancel() {
     generation += 1
     cancelRunners()
