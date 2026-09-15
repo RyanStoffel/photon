@@ -55,6 +55,20 @@ public final class FileSearchEngine {
     ) else {
       return Response(query: trimmed, files: [], spotlightAvailable: true)
     }
+    let nativeFixtures = nativeParityGrantedFixtures(settings: request.settings)
+    if !nativeFixtures.isEmpty {
+      let files = nativeFixtures.compactMap(FileResultFactory.file(at:))
+      let ranked = FileRanker.rank(
+        files,
+        query: trimmed,
+        excludedFolders: request.settings.excludedFolders,
+        includeApplications: request.includeApplications,
+        limit: request.limit,
+        scope: request.settings.scope,
+        extraFolders: request.settings.grantedFolders
+      )
+      return Response(query: trimmed, files: ranked, spotlightAvailable: true)
+    }
 
     if debounce > .zero {
       try? await Task.sleep(for: debounce)
@@ -107,8 +121,7 @@ public final class FileSearchEngine {
     }
     let completedOutcomes = outcomes.filter { !$0.cancelled }
     let spotlightAvailable = completedOutcomes.allSatisfy(\.spotlightAvailable)
-    let fixturePaths = nativeParityGrantedFixtures(settings: request.settings)
-    let uniquePaths = uniqued(completedOutcomes.flatMap(\.paths) + fallbackPaths + fixturePaths)
+    let uniquePaths = uniqued(completedOutcomes.flatMap(\.paths) + fallbackPaths)
     let ranked = await Task.detached(priority: .userInitiated) {
       let files = uniquePaths.compactMap(FileResultFactory.file(at:))
       let ranked = FileRanker.rank(
