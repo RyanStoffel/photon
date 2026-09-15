@@ -109,6 +109,7 @@ func captureLauncher(_ report: [String: Any], name: String) throws {
     at: screenshotDirectory,
     withIntermediateDirectories: true
   )
+  RunLoop.current.run(until: Date().addingTimeInterval(0.75))
   let destination = screenshotDirectory.appendingPathComponent(name + ".png")
   let process = Process()
   process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
