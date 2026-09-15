@@ -447,7 +447,7 @@ do {
     report,
     xFromLeft: panelWidth / 2,
     yFromTop: 10,
-    deltaX: -260,
+    deltaX: -430,
     deltaY: 70
   )
   report = try wait("top chrome drag keeps outside-corridor X free and adjusts Y") {
