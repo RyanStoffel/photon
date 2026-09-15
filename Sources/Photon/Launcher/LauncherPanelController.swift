@@ -19,6 +19,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   var chromeMouseDownCount = 0
   var acceptedChromeDragCount = 0
   private var focusTransitionGeneration = 0
+  private var autoHideSuppressedUntil = Date.distantPast
   /// App that was frontmost before a mode asked us to activate; restored on hide.
   private var previousApplication: NSRunningApplication?
 
@@ -233,6 +234,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       return
     }
     focusTransitionGeneration &+= 1
+    autoHideSuppressedUntil = Date().addingTimeInterval(5)
     model.enter(mode: mode, query: query)
     panel.orderFrontRegardless()
     panel.makeKey()
@@ -255,6 +257,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     let generation = focusTransitionGeneration
     Task { [weak self] in
       guard let self, let panel, panel.isVisible, !panel.isKeyWindow else {
+        return
+      }
+      guard Date() >= autoHideSuppressedUntil else {
         return
       }
       guard generation == focusTransitionGeneration else {
