@@ -271,11 +271,15 @@ final class AppRuntime: ObservableObject {
       Task { [weak self] in
         try? await Task.sleep(for: .milliseconds(100))
         self?.launcher.resume(mode: mode, query: query)
-        try? await Task.sleep(for: .milliseconds(500))
-        guard let self, launcher.model.query != query else {
-          return
+        for _ in 0 ..< 4 {
+          try? await Task.sleep(for: .seconds(1))
+          guard let self else {
+            return
+          }
+          if launcher.model.query != query || launcher.panel?.isVisible != true {
+            launcher.resume(mode: mode, query: query)
+          }
         }
-        launcher.resume(mode: mode, query: query)
       }
     }
   }
