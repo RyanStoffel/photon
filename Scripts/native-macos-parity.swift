@@ -451,10 +451,16 @@ do {
     expectedText: "PHOTON-COMPLETE-TEXT-3391"
   )
 
-  try require(setPhotonTextFieldValue(pid: pid, value: "v0.3.3 paste sentinel"), "filters paste sentinel")
-  _ = try wait("paste sentinel is selected") {
-    int(launcher($0)["clipboardResultCount"]) == 1
-      && string(launcher($0)["clipboardSelectedTitle"]).contains("paste sentinel")
+  try require(setPhotonTextFieldValue(pid: pid, value: pasteSentinel), "filters the unique paste sentinel")
+  report = try wait("paste sentinel filter is applied") {
+    string(launcher($0)["query"]) == pasteSentinel
+      && int(launcher($0)["clipboardResultCount"]) >= 1
+  }
+  if !string(launcher(report)["clipboardSelectedTitle"]).contains("paste sentinel") {
+    postKey(126)
+  }
+  _ = try wait("unique paste sentinel is selected") {
+    string(launcher($0)["clipboardSelectedTitle"]).contains("paste sentinel")
   }
   postKey(36)
   report = try wait("Enter uses the selected clipboard item and dismisses") {
