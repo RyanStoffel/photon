@@ -98,7 +98,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@v7
       - name: Download Photon.app
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: Photon.app
           path: build
