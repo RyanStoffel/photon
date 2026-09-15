@@ -15,6 +15,7 @@ public final class FileSearchController: ObservableObject {
     case results
     case empty(String)
     case unavailable
+    case needsAccess(String)
   }
 
   public struct KeyHint: Identifiable, Equatable, Sendable {
@@ -32,12 +33,15 @@ public final class FileSearchController: ObservableObject {
   public var onRequestDismiss: (@MainActor () -> Void)?
   /// Ask the host to activate the app so an auxiliary panel can take keyboard focus.
   public var onRequestActivation: (@MainActor () -> Void)?
+  /// Opens the normal guided folder-selection flow without dismissing Photon.
+  public var onRequestAccess: (@MainActor () -> Void)?
 
   @Published public private(set) var results: [RankedFile] = []
   @Published public private(set) var status: Status = .idle
   @Published public private(set) var isSearching = false
   @Published public private(set) var showsInfo = false
   @Published public private(set) var notice: String?
+  @Published public private(set) var accessNotice: String?
   @Published public var selectedID: String? {
     didSet {
       if selectedID != oldValue {
@@ -54,9 +58,15 @@ public final class FileSearchController: ObservableObject {
   private var searchTask: Task<Void, Never>?
   private var noticeTask: Task<Void, Never>?
   private var selectionMovedByUser = false
+  private var protectedResumeQuery: String?
+  private var resumeProtectionTask: Task<Void, Never>?
 
   public var prefersCompactLauncherLayout: Bool {
     false
+  }
+
+  public var currentQuery: String {
+    query
   }
 
   public init(settings: FileSearchSettings = FileSearchSettings(), engine: FileSearchEngine = FileSearchEngine()) {
@@ -94,7 +104,8 @@ public final class FileSearchController: ObservableObject {
   }
 
   public func update(query: String) {
-    let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    let requested = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    let trimmed = requested.isEmpty ? protectedResumeQuery ?? requested : requested
     self.query = trimmed
     searchTask?.cancel()
     guard !trimmed.isEmpty else {
@@ -108,6 +119,32 @@ public final class FileSearchController: ObservableObject {
     }
     searchTask = Task { [weak self] in
       await self?.runSearch(trimmed)
+    }
+  }
+
+  public func update(settings: FileSearchSettings, accessNotice: String? = nil) {
+    let changed = self.settings != settings
+    self.settings = settings
+    self.accessNotice = accessNotice
+    if changed, !query.isEmpty {
+      update(query: query)
+    }
+  }
+
+  public func requestFileAccess() {
+    onRequestAccess?()
+  }
+
+  public func resumeAfterAccess(query: String) {
+    resumeProtectionTask?.cancel()
+    protectedResumeQuery = query
+    update(query: query)
+    resumeProtectionTask = Task { [weak self] in
+      try? await Task.sleep(for: .seconds(5))
+      guard !Task.isCancelled else {
+        return
+      }
+      self?.protectedResumeQuery = nil
     }
   }
 
@@ -131,6 +168,10 @@ public final class FileSearchController: ObservableObject {
   }
 
   public func deactivate() {
+    if protectedResumeQuery != nil {
+      quickLook.hide()
+      return
+    }
     searchTask?.cancel()
     searchTask = nil
     engine.cancel()
@@ -159,7 +200,7 @@ public final class FileSearchController: ObservableObject {
     if !response.spotlightAvailable {
       status = .unavailable
     } else if results.isEmpty {
-      status = .empty(response.query)
+      status = settings.grantedFolders.isEmpty ? .needsAccess(response.query) : .empty(response.query)
     } else {
       status = .results
     }

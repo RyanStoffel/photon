@@ -18,9 +18,9 @@ enum ParityFailure: Error, CustomStringConvertible {
 }
 
 let (reportURL, commandURL, screenshotDirectory): (URL, URL, URL) = {
-  guard CommandLine.arguments.count == 4 else {
+  guard CommandLine.arguments.count == 4 || CommandLine.arguments.count == 5 else {
     fputs(
-      "usage: native-macos-parity.swift <report.json> <command-file> <screenshot-directory>\n",
+      "usage: native-macos-parity.swift <report.json> <command-file> <screenshot-directory> [relaunch]\n",
       stderr
     )
     exit(2)
@@ -32,6 +32,9 @@ let (reportURL, commandURL, screenshotDirectory): (URL, URL, URL) = {
   )
 }()
 
+let isRelaunchVerification = CommandLine.arguments.last == "relaunch"
+let fileAccessQuery = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY"] ?? ""
+let fileAccessResult = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT"] ?? ""
 let pasteSentinel = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_SENTINEL"] ?? ""
 let pasteTargetValueURL = URL(
   fileURLWithPath: ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_TARGET_VALUE"] ?? ""
@@ -388,6 +391,44 @@ func findTextField(in element: AXUIElement, depth: Int = 0) -> AXUIElement? {
   return nil
 }
 
+func accessibilityTitle(of element: AXUIElement) -> String {
+  var value: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(
+    element,
+    kAXTitleAttribute as CFString,
+    &value
+  ) == .success
+  else {
+    return ""
+  }
+  return value as? String ?? ""
+}
+
+func findButton(in element: AXUIElement, title: String, depth: Int = 0) -> AXUIElement? {
+  guard depth < 16 else {
+    return nil
+  }
+  if accessibilityRole(of: element) == kAXButtonRole as String,
+     accessibilityTitle(of: element) == title
+  {
+    return element
+  }
+  for child in accessibilityChildren(of: element) {
+    if let result = findButton(in: child, title: title, depth: depth + 1) {
+      return result
+    }
+  }
+  return nil
+}
+
+func pressPhotonButton(pid: pid_t, title: String) -> Bool {
+  let application = AXUIElementCreateApplication(pid)
+  guard let button = findButton(in: application, title: title) else {
+    return false
+  }
+  return AXUIElementPerformAction(button, kAXPressAction as CFString) == .success
+}
+
 func focusPhotonTextField(pid: pid_t) -> Bool {
   let application = AXUIElementCreateApplication(pid)
   guard let textField = findTextField(in: application) else {
@@ -465,6 +506,22 @@ do {
   try require(!bool(panel["standardButtonVisible"]), "launcher has no traffic-light buttons")
   try require(bool(panel["floating"]), "launcher is a floating panel")
   try require(!bool(panel["canBecomeMain"]), "launcher cannot become the main window")
+
+  if isRelaunchVerification {
+    report = try wait("security-scoped folder grant restores after packaged-app relaunch") {
+      int(dictionary($0["fileAccess"])["grantCount"]) == 1
+        && string(dictionary($0["fileAccess"])["status"]) == "granted"
+    }
+    try sendRuntimeCommand("showFiles:\(fileAccessQuery)")
+    report = try wait("restored grant finds the unindexed file after relaunch", timeout: 8) {
+      bool(launcher($0)["visible"])
+        && string(launcher($0)["mode"]) == "files"
+        && displayedTitles($0).contains(fileAccessResult)
+    }
+    try captureLauncher(report, name: "file-access-after-relaunch", expectedText: fileAccessResult)
+    print("Native macOS file-access relaunch parity checks passed.")
+    exit(0)
+  }
 
   _ = try wait("application bundle icon resolves in the packaged app", timeout: 30) {
     int($0["appIconProbeCount"]) > 0
@@ -745,13 +802,41 @@ do {
   _ = try wait("clipboard session closes before file-search tests") {
     !bool(launcher($0)["visible"])
   }
-  try sendRuntimeCommand("showLauncher")
-  report = try wait("native runtime hook opens the launcher for mixed file search") {
+  try sendRuntimeCommand("showFiles:")
+  report = try wait("native runtime hook opens ungranted Files mode") {
     let value = launcher($0)
     return bool(value["visible"])
       && bool(value["key"])
       && string(value["session"]) == "commands"
-      && string(value["mode"]).isEmpty
+      && string(value["mode"]) == "files"
+  }
+  try require(
+    int(dictionary(report["fileAccess"])["grantCount"]) == 0,
+    "packaged app starts with no folder grant"
+  )
+  try sendRuntimeCommand("requestFileAccess:\(fileAccessQuery)")
+  report = try wait("controlled folder grant is persisted while Photon remains alive", timeout: 8) {
+    int($0["pid"]) == Int(pid)
+      && int(dictionary($0["fileAccess"])["grantCount"]) == 1
+      && string(dictionary($0["fileAccess"])["status"]) == "granted"
+  }
+  report = try wait("guided setup restores the pending Files session", timeout: 8) {
+    bool(launcher($0)["visible"])
+      && string(launcher($0)["mode"]) == "files"
+      && string(launcher($0)["query"]) == fileAccessQuery
+  }
+  report = try wait("guided setup resumes the pending file search", timeout: 12) {
+    displayedTitles($0).contains(fileAccessResult)
+  }
+  try captureLauncher(report, name: "guided-file-access-resumed", expectedText: fileAccessResult)
+
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("guided setup closes before mixed-search verification") {
+    !bool(launcher($0)["visible"])
+  }
+  try sendRuntimeCommand("showLauncher")
+  report = try wait("launcher reopens after guided file setup") {
+    bool(launcher($0)["visible"]) && string(launcher($0)["mode"]).isEmpty
   }
   let expectedFile = "Ember_Individual_Pitch.pdf"
   clickSearchField(report)
