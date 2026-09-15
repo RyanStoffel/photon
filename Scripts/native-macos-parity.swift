@@ -494,7 +494,7 @@ do {
   )
   _ = try wait("packaged Photon pastes into the previously focused target") { _ in
     fulfillPasteInjectionIfNeeded()
-    (try? String(contentsOf: pasteTargetValueURL, encoding: .utf8)) == pasteSentinel
+    return (try? String(contentsOf: pasteTargetValueURL, encoding: .utf8)) == pasteSentinel
   }
   try require(
     string(launcher(report)["clipboardNotice"]).isEmpty,
