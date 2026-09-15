@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-09-15
+
+Runtime reliability release for real-account file search and clipboard keyboard navigation.
+
 ### Fixed
 
 - File search now combines concurrent Spotlight queries with a bounded filename walk, so recently created or unindexed home-folder documents appear in explicit Files mode and mixed launcher results.
