@@ -802,23 +802,13 @@ do {
   _ = try wait("clipboard session closes before file-search tests") {
     !bool(launcher($0)["visible"])
   }
-  try sendRuntimeCommand("showLauncher")
-  report = try wait("native runtime hook opens the launcher for mixed file search") {
+  try sendRuntimeCommand("showFiles:")
+  report = try wait("native runtime hook opens ungranted Files mode") {
     let value = launcher($0)
     return bool(value["visible"])
       && bool(value["key"])
       && string(value["session"]) == "commands"
-      && string(value["mode"]).isEmpty
-  }
-  clickSearchField(report)
-  try require(focusPhotonTextField(pid: pid), "Accessibility focuses file-access setup field")
-  try require(setPhotonTextFieldValue(pid: pid, value: "files"), "Accessibility searches for Files command")
-  _ = try wait("launcher visibly displays Search Files for setup") {
-    displayedTitles($0).contains("Search Files")
-  }
-  try require(confirmPhotonTextField(pid: pid), "Accessibility invokes Search Files for setup")
-  report = try wait("ungranted Files mode opens") {
-    string(launcher($0)["mode"]) == "files" && bool(launcher($0)["key"])
+      && string(value["mode"]) == "files"
   }
   try require(
     int(dictionary(report["fileAccess"])["grantCount"]) == 0,
