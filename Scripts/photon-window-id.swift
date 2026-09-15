@@ -66,27 +66,21 @@ func bounds(from entry: [String: Any]) -> (CGFloat, CGFloat)? {
 
 func matchesScenario(_ candidate: WindowCandidate, scenario: String) -> Bool {
   switch scenario {
-  case "launcher-empty", "clipboard-empty", "files-empty":
+  case "launcher-empty", "launcher-recs", "launcher-query", "calculator":
     if candidate.title == "Photon Launcher" {
       return true
     }
-    // Compact pill: 89pt, ~178px on a 2x display. Reject huge dim overlays.
-    return candidate.width >= 500 && candidate.width <= 920 && candidate.height >= 70 && candidate.height <= 250
-  case "launcher-recs", "launcher-query", "calculator", "files-query":
-    if candidate.title == "Photon Launcher" {
-      return true
-    }
-    return candidate.width >= 500 && candidate.width <= 920 && candidate.height >= 80 && candidate.height <= 700
+    return candidate.width >= 520 && candidate.width <= 720 && candidate.height >= 320 && candidate.height <= 560
   case "settings":
-    if candidate.title == "Appearance" || candidate.title == "General" || candidate.title == "Settings" {
+    if candidate.title == "General" || candidate.title == "Settings" {
       return candidate.width >= 520
     }
-    return candidate.width >= 520 && candidate.height >= 360
+    return false
   case "notes":
-    if candidate.title == "Notes" || candidate.title == "Screenshot sample" {
+    if candidate.title == "Screenshot sample" || candidate.title == "Notes" {
       return true
     }
-    return candidate.width >= 260 && candidate.height >= 200
+    return candidate.width >= 260 && candidate.width <= 460 && candidate.height >= 200
   default:
     return true
   }
@@ -95,19 +89,12 @@ func matchesScenario(_ candidate: WindowCandidate, scenario: String) -> Bool {
 func score(_ candidate: WindowCandidate, scenario: String) -> Int {
   var score = Int(candidate.width * candidate.height)
   switch scenario {
-  case "launcher-empty", "clipboard-empty", "files-empty":
-    if candidate.title == "Photon Launcher" {
-      score += 1_000_000
-    }
-    if candidate.height <= 250 {
-      score += 100_000
-    }
-  case "launcher-recs", "launcher-query", "calculator", "files-query":
+  case "launcher-empty", "launcher-recs", "launcher-query", "calculator":
     if candidate.title == "Photon Launcher" {
       score += 1_000_000
     }
   case "settings":
-    if candidate.title == "Appearance" || candidate.title == "General" {
+    if candidate.title == "General" {
       score += 1_000_000
     }
   case "notes":
@@ -131,12 +118,13 @@ guard let options = parseOptions() else {
 let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
 var candidates: [WindowCandidate] = []
 for entry in list {
+  if let windowLayer = entry[kCGWindowLayer as String] as? Int, windowLayer != options.layer {
+    continue
+  }
   if let pid = options.pid, let windowPID = entry[kCGWindowOwnerPID as String] as? Int32, windowPID != pid {
     continue
   }
-  if let owner = options.owner, let windowOwner = entry[kCGWindowOwnerName as String] as? String,
-     windowOwner.caseInsensitiveCompare(owner) != .orderedSame
-  {
+  if let owner = options.owner, let windowOwner = entry[kCGWindowOwnerName as String] as? String, windowOwner != owner {
     continue
   }
   guard let windowID = entry[kCGWindowNumber as String] as? CGWindowID,
@@ -152,9 +140,6 @@ if let scenario = options.scenario {
   let key: String = {
     if scenario.hasPrefix("launcher-query") {
       return "launcher-query"
-    }
-    if scenario.hasPrefix("files-query") {
-      return "files-query"
     }
     if scenario.hasPrefix("settings") {
       return "settings"
