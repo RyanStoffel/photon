@@ -47,7 +47,9 @@ final class PasteTargetDelegate: NSObject, NSApplicationDelegate, NSTextFieldDel
 }
 
 let application = NSApplication.shared
-let delegate = PasteTargetDelegate()
+let delegate = MainActor.assumeIsolated {
+  PasteTargetDelegate()
+}
 application.delegate = delegate
 application.setActivationPolicy(.regular)
 application.run()

@@ -31,6 +31,7 @@ let (reportURL, commandURL, screenshotDirectory): (URL, URL, URL) = {
     URL(fileURLWithPath: CommandLine.arguments[3], isDirectory: true)
   )
 }()
+
 let pasteSentinel = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_SENTINEL"] ?? ""
 let pasteTargetValueURL = URL(
   fileURLWithPath: ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_TARGET_VALUE"] ?? ""
