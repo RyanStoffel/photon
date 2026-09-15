@@ -169,7 +169,9 @@ public final class ClipboardHistoryViewModel: ObservableObject {
       return
     }
     switch await manager.paste(item) {
-    case .pasted, .copied:
+    case .pasted:
+      break
+    case .copied:
       onDismiss?()
     case .accessibilityRequired:
       if !hasPromptedForAccessibility {
@@ -179,6 +181,11 @@ public final class ClipboardHistoryViewModel: ObservableObject {
       notice = Notice(
         message: "Copied. Grant Photon Accessibility access to paste directly.",
         offersAccessibility: true
+      )
+    case .eventInjectionFailed:
+      notice = Notice(
+        message: "Copied, but Photon could not send Paste. Try again or use Copy Only.",
+        offersAccessibility: false
       )
     }
   }

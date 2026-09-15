@@ -41,8 +41,9 @@ final class LauncherLayoutTests: XCTestCase {
   }
 
   func testFeatureViewsUseTheFullHeight() {
-    XCTAssertEqual(LauncherLayout.height(for: .fullHeight), LauncherLayout.maxHeight)
-    XCTAssertGreaterThan(LauncherLayout.maxHeight, LauncherLayout.compactHeight)
+    XCTAssertEqual(LauncherLayout.height(for: .fullHeight), LauncherLayout.detailHeight)
+    XCTAssertGreaterThan(LauncherLayout.detailHeight, LauncherLayout.maxHeight)
+    XCTAssertGreaterThan(LauncherLayout.detailWidth, LauncherPanelWidth.wide.points)
   }
 
   func testSuggestionsFitOnOnePage() {

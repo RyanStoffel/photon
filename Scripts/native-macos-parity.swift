@@ -31,6 +31,10 @@ let (reportURL, commandURL, screenshotDirectory): (URL, URL, URL) = {
     URL(fileURLWithPath: CommandLine.arguments[3], isDirectory: true)
   )
 }()
+let pasteSentinel = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_SENTINEL"] ?? ""
+let pasteTargetValueURL = URL(
+  fileURLWithPath: ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_TARGET_VALUE"] ?? ""
+)
 
 func readReport() -> [String: Any]? {
   guard let data = try? Data(contentsOf: reportURL),
@@ -349,7 +353,10 @@ do {
     int($0["appIconProbeCount"]) > 0
   }
 
-  _ = try wait("clipboard monitor captured four runtime fixtures") { int($0["clipboardCaptureCount"]) >= 4 }
+  report = try wait("clipboard monitor captured text and image runtime fixtures") {
+    int($0["clipboardCaptureCount"]) >= 6
+  }
+  try require(bool(report["clipboardAccessibilityTrusted"]), "trusted AX state is reported without stale caching")
   postKey(9, flags: [.maskCommand, .maskShift])
   report = try wait("Cmd+Shift+V opens compact clipboard history") {
     let value = launcher($0)
@@ -404,10 +411,19 @@ do {
 
   postKey(125)
   report = try wait("Down expands clipboard results without moving the top edge") {
-    string(launcher($0)["content"]) == "rows"
+    string(launcher($0)["content"]) == "fullHeight"
       && int(launcher($0)["clipboardSelectedIndex"]) >= 0
       && abs(top($0) - anchoredTop) < 0.5
   }
+  try require(
+    string(launcher(report)["clipboardSelectedKind"]) == "image",
+    "expanded clipboard selects the seeded image"
+  )
+  try captureLauncher(
+    report,
+    name: "clipboard-image-detail",
+    expectedText: "Photon Image Detail"
+  )
   let firstSelection = int(launcher(report)["clipboardSelectedIndex"])
   postKey(125)
   report = try wait("Down cycles clipboard selection") {
@@ -422,25 +438,37 @@ do {
     name: "clipboard-hotkey-selection",
     expectedText: string(launcher(report)["clipboardSelectedTitle"])
   )
-  postKey(126)
-  _ = try wait("Up cycles clipboard selection") {
-    int(launcher($0)["clipboardSelectedIndex"]) == firstSelection
-  }
-
-  postText("needle")
-  _ = try wait("typing filters clipboard and preserves the anchor") {
-    string(launcher($0)["query"]) == "needle"
+  try require(setPhotonTextFieldValue(pid: pid, value: "long clipboard detail sentinel"), "filters long text")
+  report = try wait("typing filters clipboard and renders full text detail") {
+    string(launcher($0)["query"]) == "long clipboard detail sentinel"
       && int(launcher($0)["clipboardResultCount"]) == 1
       && abs(top($0) - anchoredTop) < 0.5
   }
+  try captureLauncher(
+    report,
+    name: "clipboard-text-detail",
+    expectedText: "PHOTON-COMPLETE-TEXT-3391"
+  )
 
+  try require(setPhotonTextFieldValue(pid: pid, value: "v0.3.3 paste sentinel"), "filters paste sentinel")
+  _ = try wait("paste sentinel is selected") {
+    int(launcher($0)["clipboardResultCount"]) == 1
+      && string(launcher($0)["clipboardSelectedTitle"]).contains("paste sentinel")
+  }
   postKey(36)
-  _ = try wait("Enter uses the selected clipboard item and dismisses") {
+  report = try wait("Enter uses the selected clipboard item and dismisses") {
     !bool(launcher($0)["visible"])
   }
   try require(
-    NSPasteboard.general.string(forType: .string)?.contains("needle") == true,
+    NSPasteboard.general.string(forType: .string) == pasteSentinel,
     "Enter copied the selected clipboard item"
+  )
+  _ = try wait("packaged Photon pastes into the previously focused target") { _ in
+    (try? String(contentsOf: pasteTargetValueURL, encoding: .utf8)) == pasteSentinel
+  }
+  try require(
+    string(launcher(report)["clipboardNotice"]).isEmpty,
+    "trusted paste never reports a missing Accessibility permission"
   )
 
   postKey(9, flags: [.maskCommand, .maskShift])
@@ -483,7 +511,7 @@ do {
   )
   postKey(125)
   report = try wait("launcher-entry Down expands clipboard history") {
-    string(launcher($0)["content"]) == "rows"
+    string(launcher($0)["content"]) == "fullHeight"
       && int(launcher($0)["clipboardSelectedIndex"]) >= 0
       && bool(launcher($0)["key"])
   }

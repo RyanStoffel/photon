@@ -13,11 +13,13 @@ public final class ClipboardManager: ObservableObject {
     case copied
     /// Written to the pasteboard; pasting needs Accessibility access.
     case accessibilityRequired
+    /// Written to the pasteboard, but Photon could not create the paste events.
+    case eventInjectionFailed
   }
 
   @Published public private(set) var items: [ClipboardItem] = []
   @Published public private(set) var storageBytes: Int64 = 0
-  @Published public private(set) var isAccessibilityTrusted = ClipboardPaster.isAccessibilityTrusted
+  @Published public private(set) var isAccessibilityTrusted: Bool
 
   public var settings: ClipboardSettings {
     didSet {
@@ -30,14 +32,30 @@ public final class ClipboardManager: ObservableObject {
   private let store: ClipboardStore
   private let monitor: PasteboardMonitor
   private let imageCache = NSCache<NSUUID, NSImage>()
+  private let accessibilityTrust: @MainActor () -> Bool
+  private let pasteInjector: @MainActor () -> ClipboardPaster.PasteInjectionResult
   private var pruneTimer: Timer?
   private var isStarted = false
 
   /// Delay between hiding the panel and sending Cmd+V, so key focus is back in the target app.
   public var pasteDelay: Duration = .milliseconds(120)
+  /// Hides the launcher and restores the app that owned focus before Photon opened.
+  public var onPrepareForPaste: (@MainActor () -> Void)?
+  /// Reopens clipboard history when trusted event creation unexpectedly fails.
+  public var onPasteFailure: (@MainActor () -> Void)?
 
-  public init(settings: ClipboardSettings, directory: URL = ClipboardStore.defaultDirectory()) {
+  public init(
+    settings: ClipboardSettings,
+    directory: URL = ClipboardStore.defaultDirectory(),
+    accessibilityTrust: @escaping @MainActor () -> Bool = { ClipboardPaster.isAccessibilityTrusted },
+    pasteInjector: @escaping @MainActor () -> ClipboardPaster.PasteInjectionResult = {
+      ClipboardPaster.sendPasteKeystroke()
+    }
+  ) {
     self.settings = settings
+    self.accessibilityTrust = accessibilityTrust
+    self.pasteInjector = pasteInjector
+    isAccessibilityTrusted = accessibilityTrust()
     store = ClipboardStore(directory: directory)
     monitor = PasteboardMonitor()
     imageCache.countLimit = 12
@@ -84,7 +102,7 @@ public final class ClipboardManager: ObservableObject {
   }
 
   public func refreshAccessibility() {
-    isAccessibilityTrusted = ClipboardPaster.isAccessibilityTrusted
+    isAccessibilityTrusted = accessibilityTrust()
   }
 
   public func requestAccessibility() {
@@ -152,8 +170,8 @@ public final class ClipboardManager: ObservableObject {
     await writeToPasteboard(item)
   }
 
-  /// Applies the configured paste behaviour. When pasting, Cmd+V is sent
-  /// after `pasteDelay`; hide the panel before that fires.
+  /// Applies the configured paste behaviour. The target app is restored before
+  /// Cmd+V is posted, and the current AX trust state is checked at action time.
   public func paste(_ item: ClipboardItem) async -> PasteOutcome {
     await writeToPasteboard(item)
     guard settings.pasteBehavior == .paste else {
@@ -163,12 +181,20 @@ public final class ClipboardManager: ObservableObject {
     guard isAccessibilityTrusted else {
       return .accessibilityRequired
     }
+    onPrepareForPaste?()
     let delay = pasteDelay
-    Task {
-      try? await Task.sleep(for: delay)
-      ClipboardPaster.sendPasteKeystroke()
+    try? await Task.sleep(for: delay)
+    switch pasteInjector() {
+    case .posted:
+      return .pasted
+    case .accessibilityRequired:
+      refreshAccessibility()
+      onPasteFailure?()
+      return .accessibilityRequired
+    case .eventCreationFailed:
+      onPasteFailure?()
+      return .eventInjectionFailed
     }
-    return .pasted
   }
 
   private func writeToPasteboard(_ item: ClipboardItem) async {
