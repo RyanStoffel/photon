@@ -55,19 +55,8 @@ public final class FileSearchEngine {
     ) else {
       return Response(query: trimmed, files: [], spotlightAvailable: true)
     }
-    let nativeFixtures = nativeParityGrantedFixtures(settings: request.settings)
-    if !nativeFixtures.isEmpty {
-      let files = nativeFixtures.compactMap(FileResultFactory.file(at:))
-      let ranked = FileRanker.rank(
-        files,
-        query: trimmed,
-        excludedFolders: request.settings.excludedFolders,
-        includeApplications: request.includeApplications,
-        limit: request.limit,
-        scope: request.settings.scope,
-        extraFolders: request.settings.grantedFolders
-      )
-      return Response(query: trimmed, files: ranked, spotlightAvailable: true)
+    if let response = nativeParityResponse(for: request, query: trimmed) {
+      return response
     }
 
     if debounce > .zero {
@@ -241,5 +230,17 @@ public final class FileSearchEngine {
         fixture == folder || fixture.hasPrefix(folder + "/")
       }
     }
+  }
+
+  private func nativeParityResponse(for request: Request, query: String) -> Response? {
+    let fixtures = nativeParityGrantedFixtures(settings: request.settings)
+      .compactMap(FileResultFactory.file(at:))
+    guard !fixtures.isEmpty else {
+      return nil
+    }
+    let ranked = fixtures.prefix(request.limit).map {
+      RankedFile(file: $0, relevance: 1)
+    }
+    return Response(query: query, files: ranked, spotlightAvailable: true)
   }
 }
