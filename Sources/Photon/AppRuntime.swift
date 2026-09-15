@@ -237,9 +237,8 @@ final class AppRuntime: ObservableObject {
     }
     fileSearch?.refreshConfiguration()
     settingsWindowController?.window?.orderOut(nil)
-    launcher.show()
     if let mode = launcher.model.modes.first(where: { $0.id == "files" }) {
-      launcher.model.enter(mode: mode, query: query)
+      launcher.resume(mode: mode, query: query)
     }
   }
 

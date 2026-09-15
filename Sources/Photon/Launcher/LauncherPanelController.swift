@@ -216,6 +216,18 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     model.enterClipboard(query: "")
   }
 
+  func resume(mode: any LauncherMode, query: String) {
+    preload()
+    guard let panel else {
+      return
+    }
+    model.enter(mode: mode, query: query)
+    panel.orderFrontRegardless()
+    panel.makeKey()
+    model.requestSearchFocus()
+    startMonitor()
+  }
+
   func hide() {
     model.prepareForHide()
     model.resetForHide()
