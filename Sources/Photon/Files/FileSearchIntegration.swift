@@ -40,7 +40,7 @@ final class FileSearchIntegration {
         guard let self, let settings else {
           return
         }
-        self.refreshConfiguration()
+        refreshConfiguration()
       }
       .store(in: &cancellables)
     access.$grants

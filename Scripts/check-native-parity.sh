@@ -31,7 +31,7 @@ COMMAND="$DATA_ROOT/native-command"
 APP_LOG="$DATA_ROOT/photon.log"
 SCREENSHOT_DIR="${NATIVE_PARITY_SCREENSHOT_DIR:-$DATA_ROOT/screenshots}"
 SEED_FILE="$HOME/Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf"
-GRANT_DIR="$DATA_ROOT/guided-file-access"
+GRANT_DIR="$(dirname "$SEED_FILE")"
 GRANT_FILE="$GRANT_DIR/Photon_Bookmark_Ember_Proof.pdf"
 GRANT_QUERY="bookmark ember proof"
 SEED_CREATED=0
@@ -47,6 +47,7 @@ restore() {
   if [[ "$SEED_CREATED" == "1" ]]; then
     rm -f "$SEED_FILE"
   fi
+  rm -f "$GRANT_FILE"
   if [[ "${KEEP_PARITY_ARTIFACTS:-0}" != "1" ]]; then
     rm -rf "$DATA_ROOT"
   else

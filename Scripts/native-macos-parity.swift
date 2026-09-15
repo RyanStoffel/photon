@@ -31,6 +31,7 @@ let (reportURL, commandURL, screenshotDirectory): (URL, URL, URL) = {
     URL(fileURLWithPath: CommandLine.arguments[3], isDirectory: true)
   )
 }()
+
 let isRelaunchVerification = CommandLine.arguments.last == "relaunch"
 let fileAccessQuery = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY"] ?? ""
 let fileAccessResult = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT"] ?? ""
@@ -572,6 +573,49 @@ do {
       && string(value["session"]) == "commands"
       && string(value["mode"]).isEmpty
   }
+  clickSearchField(report)
+  try require(focusPhotonTextField(pid: pid), "Accessibility focuses file-access setup field")
+  try require(setPhotonTextFieldValue(pid: pid, value: "files"), "Accessibility searches for Files command")
+  _ = try wait("launcher visibly displays Search Files for setup") {
+    displayedTitles($0).contains("Search Files")
+  }
+  try require(confirmPhotonTextField(pid: pid), "Accessibility invokes Search Files for setup")
+  report = try wait("ungranted Files mode opens") {
+    string(launcher($0)["mode"]) == "files" && bool(launcher($0)["key"])
+  }
+  try require(
+    setPhotonTextFieldValue(pid: pid, value: fileAccessQuery),
+    "Accessibility enters the unindexed guided-access query"
+  )
+  report = try wait("ungranted fallback offers one guided folder action", timeout: 8) {
+    string(launcher($0)["query"]) == fileAccessQuery
+      && string(launcher($0)["fileStatus"]) == "needsAccess"
+      && bool(launcher($0)["visible"])
+      && int(dictionary($0["fileAccess"])["grantCount"]) == 0
+  }
+  try require(
+    pressPhotonButton(pid: pid, title: "Choose Folders…"),
+    "guided access button drives the controlled open-panel adapter"
+  )
+  report = try wait("folder grant keeps Photon alive and resumes the search", timeout: 8) {
+    int($0["pid"]) == Int(pid)
+      && bool(launcher($0)["visible"])
+      && string(launcher($0)["mode"]) == "files"
+      && string(launcher($0)["query"]) == fileAccessQuery
+      && displayedTitles($0).contains(fileAccessResult)
+      && int(dictionary($0["fileAccess"])["grantCount"]) == 1
+      && string(dictionary($0["fileAccess"])["status"]) == "granted"
+  }
+  try captureLauncher(report, name: "guided-file-access-resumed", expectedText: fileAccessResult)
+
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("guided setup closes before mixed-search verification") {
+    !bool(launcher($0)["visible"])
+  }
+  try sendRuntimeCommand("showLauncher")
+  report = try wait("launcher reopens after guided file setup") {
+    bool(launcher($0)["visible"]) && string(launcher($0)["mode"]).isEmpty
+  }
   let expectedFile = "Ember_Individual_Pitch.pdf"
   clickSearchField(report)
   try require(focusPhotonTextField(pid: pid), "Accessibility focuses mixed-search field")
@@ -599,31 +643,6 @@ do {
       && displayedTitles($0).contains(expectedFile)
   }
   try captureLauncher(report, name: "ember-files-mode", expectedText: expectedFile)
-
-  try require(
-    setPhotonTextFieldValue(pid: pid, value: fileAccessQuery),
-    "Accessibility enters the unindexed guided-access query"
-  )
-  report = try wait("ungranted fallback offers one guided folder action", timeout: 8) {
-    string(launcher($0)["query"]) == fileAccessQuery
-      && string(launcher($0)["fileStatus"]) == "needsAccess"
-      && bool(launcher($0)["visible"])
-      && int(dictionary($0["fileAccess"])["grantCount"]) == 0
-  }
-  try require(
-    pressPhotonButton(pid: pid, title: "Choose Folders…"),
-    "guided access button drives the controlled open-panel adapter"
-  )
-  report = try wait("folder grant keeps Photon alive and resumes the search", timeout: 8) {
-    int($0["pid"]) == Int(pid)
-      && bool(launcher($0)["visible"])
-      && string(launcher($0)["mode"]) == "files"
-      && string(launcher($0)["query"]) == fileAccessQuery
-      && displayedTitles($0).contains(fileAccessResult)
-      && int(dictionary($0["fileAccess"])["grantCount"]) == 1
-      && string(dictionary($0["fileAccess"])["status"]) == "granted"
-  }
-  try captureLauncher(report, name: "guided-file-access-resumed", expectedText: fileAccessResult)
 
   let light = dictionary(report["appearance"])
   setSystemAppearance(dark: true)
