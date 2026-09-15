@@ -150,7 +150,7 @@ func clickSearchField(_ report: [String: Any]) {
   Thread.sleep(forTimeInterval: 0.2)
 }
 
-func runningWindowBounds(pid: pid_t) -> CGRect? {
+func runningWindowBounds(pid: pid_t, expectedSize: CGSize) -> CGRect? {
   let windows = CGWindowListCopyWindowInfo(
     .optionAll,
     kCGNullWindowID
@@ -167,8 +167,10 @@ func runningWindowBounds(pid: pid_t) -> CGRect? {
       width: double(bounds["Width"]),
       height: double(bounds["Height"])
     )
-  }.max { lhs, rhs in
-    lhs.width * lhs.height < rhs.width * rhs.height
+  }.min { lhs, rhs in
+    let lhsDistance = abs(lhs.width - expectedSize.width) + abs(lhs.height - expectedSize.height)
+    let rhsDistance = abs(rhs.width - expectedSize.width) + abs(rhs.height - expectedSize.height)
+    return lhsDistance < rhsDistance
   }
 }
 
@@ -228,7 +230,12 @@ do {
   }
   let anchoredTop = top(report)
 
-  if let cgBounds = runningWindowBounds(pid: pid) {
+  let nativeFrame = frame(report)
+  let expectedSize = CGSize(
+    width: double(nativeFrame["width"]),
+    height: double(nativeFrame["height"])
+  )
+  if let cgBounds = runningWindowBounds(pid: pid, expectedSize: expectedSize) {
     try require(
       abs(cgBounds.width - double(frame(report)["width"])) < 2,
       "CGWindow width matches the native panel"
