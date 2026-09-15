@@ -39,6 +39,9 @@ let pasteTargetValueURL = URL(
 let pasteInjectionURL = URL(
   fileURLWithPath: ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_INJECTION_PATH"] ?? ""
 )
+let pasteTargetPID = pid_t(
+  Int32(ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_TARGET_PID"] ?? "") ?? 0
+)
 
 func readReport() -> [String: Any]? {
   guard let data = try? Data(contentsOf: reportURL),
@@ -380,6 +383,13 @@ do {
     int($0["clipboardCaptureCount"]) >= 6
   }
   try require(bool(report["clipboardAccessibilityTrusted"]), "trusted AX state is reported without stale caching")
+  let pasteTarget = NSRunningApplication(processIdentifier: pasteTargetPID)
+  try require(pasteTarget != nil, "real paste target process is running")
+  try require(
+    pasteTarget?.activate(options: [.activateIgnoringOtherApps]) == true,
+    "real paste target owns focus before Photon opens"
+  )
+  RunLoop.current.run(until: Date().addingTimeInterval(0.3))
   postKey(9, flags: [.maskCommand, .maskShift])
   report = try wait("Cmd+Shift+V opens compact clipboard history") {
     let value = launcher($0)
