@@ -39,8 +39,7 @@ SCREENSHOT_DIR="${NATIVE_PARITY_SCREENSHOT_DIR:-$DATA_ROOT/screenshots}"
 SEED_FILE="$HOME/Documents/Photon Native Parity/Ember_Individual_Pitch.pdf"
 SEED_IMAGE="$HOME/Documents/Photon Native Parity/Photon_Recent_Image.png"
 GRANT_DIR="$(dirname "$SEED_FILE")"
-GRANT_FILE="$GRANT_DIR/Photon_Bookmark_Ember_Proof.pdf"
-GRANT_QUERY="bookmark ember proof"
+GRANT_QUERY="ember"
 SEED_CREATED=0
 SEED_IMAGE_CREATED=0
 PID=""
@@ -58,7 +57,6 @@ restore() {
   if [[ "$SEED_CREATED" == "1" ]]; then
     rm -f "$SEED_FILE"
   fi
-  rm -f "$GRANT_FILE"
   if [[ "$SEED_IMAGE_CREATED" == "1" ]]; then
     rm -f "$SEED_IMAGE"
   fi
@@ -81,8 +79,6 @@ SEED_IMAGE_CREATED=1
 swift "$ROOT/Scripts/create-preview-fixtures.swift" "$SEED_FILE" "$SEED_IMAGE"
 /usr/bin/mdimport "$SEED_FILE" >/dev/null 2>&1 || true
 /usr/bin/mdimport "$SEED_IMAGE" >/dev/null 2>&1 || true
-mkdir -p "$GRANT_DIR"
-printf 'Photon guided file access fixture\n' >"$GRANT_FILE"
 
 swiftc "$ROOT/Scripts/native-paste-target.swift" -o "$DATA_ROOT/native-paste-target"
 "$DATA_ROOT/native-paste-target" "$PASTE_TARGET_VALUE" "$PASTE_TARGET_COMMAND" >"$PASTE_TARGET_LOG" 2>&1 &
@@ -105,8 +101,8 @@ PHOTON_NATIVE_PARITY_PASTE_INJECTION_PATH="$PASTE_INJECTION" \
 PHOTON_ISOLATED_DATA_ROOT="$DATA_ROOT/data" \
 PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION="$GRANT_DIR" \
 PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY="$GRANT_QUERY" \
-PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT="$(basename "$GRANT_FILE")" \
-PHOTON_NATIVE_PARITY_GRANTED_FILES="$GRANT_FILE" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT="$(basename "$SEED_FILE")" \
+PHOTON_NATIVE_PARITY_GRANTED_FILES="$SEED_FILE" \
 PHOTON_NATIVE_PARITY_RECENT_FILES="$SEED_FILE:$SEED_IMAGE" \
 PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
   "$EXECUTABLE" >"$APP_LOG" 2>&1 &
@@ -142,8 +138,8 @@ PHOTON_NATIVE_PARITY_COMMAND_PATH="$COMMAND" \
 PHOTON_ISOLATED_DATA_ROOT="$DATA_ROOT/data" \
 PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION="$GRANT_DIR" \
 PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY="$GRANT_QUERY" \
-PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT="$(basename "$GRANT_FILE")" \
-PHOTON_NATIVE_PARITY_GRANTED_FILES="$GRANT_FILE" \
+PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT="$(basename "$SEED_FILE")" \
+PHOTON_NATIVE_PARITY_GRANTED_FILES="$SEED_FILE" \
 PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
   "$EXECUTABLE" >>"$APP_LOG" 2>&1 &
 PID=$!
