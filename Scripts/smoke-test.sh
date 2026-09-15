@@ -67,7 +67,6 @@ echo "Archs:      $(lipo -archs "$EXECUTABLE")"
 echo "Signature:  $(codesign -dv "$APP" 2>&1 | awk -F= '/^Signature=|^Authority=/ { print $2; exit }')"
 echo "macOS:      $(sw_vers -productVersion) ($(uname -m))"
 
-# AppKit swallows uncaught exceptions; Rust panics abort. Treat both as failures.
 # A stale instance would make `open` activate it instead of launching this bundle.
 pkill -x Photon 2>/dev/null || true
 sleep 1
@@ -125,7 +124,7 @@ fi
 collect_log
 # AppKit swallows uncaught exceptions on the main run loop, so the process survives them
 # while whatever was running (for example AppRuntime.start) silently stops. Treat them as failures.
-FATAL_PATTERN='Fatal error|EXC_BAD_ACCESS|EXC_CRASH|Termination Reason|An uncaught exception was raised|HIExceptions\] FAULT|panic:|thread .* panicked'
+FATAL_PATTERN='Fatal error|EXC_BAD_ACCESS|EXC_CRASH|Termination Reason|An uncaught exception was raised|HIExceptions\] FAULT'
 if grep -Eq "$FATAL_PATTERN" "$LOG_OUT"; then
   echo "::error::the unified log contains a fatal error or uncaught exception for Photon"
   grep -En "$FATAL_PATTERN" "$LOG_OUT" | head -n 20

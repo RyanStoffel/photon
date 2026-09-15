@@ -1,8 +1,8 @@
 # Releasing Photon
 
-The version string lives in one place: the `VERSION` file at the repository root. `Scripts/bump-version.sh` writes that file and `crates/photon-core/src/version.rs`. `Scripts/package_app.sh` copies the same value into `Photon.app/Contents/Info.plist` at build time.
+The version string lives in one place: the `VERSION` file at the repository root. `Scripts/bump-version.sh` writes that file and `Sources/PhotonCore/PhotonVersion.swift`. `Scripts/package_app.sh` copies the same value into `Photon.app/Contents/Info.plist` at build time.
 
-Do not edit `version.rs` by hand.
+Do not edit `PhotonVersion.swift` by hand.
 
 ## Prerequisites
 
@@ -41,9 +41,9 @@ A manual run builds, signs, packages, smoke-tests, and writes the release notes 
 ```sh
 git checkout develop
 git pull
-Scripts/bump-version.sh 0.3.0
-# add the 0.3.0 section to CHANGELOG.md
-git add VERSION crates/photon-core/src/version.rs Cargo.toml CHANGELOG.md
+Scripts/bump-version.sh 0.1.0
+# add the 0.1.0 section to CHANGELOG.md
+git add VERSION Sources/PhotonCore/PhotonVersion.swift CHANGELOG.md
 git commit -m "chore(release): 0.1.0"
 # open a PR to develop, merge, then:
 git checkout -b release/0.1.0 origin/develop
@@ -60,7 +60,7 @@ Pushing a `v*.*.*` tag starts `.github/workflows/release.yml`. The tag **must** 
 The workflow:
 
 1. Checks the tag against `VERSION` and that `CHANGELOG.md` has a section for it.
-2. Builds `Photon.app` (Release, universal `arm64` + `x86_64` via cargo + lipo).
+2. Builds `Photon.app` (Release, universal `arm64` + `x86_64`).
 3. Signs with Developer ID, notarizes, and staples when the Apple secrets are all present; otherwise ad-hoc signs.
 4. Writes `Photon-<version>.zip`, `Photon-<version>.dmg`, and `SHA256SUMS`.
 5. Unpacks the zip and runs `Scripts/smoke-test.sh` against it (see below).
