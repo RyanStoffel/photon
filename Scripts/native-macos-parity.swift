@@ -174,6 +174,59 @@ func runningWindowBounds(pid: pid_t, expectedSize: CGSize) -> CGRect? {
   }
 }
 
+func accessibilityChildren(of element: AXUIElement) -> [AXUIElement] {
+  var value: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(
+    element,
+    kAXChildrenAttribute as CFString,
+    &value
+  ) == .success
+  else {
+    return []
+  }
+  return value as? [AXUIElement] ?? []
+}
+
+func accessibilityRole(of element: AXUIElement) -> String {
+  var value: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(
+    element,
+    kAXRoleAttribute as CFString,
+    &value
+  ) == .success
+  else {
+    return ""
+  }
+  return value as? String ?? ""
+}
+
+func findTextField(in element: AXUIElement, depth: Int = 0) -> AXUIElement? {
+  guard depth < 16 else {
+    return nil
+  }
+  if accessibilityRole(of: element) == kAXTextFieldRole as String {
+    return element
+  }
+  for child in accessibilityChildren(of: element) {
+    if let result = findTextField(in: child, depth: depth + 1) {
+      return result
+    }
+  }
+  return nil
+}
+
+func focusPhotonTextField(pid: pid_t) -> Bool {
+  let application = AXUIElementCreateApplication(pid)
+  guard let textField = findTextField(in: application) else {
+    return false
+  }
+  return AXUIElementSetAttributeValue(
+    textField,
+    kAXFocusedAttribute as CFString,
+    kCFBooleanTrue
+  ) == .success
+}
+
 func setSystemAppearance(dark: Bool) {
   let process = Process()
   process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
@@ -316,6 +369,7 @@ do {
       && string(launcher($0)["content"]) == "searchOnly"
   }
   clickSearchField(report)
+  try require(focusPhotonTextField(pid: pid), "Accessibility focuses the launcher search field")
   postText("clipboard")
   _ = try wait("launcher search finds Clipboard History") {
     string(launcher($0)["query"]) == "clipboard" && int(launcher($0)["resultCount"]) > 0
@@ -331,6 +385,7 @@ do {
   postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
   report = try wait("launcher reopens for app icon test") { bool(launcher($0)["visible"]) }
   clickSearchField(report)
+  try require(focusPhotonTextField(pid: pid), "Accessibility refocuses the launcher search field")
   postText("saf")
   report = try wait("application bundle icon resolves in the running UI", timeout: 30) {
     string(launcher($0)["query"]) == "saf"
