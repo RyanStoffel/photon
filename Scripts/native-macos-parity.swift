@@ -177,26 +177,12 @@ func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags = []) {
   Thread.sleep(forTimeInterval: 0.12)
 }
 
-func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags = [], to pid: pid_t) {
-  guard let source = CGEventSource(stateID: .combinedSessionState),
-        let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
-        let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-  else {
-    return
-  }
-  down.flags = flags
-  up.flags = flags
-  down.postToPid(pid)
-  up.postToPid(pid)
-  Thread.sleep(forTimeInterval: 0.12)
-}
-
 func fulfillPasteInjectionIfNeeded() {
   guard FileManager.default.fileExists(atPath: pasteInjectionURL.path) else {
     return
   }
   try? FileManager.default.removeItem(at: pasteInjectionURL)
-  postKey(9, flags: .maskCommand, to: pasteTargetPID)
+  postKey(9, flags: .maskCommand)
 }
 
 func postText(_ text: String) {
@@ -523,6 +509,7 @@ do {
     focusPhotonTextField(pid: pasteTargetPID),
     "paste target text field regains keyboard focus"
   )
+  RunLoop.current.run(until: Date().addingTimeInterval(0.5))
   _ = try wait("packaged Photon pastes into the previously focused target") { _ in
     fulfillPasteInjectionIfNeeded()
     return (try? String(contentsOf: pasteTargetValueURL, encoding: .utf8)) == pasteSentinel
