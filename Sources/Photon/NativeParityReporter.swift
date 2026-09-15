@@ -211,6 +211,8 @@ final class NativeParityReporter: NSObject {
       "content": contentName(model.content),
       "resultCount": model.results.count,
       "displayedRowTitles": displayedTitles,
+      "fileSelectedName": runtime?.fileSearch?.controller.selected?.displayName ?? "",
+      "fileSelectedType": runtime?.fileSearch?.controller.selected?.contentType ?? "",
       "clipboardResultCount": model.clipboard?.results.count ?? 0,
       "clipboardSelectedIndex": model.clipboard?.selectedIndex ?? -1,
       "clipboardSelectedTitle": model.clipboard?.selectedItem?.title ?? "",
