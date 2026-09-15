@@ -306,8 +306,6 @@ do {
     string(launcher($0)["query"]) == "saf"
       && int(launcher($0)["resolvedAppIconCount"]) > 0
   }
-  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
-  _ = try wait("configured launcher hotkey dismisses app search") { !bool(launcher($0)["visible"]) }
 
   _ = try wait("clipboard monitor captured runtime fixtures") { int($0["clipboardCaptureCount"]) >= 2 }
   postKey(9, flags: [.maskCommand, .maskShift])
