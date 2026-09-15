@@ -253,6 +253,7 @@ final class AppRuntime: ObservableObject {
     }
     let query = controller.currentQuery
     let previousGrantCount = fileAccess.grants.count
+    launcher.hide()
     settings.selectedPane = .files
     openSettings()
     let paritySelection = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION"]
