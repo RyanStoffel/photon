@@ -1,0 +1,49 @@
+[package]
+name = "photon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Photon macOS launcher (GPUI)"
+default-run = "photon"
+
+[[bin]]
+name = "photon"
+path = "src/main.rs"
+
+[dependencies]
+photon-core.workspace = true
+photon-clipboard.workspace = true
+photon-files.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+dirs.workspace = true
+arboard = "3"
+png.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+gpui = "0.2.2"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSString", "NSArray", "NSDictionary", "NSURL", "NSDate", "NSThread"] }
+objc2-app-kit = { version = "0.3", features = [
+  "NSApplication",
+  "NSRunningApplication",
+  "NSWorkspace",
+  "NSPasteboard",
+  "NSStatusBar",
+  "NSStatusItem",
+  "NSMenu",
+  "NSScreen",
+  "NSImage",
+  "NSEvent",
+  "NSWindow",
+  "NSColor",
+  "NSPasteboardItem",
+] }
+objc2-core-graphics = { version = "0.3", features = ["CGEvent", "CGEventTypes"] }
+block2 = "0.6"
+global-hotkey = "0.7"
+core-foundation = "0.10"
+
+[dev-dependencies]
