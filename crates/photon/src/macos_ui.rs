@@ -777,11 +777,10 @@ impl Render for LauncherView {
                 this.handle_key(event, window, cx);
             }))
             .on_mouse_down(
-                cx.listener(|this, event: &gpui::MouseDownEvent, window, cx| {
-                    if event.button == gpui::MouseButton::Left {
-                        this.begin_drag(window);
-                        cx.notify();
-                    }
+                gpui::MouseButton::Left,
+                cx.listener(|this, _event: &gpui::MouseDownEvent, window, cx| {
+                    this.begin_drag(window);
+                    cx.notify();
                 }),
             )
             .on_mouse_move(
@@ -791,9 +790,12 @@ impl Render for LauncherView {
                     }
                 }),
             )
-            .on_mouse_up(cx.listener(|this, _, window, cx| {
-                this.end_drag(window, cx);
-            }))
+            .on_mouse_up(
+                gpui::MouseButton::Left,
+                cx.listener(|this, _, window, cx| {
+                    this.end_drag(window, cx);
+                }),
+            )
             .w(px(width))
             .h(px(height))
             .rounded_xl()
@@ -872,7 +874,7 @@ impl LauncherView {
     }
 
     fn footer(&self, theme: Theme) -> impl IntoElement {
-        let (left, right) = match self.state.session {
+        let (left, right): (String, String) = match self.state.session {
             LauncherSession::Clipboard => (
                 "Clipboard".to_string(),
                 if self.state.clipboard_items.is_empty() {
@@ -1086,10 +1088,7 @@ fn now_unix() -> f64 {
         .unwrap_or(0.0)
 }
 
-fn install_hotkeys() -> Option<(
-    global_hotkey::hotkey::HotKeyId,
-    global_hotkey::hotkey::HotKeyId,
-)> {
+fn install_hotkeys() -> Option<(u32, u32)> {
     let manager = GlobalHotKeyManager::new().ok()?;
     let launcher = HotKey::new(Some(HotMods::META), Code::Space);
     let clipboard = HotKey::new(Some(HotMods::META | HotMods::SHIFT), Code::KeyV);
@@ -1100,11 +1099,7 @@ fn install_hotkeys() -> Option<(
     Some(ids)
 }
 
-fn spawn_hotkey_listener(
-    cx: &mut App,
-    handle: WindowHandle<LauncherView>,
-    clipboard_id: global_hotkey::hotkey::HotKeyId,
-) {
+fn spawn_hotkey_listener(cx: &mut App, handle: WindowHandle<LauncherView>, clipboard_id: u32) {
     let receiver = GlobalHotKeyEvent::receiver();
     cx.spawn(async move |cx| {
         let mut ticks = 0u32;
