@@ -59,9 +59,12 @@ do {
         "\(path) contains \(trafficPixels) traffic-light-like pixels in its title-bar region"
       )
     }
-    if path.contains("launcher-empty-"), image.pixelsHigh > 130 {
+    // CI captures Retina pixels and includes the panel shadow. The compact
+    // 89-point panel is currently about 275 px; the old clipped overlay was
+    // several hundred points tall.
+    if path.contains("launcher-empty-"), image.pixelsHigh > 320 {
       throw ScreenshotFailure.invalid(
-        "\(path) is \(image.pixelsHigh) px tall; compact launcher must remain under 130 px"
+        "\(path) is \(image.pixelsHigh) px tall; compact launcher must remain under 320 Retina px"
       )
     }
     print("PASS: \(path) has no traffic-light chrome and valid compact sizing")
