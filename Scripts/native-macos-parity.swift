@@ -535,6 +535,7 @@ do {
   print("Native macOS parity harness passed.")
 } catch {
   setSystemAppearance(dark: false)
+  fputs("::error title=Native parity failed::\(error)\n", stderr)
   fputs("NATIVE PARITY FAILED: \(error)\n", stderr)
   exit(1)
 }
