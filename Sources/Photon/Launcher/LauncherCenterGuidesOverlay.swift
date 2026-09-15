@@ -5,6 +5,10 @@ import AppKit
 final class LauncherCenterGuidesOverlay {
   private var window: NSWindow?
 
+  var isVisible: Bool {
+    window?.isVisible == true
+  }
+
   func show(visibleFrame: NSRect, guideXLeft: CGFloat, guideXRight: CGFloat) {
     hide()
     let window = NSWindow(
