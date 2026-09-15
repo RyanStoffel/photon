@@ -102,8 +102,12 @@ func score(_ candidate: WindowCandidate, scenario: String) -> Int {
     if candidate.height <= 250 {
       score += 100_000
     }
+  case "launcher-recs", "launcher-query", "calculator", "files-query":
+    if candidate.title == "Photon Launcher" {
+      score += 1_000_000
+    }
   case "settings":
-    if candidate.title == "General" {
+    if candidate.title == "Appearance" || candidate.title == "General" {
       score += 1_000_000
     }
   case "notes":

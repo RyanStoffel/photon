@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-15
+
+Rewrite: Photon is now a Rust + GPUI menu-bar agent. Clipboard compact bar and home-scoped file search are actually fixed, with a verification harness that CI must pass.
+
 ### Changed
 
 - Photon is now a Rust + GPUI app. The Swift/SwiftUI+AppKit binary is no longer what we ship. The compact pill launcher, footer, calculator card, clipboard/files modes, drag+snap, settings, and notes are ported to match the previous UI.
