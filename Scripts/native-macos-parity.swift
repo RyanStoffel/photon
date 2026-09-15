@@ -18,9 +18,9 @@ enum ParityFailure: Error, CustomStringConvertible {
 }
 
 let (reportURL, commandURL, screenshotDirectory): (URL, URL, URL) = {
-  guard CommandLine.arguments.count == 4 else {
+  guard CommandLine.arguments.count == 4 || CommandLine.arguments.count == 5 else {
     fputs(
-      "usage: native-macos-parity.swift <report.json> <command-file> <screenshot-directory>\n",
+      "usage: native-macos-parity.swift <report.json> <command-file> <screenshot-directory> [relaunch]\n",
       stderr
     )
     exit(2)
@@ -31,6 +31,23 @@ let (reportURL, commandURL, screenshotDirectory): (URL, URL, URL) = {
     URL(fileURLWithPath: CommandLine.arguments[3], isDirectory: true)
   )
 }()
+
+let isRelaunchVerification = CommandLine.arguments.last == "relaunch"
+let fileAccessQuery = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY"] ?? ""
+let fileAccessResult = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT"] ?? ""
+let pasteSentinel = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_SENTINEL"] ?? ""
+let pasteTargetValueURL = URL(
+  fileURLWithPath: ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_TARGET_VALUE"] ?? ""
+)
+let pasteInjectionURL = URL(
+  fileURLWithPath: ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_INJECTION_PATH"] ?? ""
+)
+let pasteTargetPID = pid_t(
+  Int32(ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_TARGET_PID"] ?? "") ?? 0
+)
+let pasteTargetCommandURL = URL(
+  fileURLWithPath: ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_TARGET_COMMAND"] ?? ""
+)
 
 func readReport() -> [String: Any]? {
   guard let data = try? Data(contentsOf: reportURL),
@@ -105,7 +122,12 @@ func displayedTitles(_ report: [String: Any]) -> [String] {
   strings(launcher(report)["displayedRowTitles"])
 }
 
-func captureLauncher(_ report: [String: Any], name: String, expectedText: String) throws {
+func captureLauncher(
+  _ report: [String: Any],
+  name: String,
+  expectedText: String,
+  additionalExpectedText: [String] = []
+) throws {
   try FileManager.default.createDirectory(
     at: screenshotDirectory,
     withIntermediateDirectories: true
@@ -135,6 +157,12 @@ func captureLauncher(_ report: [String: Any], name: String, expectedText: String
     renderedText.localizedCaseInsensitiveContains(expectedText),
     "\(name).png visibly contains \(expectedText)"
   )
+  for expected in additionalExpectedText {
+    try require(
+      renderedText.localizedCaseInsensitiveContains(expected),
+      "\(name).png visibly contains \(expected)"
+    )
+  }
 }
 
 func sendRuntimeCommand(_ command: String) throws {
@@ -153,6 +181,15 @@ func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags = []) {
   down.post(tap: .cghidEventTap)
   up.post(tap: .cghidEventTap)
   Thread.sleep(forTimeInterval: 0.12)
+}
+
+func fulfillPasteInjectionIfNeeded() {
+  guard FileManager.default.fileExists(atPath: pasteInjectionURL.path) else {
+    return
+  }
+  try? FileManager.default.removeItem(at: pasteInjectionURL)
+  postKey(9, flags: .maskCommand)
+  try? "paste".write(to: pasteTargetCommandURL, atomically: true, encoding: .utf8)
 }
 
 func postText(_ text: String) {
@@ -200,6 +237,93 @@ func clickSearchField(_ report: [String: Any]) {
   down.post(tap: .cghidEventTap)
   up.post(tap: .cghidEventTap)
   Thread.sleep(forTimeInterval: 0.2)
+}
+
+func windowPoint(_ report: [String: Any], xFromLeft: Double, yFromTop: Double) -> CGPoint {
+  let windowFrame = frame(report)
+  let display = CGDisplayBounds(CGMainDisplayID())
+  return CGPoint(
+    x: double(windowFrame["x"]) + xFromLeft,
+    y: display.maxY - double(windowFrame["top"]) + yFromTop
+  )
+}
+
+func clickLauncher(_ report: [String: Any], xFromLeft: Double, yFromTop: Double) {
+  let point = windowPoint(report, xFromLeft: xFromLeft, yFromTop: yFromTop)
+  guard let source = CGEventSource(stateID: .combinedSessionState),
+        let down = CGEvent(
+          mouseEventSource: source,
+          mouseType: .leftMouseDown,
+          mouseCursorPosition: point,
+          mouseButton: .left
+        ),
+        let up = CGEvent(
+          mouseEventSource: source,
+          mouseType: .leftMouseUp,
+          mouseCursorPosition: point,
+          mouseButton: .left
+        )
+  else {
+    return
+  }
+  down.post(tap: .cghidEventTap)
+  up.post(tap: .cghidEventTap)
+  Thread.sleep(forTimeInterval: 0.2)
+}
+
+func dragLauncher(
+  _ report: [String: Any],
+  xFromLeft: Double,
+  yFromTop: Double,
+  deltaX: Double,
+  deltaY: Double
+) -> Bool {
+  let start = windowPoint(report, xFromLeft: xFromLeft, yFromTop: yFromTop)
+  guard let source = CGEventSource(stateID: .combinedSessionState),
+        let down = CGEvent(
+          mouseEventSource: source,
+          mouseType: .leftMouseDown,
+          mouseCursorPosition: start,
+          mouseButton: .left
+        )
+  else {
+    return false
+  }
+  var sawGuides = false
+  down.post(tap: .cghidEventTap)
+  for step in 1 ... 12 {
+    let fraction = Double(step) / 12
+    let point = CGPoint(
+      x: start.x + deltaX * fraction,
+      y: start.y + deltaY * fraction
+    )
+    guard let dragged = CGEvent(
+      mouseEventSource: source,
+      mouseType: .leftMouseDragged,
+      mouseCursorPosition: point,
+      mouseButton: .left
+    ) else {
+      continue
+    }
+    dragged.post(tap: .cghidEventTap)
+    Thread.sleep(forTimeInterval: 0.04)
+    if let liveReport = readReport(),
+       bool(dictionary(liveReport["launcherDrag"])["guidesVisible"])
+    {
+      sawGuides = true
+    }
+  }
+  let end = CGPoint(x: start.x + deltaX, y: start.y + deltaY)
+  if let up = CGEvent(
+    mouseEventSource: source,
+    mouseType: .leftMouseUp,
+    mouseCursorPosition: end,
+    mouseButton: .left
+  ) {
+    up.post(tap: .cghidEventTap)
+  }
+  Thread.sleep(forTimeInterval: 0.25)
+  return sawGuides
 }
 
 func runningWindowBounds(pid: pid_t, expectedSize: CGSize) -> CGRect? {
@@ -265,6 +389,44 @@ func findTextField(in element: AXUIElement, depth: Int = 0) -> AXUIElement? {
     }
   }
   return nil
+}
+
+func accessibilityTitle(of element: AXUIElement) -> String {
+  var value: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(
+    element,
+    kAXTitleAttribute as CFString,
+    &value
+  ) == .success
+  else {
+    return ""
+  }
+  return value as? String ?? ""
+}
+
+func findButton(in element: AXUIElement, title: String, depth: Int = 0) -> AXUIElement? {
+  guard depth < 16 else {
+    return nil
+  }
+  if accessibilityRole(of: element) == kAXButtonRole as String,
+     accessibilityTitle(of: element) == title
+  {
+    return element
+  }
+  for child in accessibilityChildren(of: element) {
+    if let result = findButton(in: child, title: title, depth: depth + 1) {
+      return result
+    }
+  }
+  return nil
+}
+
+func pressPhotonButton(pid: pid_t, title: String) -> Bool {
+  let application = AXUIElementCreateApplication(pid)
+  guard let button = findButton(in: application, title: title) else {
+    return false
+  }
+  return AXUIElementPerformAction(button, kAXPressAction as CFString) == .success
 }
 
 func focusPhotonTextField(pid: pid_t) -> Bool {
@@ -345,11 +507,108 @@ do {
   try require(bool(panel["floating"]), "launcher is a floating panel")
   try require(!bool(panel["canBecomeMain"]), "launcher cannot become the main window")
 
+  if isRelaunchVerification {
+    report = try wait("security-scoped folder grant restores after packaged-app relaunch") {
+      int(dictionary($0["fileAccess"])["grantCount"]) == 1
+        && string(dictionary($0["fileAccess"])["status"]) == "granted"
+    }
+    try sendRuntimeCommand("showFiles:\(fileAccessQuery)")
+    report = try wait("restored grant finds the unindexed file after relaunch", timeout: 8) {
+      bool(launcher($0)["visible"])
+        && string(launcher($0)["mode"]) == "files"
+        && displayedTitles($0).contains(fileAccessResult)
+    }
+    try captureLauncher(report, name: "file-access-after-relaunch", expectedText: fileAccessResult)
+    print("Native macOS file-access relaunch parity checks passed.")
+    exit(0)
+  }
+
   _ = try wait("application bundle icon resolves in the packaged app", timeout: 30) {
     int($0["appIconProbeCount"]) > 0
   }
 
-  _ = try wait("clipboard monitor captured four runtime fixtures") { int($0["clipboardCaptureCount"]) >= 4 }
+  try sendRuntimeCommand("showLauncher")
+  report = try wait("drag checks open the compact launcher") {
+    bool(launcher($0)["visible"])
+      && bool(launcher($0)["key"])
+      && string(launcher($0)["content"]) == "searchOnly"
+  }
+  let centeredX = double(frame(report)["x"])
+  let firstY = double(frame(report)["y"])
+  let panelWidth = double(frame(report)["width"])
+  let firstGuides = dragLauncher(
+    report,
+    xFromLeft: 12,
+    yFromTop: 30,
+    deltaX: -430,
+    deltaY: 70
+  )
+  report = try wait("left chrome drag keeps outside-corridor X free and adjusts Y") {
+    abs(double(frame($0)["x"]) - centeredX) > 120
+      && abs(double(frame($0)["y"]) - firstY) > 30
+      && bool(dictionary(dictionary($0["settings"])["launcherPosition"])["centered"]) == false
+  }
+  try require(firstGuides, "left chrome drag displays center guides")
+
+  let freeX = double(frame(report)["x"])
+  let freeY = double(frame(report)["y"])
+  let secondGuides = dragLauncher(
+    report,
+    xFromLeft: 12,
+    yFromTop: 30,
+    deltaX: centeredX - freeX,
+    deltaY: -55
+  )
+  report = try wait("left chrome drag snaps X inside corridor while preserving chosen Y") {
+    abs(double(frame($0)["x"]) - centeredX) < 1
+      && abs(double(frame($0)["y"]) - freeY) > 25
+      && bool(dictionary(dictionary($0["settings"])["launcherPosition"])["centered"])
+  }
+  try require(secondGuides, "left chrome drag displays center guides")
+
+  let snappedY = double(frame(report)["y"])
+  _ = dragLauncher(
+    report,
+    xFromLeft: panelWidth - 12,
+    yFromTop: 30,
+    deltaX: 0,
+    deltaY: 45
+  )
+  report = try wait("right chrome drag tracks vertically without frame drift") {
+    abs(double(frame($0)["x"]) - centeredX) < 1
+      && abs(double(frame($0)["y"]) - snappedY) > 20
+  }
+
+  clickSearchField(report)
+  try require(focusPhotonTextField(pid: pid), "drag chrome does not hijack the search field")
+  try require(setPhotonTextFieldValue(pid: pid, value: "clipboard"), "search field remains editable after dragging")
+  report = try wait("row remains clickable after dragging") {
+    string(launcher($0)["query"]) == "clipboard" && int(launcher($0)["resultCount"]) > 0
+  }
+  clickLauncher(
+    report,
+    xFromLeft: panelWidth / 2,
+    yFromTop: 56 + 1 + 6 + 20
+  )
+  _ = try wait("row click enters clipboard instead of starting a drag") {
+    string(launcher($0)["session"]) == "clipboard"
+  }
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("drag interaction checks close cleanly") {
+    !bool(launcher($0)["visible"])
+  }
+
+  report = try wait("clipboard monitor captured text and image runtime fixtures") {
+    int($0["clipboardCaptureCount"]) >= 6
+  }
+  try require(bool(report["clipboardAccessibilityTrusted"]), "trusted AX state is reported without stale caching")
+  let pasteTarget = NSRunningApplication(processIdentifier: pasteTargetPID)
+  try require(pasteTarget != nil, "real paste target process is running")
+  try require(
+    pasteTarget?.activate(options: [.activateIgnoringOtherApps]) == true,
+    "real paste target owns focus before Photon opens"
+  )
+  RunLoop.current.run(until: Date().addingTimeInterval(0.3))
   postKey(9, flags: [.maskCommand, .maskShift])
   report = try wait("Cmd+Shift+V opens compact clipboard history") {
     let value = launcher($0)
@@ -404,10 +663,19 @@ do {
 
   postKey(125)
   report = try wait("Down expands clipboard results without moving the top edge") {
-    string(launcher($0)["content"]) == "rows"
+    string(launcher($0)["content"]) == "fullHeight"
       && int(launcher($0)["clipboardSelectedIndex"]) >= 0
       && abs(top($0) - anchoredTop) < 0.5
   }
+  try require(
+    string(launcher(report)["clipboardSelectedKind"]) == "image",
+    "expanded clipboard selects the seeded image"
+  )
+  try captureLauncher(
+    report,
+    name: "clipboard-image-detail",
+    expectedText: "Photon Image Detail"
+  )
   let firstSelection = int(launcher(report)["clipboardSelectedIndex"])
   postKey(125)
   report = try wait("Down cycles clipboard selection") {
@@ -422,25 +690,52 @@ do {
     name: "clipboard-hotkey-selection",
     expectedText: string(launcher(report)["clipboardSelectedTitle"])
   )
-  postKey(126)
-  _ = try wait("Up cycles clipboard selection") {
-    int(launcher($0)["clipboardSelectedIndex"]) == firstSelection
-  }
-
-  postText("needle")
-  _ = try wait("typing filters clipboard and preserves the anchor") {
-    string(launcher($0)["query"]) == "needle"
+  try require(setPhotonTextFieldValue(pid: pid, value: "long clipboard detail sentinel"), "filters long text")
+  report = try wait("typing filters clipboard and renders full text detail") {
+    string(launcher($0)["query"]) == "long clipboard detail sentinel"
       && int(launcher($0)["clipboardResultCount"]) == 1
       && abs(top($0) - anchoredTop) < 0.5
   }
+  try captureLauncher(
+    report,
+    name: "clipboard-text-detail",
+    expectedText: "PHOTON-COMPLETE-TEXT-3391"
+  )
 
+  try require(setPhotonTextFieldValue(pid: pid, value: pasteSentinel), "filters the unique paste sentinel")
+  report = try wait("paste sentinel filter is applied") {
+    string(launcher($0)["query"]) == pasteSentinel
+      && int(launcher($0)["clipboardResultCount"]) >= 1
+  }
+  if !string(launcher(report)["clipboardSelectedTitle"]).contains("paste sentinel") {
+    postKey(126)
+  }
+  _ = try wait("unique paste sentinel is selected") {
+    string(launcher($0)["clipboardSelectedTitle"]).contains("paste sentinel")
+  }
   postKey(36)
-  _ = try wait("Enter uses the selected clipboard item and dismisses") {
+  report = try wait("Enter uses the selected clipboard item and dismisses") {
     !bool(launcher($0)["visible"])
   }
   try require(
-    NSPasteboard.general.string(forType: .string)?.contains("needle") == true,
+    NSPasteboard.general.string(forType: .string) == pasteSentinel,
     "Enter copied the selected clipboard item"
+  )
+  _ = try wait("Photon restores the previously focused paste target") { _ in
+    NSWorkspace.shared.frontmostApplication?.processIdentifier == pasteTargetPID
+  }
+  try require(
+    focusPhotonTextField(pid: pasteTargetPID),
+    "paste target text field regains keyboard focus"
+  )
+  RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+  _ = try wait("packaged Photon pastes into the previously focused target") { _ in
+    fulfillPasteInjectionIfNeeded()
+    return (try? String(contentsOf: pasteTargetValueURL, encoding: .utf8)) == pasteSentinel
+  }
+  try require(
+    string(launcher(report)["clipboardNotice"]).isEmpty,
+    "trusted paste never reports a missing Accessibility permission"
   )
 
   postKey(9, flags: [.maskCommand, .maskShift])
@@ -483,7 +778,7 @@ do {
   )
   postKey(125)
   report = try wait("launcher-entry Down expands clipboard history") {
-    string(launcher($0)["content"]) == "rows"
+    string(launcher($0)["content"]) == "fullHeight"
       && int(launcher($0)["clipboardSelectedIndex"]) >= 0
       && bool(launcher($0)["key"])
   }
@@ -507,13 +802,41 @@ do {
   _ = try wait("clipboard session closes before file-search tests") {
     !bool(launcher($0)["visible"])
   }
-  try sendRuntimeCommand("showLauncher")
-  report = try wait("native runtime hook opens the launcher for mixed file search") {
+  try sendRuntimeCommand("showFiles:")
+  report = try wait("native runtime hook opens ungranted Files mode") {
     let value = launcher($0)
     return bool(value["visible"])
       && bool(value["key"])
       && string(value["session"]) == "commands"
-      && string(value["mode"]).isEmpty
+      && string(value["mode"]) == "files"
+  }
+  try require(
+    int(dictionary(report["fileAccess"])["grantCount"]) == 0,
+    "packaged app starts with no folder grant"
+  )
+  try sendRuntimeCommand("requestFileAccess:\(fileAccessQuery)")
+  report = try wait("controlled folder grant is persisted while Photon remains alive", timeout: 8) {
+    int($0["pid"]) == Int(pid)
+      && int(dictionary($0["fileAccess"])["grantCount"]) == 1
+      && string(dictionary($0["fileAccess"])["status"]) == "granted"
+  }
+  report = try wait("guided setup restores the pending Files session", timeout: 8) {
+    bool(launcher($0)["visible"])
+      && string(launcher($0)["mode"]) == "files"
+      && string(launcher($0)["query"]) == fileAccessQuery
+  }
+  report = try wait("guided setup resumes the pending file search", timeout: 12) {
+    displayedTitles($0).contains(fileAccessResult)
+  }
+  try captureLauncher(report, name: "guided-file-access-resumed", expectedText: fileAccessResult)
+
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("guided setup closes before mixed-search verification") {
+    !bool(launcher($0)["visible"])
+  }
+  try sendRuntimeCommand("showLauncher")
+  report = try wait("launcher reopens after guided file setup") {
+    bool(launcher($0)["visible"]) && string(launcher($0)["mode"]).isEmpty
   }
   let expectedFile = "Ember_Individual_Pitch.pdf"
   clickSearchField(report)
@@ -532,8 +855,32 @@ do {
     displayedTitles($0).contains("Search Files")
   }
   try require(confirmPhotonTextField(pid: pid), "Accessibility invokes Search Files")
-  report = try wait("explicit Files mode opens") {
-    string(launcher($0)["mode"]) == "files" && bool(launcher($0)["key"])
+  report = try wait("empty Files mode shows seeded recents and selects the PDF") {
+    string(launcher($0)["mode"]) == "files"
+      && bool(launcher($0)["key"])
+      && displayedTitles($0).contains("Ember_Individual_Pitch.pdf")
+      && displayedTitles($0).contains("Photon_Recent_Image.png")
+      && string(launcher($0)["fileSelectedName"]) == "Ember_Individual_Pitch.pdf"
+  }
+  try captureLauncher(
+    report,
+    name: "files-recents-pdf-preview",
+    expectedText: "EMBER PDF PREVIEW",
+    additionalExpectedText: ["Recent Files", "Name", "Where", "Type", "Size", "Created", "Modified"]
+  )
+  postKey(125)
+  report = try wait("Down updates the recents preview to the seeded image") {
+    string(launcher($0)["fileSelectedName"]) == "Photon_Recent_Image.png"
+  }
+  try captureLauncher(
+    report,
+    name: "files-recents-image-preview",
+    expectedText: "PHOTON IMAGE PREVIEW",
+    additionalExpectedText: ["Metadata", "PNG"]
+  )
+  postKey(126)
+  _ = try wait("Up restores the recent PDF preview") {
+    string(launcher($0)["fileSelectedName"]) == "Ember_Individual_Pitch.pdf"
   }
   try require(setPhotonTextFieldValue(pid: pid, value: "ember"), "Accessibility enters explicit Files query")
   report = try wait("explicit Files mode visibly displays the seeded PDF", timeout: 8) {
@@ -548,6 +895,12 @@ do {
   report = try wait("running UI follows live dark appearance") {
     string(dictionary($0["appearance"])["name"]).contains("DarkAqua")
   }
+  try captureLauncher(
+    report,
+    name: "files-query-dark",
+    expectedText: expectedFile,
+    additionalExpectedText: ["Metadata"]
+  )
   let dark = dictionary(report["appearance"])
   let lightBackground = dictionary(light["controlBackground"])
   let darkBackground = dictionary(dark["controlBackground"])

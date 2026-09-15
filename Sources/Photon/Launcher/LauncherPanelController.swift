@@ -16,6 +16,10 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   let centerGuides = LauncherCenterGuidesOverlay()
   var searchBarDragInitialOrigin: NSPoint?
   var isDraggingLauncher = false
+  var chromeMouseDownCount = 0
+  var acceptedChromeDragCount = 0
+  private var focusTransitionGeneration = 0
+  private var autoHideSuppressedUntil = Date.distantPast
   /// App that was frontmost before a mode asked us to activate; restored on hide.
   private var previousApplication: NSRunningApplication?
 
@@ -86,6 +90,12 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     clipboard.onDismiss = { [weak self] in
       self?.hide()
     }
+    manager.onPrepareForPaste = { [weak self] in
+      self?.hide()
+    }
+    manager.onPasteFailure = { [weak self] in
+      self?.showClipboard()
+    }
     model.clipboard = clipboard
   }
 
@@ -138,6 +148,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     model.resetForShow()
     collapseToCompactIfNeeded(force: true)
     position(panel)
+    rememberPreviousApplication()
     panel.orderFrontRegardless()
     panel.makeKey()
     model.requestSearchFocus()
@@ -209,11 +220,26 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     model.resetForShow()
     collapseToCompactIfNeeded(force: true)
     position(panel)
+    rememberPreviousApplication()
     panel.orderFrontRegardless()
     panel.makeKey()
     model.requestSearchFocus()
     startMonitor()
     model.enterClipboard(query: "")
+  }
+
+  func resume(mode: any LauncherMode, query: String) {
+    preload()
+    guard let panel else {
+      return
+    }
+    focusTransitionGeneration &+= 1
+    autoHideSuppressedUntil = Date().addingTimeInterval(5)
+    model.enter(mode: mode, query: query)
+    panel.orderFrontRegardless()
+    panel.makeKey()
+    model.requestSearchFocus()
+    startMonitor()
   }
 
   func hide() {
@@ -228,8 +254,15 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
 
   func windowDidResignKey(_: Notification) {
     // Another of our windows (Quick Look) may be taking key; decide once that has settled.
+    let generation = focusTransitionGeneration
     Task { [weak self] in
       guard let self, let panel, panel.isVisible, !panel.isKeyWindow else {
+        return
+      }
+      guard Date() >= autoHideSuppressedUntil else {
+        return
+      }
+      guard generation == focusTransitionGeneration else {
         return
       }
       if model.activeMode?.holdsFocus == true {
@@ -252,9 +285,19 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       return
     }
     self.previousApplication = nil
-    if NSApp.isActive, !previousApplication.isTerminated {
+    if !previousApplication.isTerminated {
       _ = previousApplication.activate(options: [])
     }
+  }
+
+  private func rememberPreviousApplication() {
+    guard previousApplication == nil,
+          let candidate = NSWorkspace.shared.frontmostApplication,
+          candidate.processIdentifier != ProcessInfo.processInfo.processIdentifier
+    else {
+      return
+    }
+    previousApplication = candidate
   }
 
   private func makePanel() -> LauncherPanel {
@@ -282,6 +325,12 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     panel.activeMode = { [weak self] in
       self?.model.activeMode
     }
+    panel.mouseDownHandler = { [weak self, weak panel] event in
+      guard let self, let panel else {
+        return false
+      }
+      return handleChromeMouseDown(event, panel: panel)
+    }
 
     // System material behind the whole panel, clipped to the rounded shape. The window
     // shadow follows the opaque region, so the corners stay clean.
@@ -299,9 +348,6 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       model: model,
       onRun: { [weak self] in
         self?.hide()
-      },
-      onSearchBarDrag: { [weak self] phase in
-        self?.handleSearchBarDrag(phase)
       }
     ).environmentObject(settings))
     host.safeAreaRegions = []

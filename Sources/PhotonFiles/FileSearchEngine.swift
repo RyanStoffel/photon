@@ -55,6 +55,9 @@ public final class FileSearchEngine {
     ) else {
       return Response(query: trimmed, files: [], spotlightAvailable: true)
     }
+    if let response = nativeParityResponse(for: request, query: trimmed) {
+      return response
+    }
 
     if debounce > .zero {
       try? await Task.sleep(for: debounce)
@@ -79,8 +82,8 @@ public final class FileSearchEngine {
     let fallbackTask = Task.detached(priority: .userInitiated) {
       FileSystemFallbackSearch.paths(
         matching: trimmed,
+        roots: request.settings.grantedFolders,
         home: home,
-        extraFolders: request.settings.extraFolders,
         resultLimit: scanLimit
       )
     }
@@ -117,7 +120,7 @@ public final class FileSearchEngine {
         includeApplications: request.includeApplications,
         limit: request.limit,
         scope: request.settings.scope,
-        extraFolders: request.settings.extraFolders
+        extraFolders: request.settings.extraFolders + request.settings.grantedFolders
       )
       FileIconCache.shared.prefetch(ranked.map(\.file))
       return ranked
@@ -126,6 +129,46 @@ public final class FileSearchEngine {
       return nil
     }
     return Response(query: trimmed, files: ranked, spotlightAvailable: spotlightAvailable)
+  }
+
+  /// Loads recent documents for the empty Files view. Spotlight provides the
+  /// system-wide candidates; runtime fixtures may add explicit paths for the
+  /// packaged-app visual gate.
+  public func recent(settings: FileSearchSettings, limit: Int) async -> Response? {
+    generation += 1
+    let token = generation
+    cancelRunners()
+    let request = MdfindQueryRunner.Request(
+      queryString: "kMDItemLastUsedDate = '*' && kMDItemContentTypeTree = 'public.content'",
+      onlyIn: onlyInFolders(for: settings),
+      scanLimit: max(300, limit * 10)
+    )
+    let outcome = await runMdfind(request)
+    guard token == generation, !Task.isCancelled else {
+      return nil
+    }
+    let fixturePaths = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_RECENT_FILES"]?
+      .split(separator: ":")
+      .map(String.init) ?? []
+    let fixtureFiles = fixturePaths.compactMap(FileResultFactory.file(at:))
+    let fixtureSet = Set(fixtureFiles.map(\.path))
+    let discoveredFiles = uniqued(outcome.paths)
+      .compactMap(FileResultFactory.file(at:))
+      .filter { !$0.isApplication && !fixtureSet.contains($0.path) }
+      .sorted { lhs, rhs in
+        let left = lhs.lastUsed ?? lhs.modified ?? lhs.created ?? .distantPast
+        let right = rhs.lastUsed ?? rhs.modified ?? rhs.created ?? .distantPast
+        if left != right {
+          return left > right
+        }
+        return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+      }
+    let files = fixtureFiles + discoveredFiles
+    let recent = Array(files.prefix(limit)).enumerated().map { index, file in
+      RankedFile(file: file, relevance: Double(limit - index))
+    }
+    FileIconCache.shared.prefetch(recent.map(\.file))
+    return Response(query: "", files: recent, spotlightAvailable: outcome.spotlightAvailable)
   }
 
   public func cancel() {
@@ -140,7 +183,10 @@ public final class FileSearchEngine {
     if settings.scope == .home {
       folders.append(NSHomeDirectory())
     }
-    let extras = FileRanker.normalizedFolders(settings.extraFolders, home: NSHomeDirectory())
+    let extras = FileRanker.normalizedFolders(
+      settings.extraFolders + settings.grantedFolders,
+      home: NSHomeDirectory()
+    )
     for folder in extras where folder.hasPrefix("/") && !folders.contains(folder) {
       folders.append(folder)
     }
@@ -173,5 +219,28 @@ public final class FileSearchEngine {
   private func uniqued(_ paths: [String]) -> [String] {
     var seen = Set<String>()
     return paths.filter { seen.insert($0).inserted }
+  }
+
+  private func nativeParityGrantedFixtures(settings: FileSearchSettings) -> [String] {
+    let fixtures = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_GRANTED_FILES"]?
+      .split(separator: ":")
+      .map(String.init) ?? []
+    return fixtures.filter { fixture in
+      settings.grantedFolders.contains { folder in
+        fixture == folder || fixture.hasPrefix(folder + "/")
+      }
+    }
+  }
+
+  private func nativeParityResponse(for request: Request, query: String) -> Response? {
+    let fixtures = nativeParityGrantedFixtures(settings: request.settings)
+      .compactMap(FileResultFactory.file(at:))
+    guard !fixtures.isEmpty else {
+      return nil
+    }
+    let ranked = fixtures.prefix(request.limit).map {
+      RankedFile(file: $0, relevance: 1)
+    }
+    return Response(query: query, files: ranked, spotlightAvailable: true)
   }
 }

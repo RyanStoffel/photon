@@ -7,6 +7,12 @@ import Foundation
 /// Writes history items back to the pasteboard and, when Accessibility access
 /// is granted, sends Cmd+V to the frontmost app.
 public enum ClipboardPaster: Sendable {
+  public enum PasteInjectionResult: Equatable, Sendable {
+    case posted
+    case accessibilityRequired
+    case eventCreationFailed
+  }
+
   private static let accessibilityPromptKey = "AXTrustedCheckOptionPrompt"
   private static let accessibilitySettingsURL =
     "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
@@ -62,11 +68,12 @@ public enum ClipboardPaster: Sendable {
     return pasteboard.changeCount
   }
 
-  /// Posts Cmd+V to the session. Returns `false` when Accessibility is not granted.
+  /// Posts Cmd+V to the session after checking the current process trust at the
+  /// moment of delivery. This intentionally does not rely on a cached UI value.
   @discardableResult
-  public static func sendPasteKeystroke() -> Bool {
-    guard isAccessibilityTrusted else {
-      return false
+  public static func sendPasteKeystroke(requireAccessibilityTrust: Bool = true) -> PasteInjectionResult {
+    guard !requireAccessibilityTrust || isAccessibilityTrusted else {
+      return .accessibilityRequired
     }
     let source = CGEventSource(stateID: .combinedSessionState)
     source?.setLocalEventsFilterDuringSuppressionState(
@@ -77,13 +84,13 @@ public enum ClipboardPaster: Sendable {
     guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
           let keyUp = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false)
     else {
-      return false
+      return .eventCreationFailed
     }
     keyDown.flags = .maskCommand
     keyUp.flags = .maskCommand
     keyDown.post(tap: .cgAnnotatedSessionEventTap)
     keyUp.post(tap: .cgAnnotatedSessionEventTap)
-    return true
+    return .posted
   }
 }
 #endif

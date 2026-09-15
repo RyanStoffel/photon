@@ -7,7 +7,6 @@ import SwiftUI
 struct LauncherView: View {
   @ObservedObject var model: LauncherViewModel
   var onRun: () -> Void
-  var onSearchBarDrag: ((LauncherSearchBarDragPhase) -> Void)?
   @EnvironmentObject private var settings: SettingsStore
   @FocusState private var searchFocused: Bool
 
@@ -47,6 +46,7 @@ struct LauncherView: View {
     .overlay(
       RoundedRectangle(cornerRadius: LauncherLayout.cornerRadius, style: .continuous)
         .strokeBorder(Color.primary.opacity(0.1), lineWidth: LauncherLayout.hairline)
+        .allowsHitTesting(false)
     )
     .onAppear {
       searchFocused = true
@@ -77,7 +77,6 @@ struct LauncherView: View {
     }
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
-    .launcherSearchBarDrag(onSearchBarDrag: onSearchBarDrag)
   }
 
   private var placeholder: String {
@@ -94,7 +93,9 @@ struct LauncherView: View {
 
   @ViewBuilder
   private var featureContent: some View {
-    if let mode = model.activeMode {
+    if model.session == .clipboard {
+      LauncherClipboardDetailSplitView(model: model)
+    } else if let mode = model.activeMode {
       mode.makeResultsView()
     }
   }

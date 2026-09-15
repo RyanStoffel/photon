@@ -122,7 +122,13 @@ final class LauncherViewModel: ObservableObject {
   }
 
   var panelWidth: Double {
-    preferences.width.points
+    if session == .clipboard, clipboardShowsResults {
+      return max(preferences.width.points, LauncherLayout.detailWidth)
+    }
+    if let activeMode, !activeMode.prefersCompactLauncherLayout {
+      return max(preferences.width.points, LauncherLayout.detailWidth)
+    }
+    return preferences.width.points
   }
 
   var rows: [LauncherRow] {
@@ -428,7 +434,7 @@ final class LauncherViewModel: ObservableObject {
       return .searchOnly
     }
     if !clipboard.results.isEmpty {
-      return .rows(count: clipboard.results.count, showsCalculatorHero: false)
+      return .fullHeight
     }
     if clipboard.showsCompactEmptyRow {
       return .rows(count: 1, showsCalculatorHero: false)

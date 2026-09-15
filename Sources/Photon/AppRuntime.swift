@@ -18,6 +18,7 @@ final class AppRuntime: ObservableObject {
   let clipboard: ClipboardManager
   let notes: NotesIntegration
   let keybinds: KeybindsController
+  let fileAccess: FileAccessCoordinator
   private let hotkey = HotkeyManager.shared
   private let frecencyURL: URL
   var fileSearch: FileSearchIntegration?
@@ -29,12 +30,25 @@ final class AppRuntime: ObservableObject {
     let settings = SettingsStore(defaults: defaults)
     self.settings = settings
     let dir = Self.applicationSupportDirectory()
+    fileAccess = FileAccessCoordinator(defaults: defaults)
     frecencyURL = dir.appendingPathComponent("frecency.json")
     launcher = LauncherPanelController(settings: settings, registry: registry, frecencyURL: frecencyURL)
-    clipboard = ClipboardManager(
-      settings: settings.clipboardSettings,
-      directory: dir.appendingPathComponent("Clipboard", isDirectory: true)
-    )
+    let clipboardDirectory = dir.appendingPathComponent("Clipboard", isDirectory: true)
+    if Self.usesNativeParityPasteTrustOverride {
+      clipboard = ClipboardManager(
+        settings: settings.clipboardSettings,
+        directory: clipboardDirectory,
+        accessibilityTrust: { true },
+        pasteInjector: {
+          Self.nativeParityPasteInjection()
+        }
+      )
+    } else {
+      clipboard = ClipboardManager(
+        settings: settings.clipboardSettings,
+        directory: clipboardDirectory
+      )
+    }
     launcher.attachClipboard(clipboard)
     let notesDirectory = dir.appendingPathComponent("Notes", isDirectory: true)
     notes = NotesIntegration(settings: settings, notesDirectory: notesDirectory)
@@ -50,7 +64,7 @@ final class AppRuntime: ObservableObject {
         keyCode: UInt32(kVK_ANSI_P),
         carbonModifiers: UInt32(cmdKey | optionKey | controlKey)
       )
-      settings.clipboardPasteBehavior = .copy
+      settings.clipboardPasteBehavior = Self.usesNativeParityPasteTrustOverride ? .paste : .copy
       clipboard.settings = settings.clipboardSettings
       settings.appearance = .system
     }
@@ -119,6 +133,23 @@ final class AppRuntime: ObservableObject {
     return URL(fileURLWithPath: path, isDirectory: true)
   }
 
+  private static var usesNativeParityPasteTrustOverride: Bool {
+    NativeParityReporter.isRequested
+      && ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE"] == "1"
+  }
+
+  private static func nativeParityPasteInjection() -> ClipboardPaster.PasteInjectionResult {
+    guard let path = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_INJECTION_PATH"] else {
+      return ClipboardPaster.sendPasteKeystroke(requireAccessibilityTrust: false)
+    }
+    do {
+      try "paste".write(toFile: path, atomically: true, encoding: .utf8)
+      return .posted
+    } catch {
+      return .eventCreationFailed
+    }
+  }
+
   func stop() {
     keybinds.stop()
     notes.stop()
@@ -177,6 +208,7 @@ final class AppRuntime: ObservableObject {
           .environmentObject(settings)
           .environmentObject(clipboard)
           .environmentObject(keybinds)
+          .environmentObject(fileAccess)
           .frame(minWidth: 560, minHeight: 400)
       )
       let window = NSWindow(contentViewController: host)
@@ -202,9 +234,52 @@ final class AppRuntime: ObservableObject {
     }
     registry.register(clipboardProvider)
     registry.register(notes.provider)
-    fileSearch = FileSearchIntegration(settings: settings, registry: registry, launcher: launcher)
+    fileSearch = FileSearchIntegration(
+      settings: settings,
+      access: fileAccess,
+      registry: registry,
+      launcher: launcher
+    )
+    fileSearch?.controller.onRequestAccess = { [weak self] in
+      self?.openFileAccessSetup()
+    }
     registry.register(KeybindsProvider(controller: keybinds))
     registry.register(CalculatorProvider())
+  }
+
+  private func openFileAccessSetup() {
+    guard let controller = fileSearch?.controller else {
+      return
+    }
+    let query = controller.currentQuery
+    let previousGrantCount = fileAccess.grants.count
+    let paritySelection = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION"]
+    if NativeParityReporter.isRequested, let path = paritySelection {
+      fileAccess.requestAccess(using: NativeParityFileAccessPanel(path: path))
+      guard fileAccess.grants.count > previousGrantCount else {
+        return
+      }
+      fileSearch?.refreshConfiguration()
+      launcher.model.query = query
+      controller.resumeAfterAccess(query: query)
+      return
+    }
+    launcher.hide()
+    settings.selectedPane = .files
+    openSettings()
+    fileAccess.requestAccess()
+    guard fileAccess.grants.count > previousGrantCount else {
+      return
+    }
+    fileSearch?.refreshConfiguration()
+    settingsWindowController?.window?.orderOut(nil)
+    if let mode = launcher.model.modes.first(where: { $0.id == "files" }) {
+      Task { [weak self] in
+        try? await Task.sleep(for: .milliseconds(100))
+        self?.launcher.resume(mode: mode, query: query)
+        controller.resumeAfterAccess(query: query)
+      }
+    }
   }
 
   private func applyHotkey() {
@@ -243,5 +318,14 @@ final class AppRuntime: ObservableObject {
     } catch {
       NSLog("Photon: could not save frecency: \(error)")
     }
+  }
+}
+
+@MainActor
+private struct NativeParityFileAccessPanel: FileAccessPanelPresenting {
+  let path: String
+
+  func chooseFolders() -> FileAccessSelection {
+    .selected([URL(fileURLWithPath: path, isDirectory: true)])
   }
 }
