@@ -6,7 +6,7 @@ import Foundation
 /// a recent document appears quickly even when `mdfind` returns no paths.
 enum FileSystemFallbackSearch: Sendable {
   static let defaultTimeLimit: TimeInterval = 1.5
-  static let defaultScanLimit = 50_000
+  static let defaultScanLimit = 50000
 
   static func paths(
     matching query: String,

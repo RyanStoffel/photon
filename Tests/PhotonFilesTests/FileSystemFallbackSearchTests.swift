@@ -16,15 +16,13 @@ final class FileSystemFallbackSearchTests: XCTestCase {
     try Data("fixture".utf8).write(to: document)
     defer { try? FileManager.default.removeItem(at: root) }
 
-    XCTAssertEqual(
-      FileSystemFallbackSearch.paths(
-        matching: "ember",
-        home: root.path,
-        extraFolders: [],
-        resultLimit: 20
-      ),
-      [document.path]
+    let matches = FileSystemFallbackSearch.paths(
+      matching: "ember",
+      home: root.path,
+      extraFolders: [],
+      resultLimit: 20
     )
+    XCTAssertEqual(matches.map(resolvedPath), [resolvedPath(document.path)])
   }
 
   func testRespectsResultLimitAndIgnoresLibrary() throws {
@@ -46,6 +44,10 @@ final class FileSystemFallbackSearchTests: XCTestCase {
       resultLimit: 1
     )
     XCTAssertEqual(matches.count, 1)
-    XCTAssertTrue(matches[0].hasPrefix(documents.path))
+    XCTAssertTrue(resolvedPath(matches[0]).hasPrefix(resolvedPath(documents.path)))
+  }
+
+  private func resolvedPath(_ path: String) -> String {
+    URL(fileURLWithPath: path).resolvingSymlinksInPath().path
   }
 }
