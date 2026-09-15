@@ -9,7 +9,7 @@ enum ScreenshotFailure: Error, CustomStringConvertible {
   var description: String {
     switch self {
     case let .invalid(message):
-      return message
+      message
     }
   }
 }

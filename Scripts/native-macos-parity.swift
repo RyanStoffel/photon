@@ -11,7 +11,7 @@ enum ParityFailure: Error, CustomStringConvertible {
   var description: String {
     switch self {
     case let .failed(message):
-      return message
+      message
     }
   }
 }
@@ -193,7 +193,10 @@ do {
   let app = NSRunningApplication(processIdentifier: pid)
   try require(app != nil, "NSRunningApplication resolves Photon")
   try require(app?.activationPolicy == .accessory, "activation policy is accessory (no Dock app)")
-  try require(int(report["activationPolicy"]) == NSApplication.ActivationPolicy.accessory.rawValue, "in-process activation policy is accessory")
+  try require(
+    int(report["activationPolicy"]) == NSApplication.ActivationPolicy.accessory.rawValue,
+    "in-process activation policy is accessory"
+  )
 
   let status = dictionary(report["statusItem"])
   try require(bool(status["visible"]), "menu-bar status item is visible")
@@ -204,7 +207,11 @@ do {
     bool(launcher($0)["exists"]) && !bool(launcher($0)["visible"])
   }
   let panel = launcher(report)
-  try require(string(panel["class"]) == "Photon.LauncherPanel" || string(panel["class"]).hasSuffix(".LauncherPanel"), "launcher uses LauncherPanel")
+  try require(
+    string(panel["class"]) == "Photon.LauncherPanel"
+      || string(panel["class"]).hasSuffix(".LauncherPanel"),
+    "launcher uses LauncherPanel"
+  )
   try require(bool(panel["borderless"]), "launcher is borderless")
   try require(bool(panel["nonactivatingPanel"]), "launcher is non-activating")
   try require(!bool(panel["titled"]), "launcher has no title chrome")
@@ -223,8 +230,14 @@ do {
   let anchoredTop = top(report)
 
   if let cgBounds = runningWindowBounds(pid: pid) {
-    try require(abs(cgBounds.width - double(frame(report)["width"])) < 2, "CGWindow width matches the native panel")
-    try require(abs(cgBounds.height - double(frame(report)["height"])) < 2, "CGWindow height matches the native panel")
+    try require(
+      abs(cgBounds.width - double(frame(report)["width"])) < 2,
+      "CGWindow width matches the native panel"
+    )
+    try require(
+      abs(cgBounds.height - double(frame(report)["height"])) < 2,
+      "CGWindow height matches the native panel"
+    )
   } else {
     throw ParityFailure.failed("CGWindow could not find the visible Photon panel")
   }
@@ -240,7 +253,10 @@ do {
     let count = (axWindows as? [AXUIElement])?.count ?? 0
     try require(count > 0, "Accessibility sees the Photon window")
   } else {
-    print("INFO: Accessibility introspection unavailable on this runner (\(axResult.rawValue)); CGWindow checks remain authoritative")
+    print(
+      "INFO: Accessibility introspection unavailable on this runner "
+        + "(\(axResult.rawValue)); CGWindow checks remain authoritative"
+    )
   }
 
   clickSearchField(report)

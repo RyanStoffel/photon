@@ -164,11 +164,11 @@ final class NativeParityReporter: NSObject {
   private func contentName(_ content: LauncherContent) -> String {
     switch content {
     case .searchOnly:
-      return "searchOnly"
+      "searchOnly"
     case .rows:
-      return "rows"
+      "rows"
     case .fullHeight:
-      return "fullHeight"
+      "fullHeight"
     }
   }
 
