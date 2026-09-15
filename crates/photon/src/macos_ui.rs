@@ -125,13 +125,17 @@ pub fn run() -> Result<(), String> {
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
             titlebar: Some(TitlebarOptions {
-                title: None,
+                title: Some("Photon Launcher".into()),
                 appears_transparent: true,
                 traffic_light_position: None,
             }),
             focus: scenario.is_some(),
             show: show_launcher && scenario.is_some(),
-            kind: WindowKind::PopUp,
+            kind: if scenario.is_some() {
+                WindowKind::Normal
+            } else {
+                WindowKind::PopUp
+            },
             is_movable: true,
             is_resizable: false,
             is_minimizable: false,
@@ -181,7 +185,7 @@ pub fn run() -> Result<(), String> {
 
         if scenario.is_some() {
             cx.spawn(async move |_cx| {
-                Timer::after(std::time::Duration::from_millis(400)).await;
+                Timer::after(std::time::Duration::from_millis(800)).await;
                 mark_ready();
             })
             .detach();
