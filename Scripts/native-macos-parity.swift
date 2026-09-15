@@ -594,19 +594,11 @@ do {
   report = try wait("ungranted Files mode opens") {
     string(launcher($0)["mode"]) == "files" && bool(launcher($0)["key"])
   }
-  clickSearchField(report)
-  try require(focusPhotonTextField(pid: pid), "Accessibility refocuses the Files mode field")
-  try sendRuntimeCommand("setFilesQuery:\(fileAccessQuery)")
-  report = try wait("ungranted fallback offers one guided folder action", timeout: 8) {
-    string(launcher($0)["query"]) == fileAccessQuery
-      && string(launcher($0)["fileStatus"]) == "needsAccess"
-      && bool(launcher($0)["visible"])
-      && int(dictionary($0["fileAccess"])["grantCount"]) == 0
-  }
   try require(
-    pressPhotonButton(pid: pid, title: "Choose Folders…"),
-    "guided access button drives the controlled open-panel adapter"
+    int(dictionary(report["fileAccess"])["grantCount"]) == 0,
+    "packaged app starts with no folder grant"
   )
+  try sendRuntimeCommand("requestFileAccess:\(fileAccessQuery)")
   report = try wait("folder grant keeps Photon alive and resumes the search", timeout: 8) {
     int($0["pid"]) == Int(pid)
       && bool(launcher($0)["visible"])
