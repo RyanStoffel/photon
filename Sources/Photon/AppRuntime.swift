@@ -18,6 +18,7 @@ final class AppRuntime: ObservableObject {
   let clipboard: ClipboardManager
   let notes: NotesIntegration
   let keybinds: KeybindsController
+  let fileAccess: FileAccessCoordinator
   private let hotkey = HotkeyManager.shared
   private let frecencyURL: URL
   var fileSearch: FileSearchIntegration?
@@ -29,6 +30,7 @@ final class AppRuntime: ObservableObject {
     let settings = SettingsStore(defaults: defaults)
     self.settings = settings
     let dir = Self.applicationSupportDirectory()
+    fileAccess = FileAccessCoordinator(defaults: defaults)
     frecencyURL = dir.appendingPathComponent("frecency.json")
     launcher = LauncherPanelController(settings: settings, registry: registry, frecencyURL: frecencyURL)
     let clipboardDirectory = dir.appendingPathComponent("Clipboard", isDirectory: true)
@@ -206,6 +208,7 @@ final class AppRuntime: ObservableObject {
           .environmentObject(settings)
           .environmentObject(clipboard)
           .environmentObject(keybinds)
+          .environmentObject(fileAccess)
           .frame(minWidth: 560, minHeight: 400)
       )
       let window = NSWindow(contentViewController: host)
@@ -231,9 +234,52 @@ final class AppRuntime: ObservableObject {
     }
     registry.register(clipboardProvider)
     registry.register(notes.provider)
-    fileSearch = FileSearchIntegration(settings: settings, registry: registry, launcher: launcher)
+    fileSearch = FileSearchIntegration(
+      settings: settings,
+      access: fileAccess,
+      registry: registry,
+      launcher: launcher
+    )
+    fileSearch?.controller.onRequestAccess = { [weak self] in
+      self?.openFileAccessSetup()
+    }
     registry.register(KeybindsProvider(controller: keybinds))
     registry.register(CalculatorProvider())
+  }
+
+  private func openFileAccessSetup() {
+    guard let controller = fileSearch?.controller else {
+      return
+    }
+    let query = controller.currentQuery
+    let previousGrantCount = fileAccess.grants.count
+    let paritySelection = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION"]
+    if NativeParityReporter.isRequested, let path = paritySelection {
+      fileAccess.requestAccess(using: NativeParityFileAccessPanel(path: path))
+      guard fileAccess.grants.count > previousGrantCount else {
+        return
+      }
+      fileSearch?.refreshConfiguration()
+      launcher.model.query = query
+      controller.resumeAfterAccess(query: query)
+      return
+    }
+    launcher.hide()
+    settings.selectedPane = .files
+    openSettings()
+    fileAccess.requestAccess()
+    guard fileAccess.grants.count > previousGrantCount else {
+      return
+    }
+    fileSearch?.refreshConfiguration()
+    settingsWindowController?.window?.orderOut(nil)
+    if let mode = launcher.model.modes.first(where: { $0.id == "files" }) {
+      Task { [weak self] in
+        try? await Task.sleep(for: .milliseconds(100))
+        self?.launcher.resume(mode: mode, query: query)
+        controller.resumeAfterAccess(query: query)
+      }
+    }
   }
 
   private func applyHotkey() {
@@ -272,5 +318,14 @@ final class AppRuntime: ObservableObject {
     } catch {
       NSLog("Photon: could not save frecency: \(error)")
     }
+  }
+}
+
+@MainActor
+private struct NativeParityFileAccessPanel: FileAccessPanelPresenting {
+  let path: String
+
+  func chooseFolders() -> FileAccessSelection {
+    .selected([URL(fileURLWithPath: path, isDirectory: true)])
   }
 }

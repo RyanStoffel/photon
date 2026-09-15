@@ -58,9 +58,38 @@ public struct FileSearchView: View {
         title: "No matches",
         detail: "Nothing in your search scope matches \u{201C}\(query)\u{201D}."
       )
+    case let .needsAccess(query):
+      fileAccessState(query: query)
     case .results:
       list(title: "Results")
     }
+  }
+
+  private func fileAccessState(query: String) -> some View {
+    VStack(spacing: 10) {
+      Image(systemName: "folder.badge.plus")
+        .font(.system(size: 28))
+        .foregroundStyle(.secondary)
+      Text("Allow access to search unindexed files")
+        .font(.body.weight(.medium))
+      Text(
+        "Spotlight found no matches for “\(query)”. Choose only the folders Photon should search directly."
+      )
+      .font(.caption)
+      .foregroundStyle(.secondary)
+      .multilineTextAlignment(.center)
+      if let accessNotice = controller.accessNotice {
+        Text(accessNotice)
+          .font(.caption)
+          .foregroundStyle(.orange)
+      }
+      Button("Choose Folders…") {
+        controller.requestFileAccess()
+      }
+      .buttonStyle(.borderedProminent)
+    }
+    .padding(24)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
   private var searchingState: some View {
