@@ -18,6 +18,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   var isDraggingLauncher = false
   var chromeMouseDownCount = 0
   var acceptedChromeDragCount = 0
+  private var focusTransitionGeneration = 0
   /// App that was frontmost before a mode asked us to activate; restored on hide.
   private var previousApplication: NSRunningApplication?
 
@@ -231,6 +232,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     guard let panel else {
       return
     }
+    focusTransitionGeneration &+= 1
     model.enter(mode: mode, query: query)
     panel.orderFrontRegardless()
     panel.makeKey()
@@ -250,8 +252,12 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
 
   func windowDidResignKey(_: Notification) {
     // Another of our windows (Quick Look) may be taking key; decide once that has settled.
+    let generation = focusTransitionGeneration
     Task { [weak self] in
       guard let self, let panel, panel.isVisible, !panel.isKeyWindow else {
+        return
+      }
+      guard generation == focusTransitionGeneration else {
         return
       }
       if model.activeMode?.holdsFocus == true {
