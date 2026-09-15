@@ -240,6 +240,7 @@ struct FileDetailView: View {
         .resizable()
         .interpolation(.high)
         .scaledToFit()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(22)
     } else if loader.isLoading {
       ProgressView()
