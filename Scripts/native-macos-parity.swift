@@ -16,14 +16,18 @@ enum ParityFailure: Error, CustomStringConvertible {
   }
 }
 
-let (reportURL, screenshotDirectory): (URL, URL) = {
-  guard CommandLine.arguments.count == 3 else {
-    fputs("usage: native-macos-parity.swift <report.json> <screenshot-directory>\n", stderr)
+let (reportURL, commandURL, screenshotDirectory): (URL, URL, URL) = {
+  guard CommandLine.arguments.count == 4 else {
+    fputs(
+      "usage: native-macos-parity.swift <report.json> <command-file> <screenshot-directory>\n",
+      stderr
+    )
     exit(2)
   }
   return (
     URL(fileURLWithPath: CommandLine.arguments[1]),
-    URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true)
+    URL(fileURLWithPath: CommandLine.arguments[2]),
+    URL(fileURLWithPath: CommandLine.arguments[3], isDirectory: true)
   )
 }()
 
@@ -118,6 +122,10 @@ func captureLauncher(_ report: [String: Any], name: String) throws {
   process.waitUntilExit()
   let size = (try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
   try require(process.terminationStatus == 0 && size > 0, "captured \(name).png")
+}
+
+func sendRuntimeCommand(_ command: String) throws {
+  try command.write(to: commandURL, atomically: true, encoding: .utf8)
 }
 
 func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags = []) {
@@ -377,6 +385,10 @@ do {
       && displayedTitles($0).contains(expectedFile)
   }
   try captureLauncher(report, name: "ember-files-mode")
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("native runtime hook dismisses file session") {
+    !bool(launcher($0)["visible"])
+  }
 
   _ = try wait("clipboard monitor captured four runtime fixtures") { int($0["clipboardCaptureCount"]) >= 4 }
   postKey(9, flags: [.maskCommand, .maskShift])
@@ -477,8 +489,10 @@ do {
       && string(value["query"]).isEmpty
   }
 
-  postKey(9, flags: [.maskCommand, .maskShift])
-  _ = try wait("clipboard session closes before launcher-entry test") { !bool(launcher($0)["visible"]) }
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("clipboard session closes before launcher-entry test") {
+    !bool(launcher($0)["visible"])
+  }
   postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
   report = try wait("configured global hotkey reopens the compact launcher") {
     bool(launcher($0)["visible"])

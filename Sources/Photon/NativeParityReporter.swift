@@ -18,6 +18,7 @@ final class NativeParityReporter: NSObject {
   private var runtime: AppRuntime?
   private weak var statusItemController: StatusItemController?
   private var reportURL: URL?
+  private var commandURL: URL?
   private var timer: Timer?
   private var appIconProbeCount = 0
 
@@ -30,6 +31,9 @@ final class NativeParityReporter: NSObject {
     shared.runtime = runtime
     shared.statusItemController = statusItem
     shared.reportURL = URL(fileURLWithPath: path)
+    if let commandPath = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_COMMAND_PATH"] {
+      shared.commandURL = URL(fileURLWithPath: commandPath)
+    }
     shared.timer?.invalidate()
     let timer = Timer(
       timeInterval: 0.1,
@@ -51,6 +55,7 @@ final class NativeParityReporter: NSObject {
     shared.runtime = nil
     shared.statusItemController = nil
     shared.reportURL = nil
+    shared.commandURL = nil
     shared.appIconProbeCount = 0
   }
 
@@ -92,6 +97,7 @@ final class NativeParityReporter: NSObject {
     guard let runtime, let reportURL else {
       return
     }
+    handleCommand(runtime: runtime)
     let panel = runtime.launcher.panel
     let model = runtime.launcher.model
     let statusItem = statusItemController?.statusItem
@@ -141,6 +147,19 @@ final class NativeParityReporter: NSObject {
       return
     }
     try? data.write(to: reportURL, options: .atomic)
+  }
+
+  private func handleCommand(runtime: AppRuntime) {
+    guard let commandURL,
+          let command = try? String(contentsOf: commandURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    else {
+      return
+    }
+    try? FileManager.default.removeItem(at: commandURL)
+    if command == "hideLauncher" {
+      runtime.launcher.hide()
+    }
   }
 
   private func launcherReport(

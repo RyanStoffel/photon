@@ -27,6 +27,7 @@ EXECUTABLE="$APP/Contents/MacOS/Photon"
 
 DATA_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/photon-native-parity.XXXXXX")"
 REPORT="$DATA_ROOT/native-report.json"
+COMMAND="$DATA_ROOT/native-command"
 APP_LOG="$DATA_ROOT/photon.log"
 SCREENSHOT_DIR="${NATIVE_PARITY_SCREENSHOT_DIR:-$DATA_ROOT/screenshots}"
 SEED_FILE="$HOME/Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf"
@@ -64,12 +65,13 @@ fi
 /usr/bin/mdimport "$SEED_FILE" >/dev/null 2>&1 || true
 
 PHOTON_NATIVE_PARITY_REPORT_PATH="$REPORT" \
+PHOTON_NATIVE_PARITY_COMMAND_PATH="$COMMAND" \
 PHOTON_ISOLATED_DATA_ROOT="$DATA_ROOT/data" \
 PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
   "$EXECUTABLE" >"$APP_LOG" 2>&1 &
 PID=$!
 
-swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" "$SCREENSHOT_DIR" || {
+swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" "$COMMAND" "$SCREENSHOT_DIR" || {
   echo "--- Photon runtime log ---" >&2
   cat "$APP_LOG" >&2
   echo "--- Native report ---" >&2
