@@ -583,6 +583,8 @@ do {
   report = try wait("ungranted Files mode opens") {
     string(launcher($0)["mode"]) == "files" && bool(launcher($0)["key"])
   }
+  clickSearchField(report)
+  try require(focusPhotonTextField(pid: pid), "Accessibility refocuses the Files mode field")
   try require(
     setPhotonTextFieldValue(pid: pid, value: fileAccessQuery),
     "Accessibility enters the unindexed guided-access query"
