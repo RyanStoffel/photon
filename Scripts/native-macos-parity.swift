@@ -16,12 +16,15 @@ enum ParityFailure: Error, CustomStringConvertible {
   }
 }
 
-let reportURL: URL = {
-  guard CommandLine.arguments.count == 2 else {
-    fputs("usage: native-macos-parity.swift <report.json>\n", stderr)
+let (reportURL, screenshotDirectory): (URL, URL) = {
+  guard CommandLine.arguments.count == 3 else {
+    fputs("usage: native-macos-parity.swift <report.json> <screenshot-directory>\n", stderr)
     exit(2)
   }
-  return URL(fileURLWithPath: CommandLine.arguments[1])
+  return (
+    URL(fileURLWithPath: CommandLine.arguments[1]),
+    URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true)
+  )
 }()
 
 func readReport() -> [String: Any]? {
@@ -51,6 +54,10 @@ func string(_ value: Any?) -> String {
 
 func bool(_ value: Any?) -> Bool {
   (value as? NSNumber)?.boolValue ?? false
+}
+
+func strings(_ value: Any?) -> [String] {
+  value as? [String] ?? []
 }
 
 @discardableResult
@@ -87,6 +94,30 @@ func frame(_ report: [String: Any]) -> [String: Any] {
 
 func top(_ report: [String: Any]) -> Double {
   double(frame(report)["top"])
+}
+
+func displayedTitles(_ report: [String: Any]) -> [String] {
+  strings(launcher(report)["displayedRowTitles"])
+}
+
+func captureLauncher(_ report: [String: Any], name: String) throws {
+  try FileManager.default.createDirectory(
+    at: screenshotDirectory,
+    withIntermediateDirectories: true
+  )
+  let destination = screenshotDirectory.appendingPathComponent(name + ".png")
+  let process = Process()
+  process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+  process.arguments = [
+    "-x",
+    "-l",
+    String(int(launcher(report)["windowNumber"])),
+    destination.path,
+  ]
+  try process.run()
+  process.waitUntilExit()
+  let size = (try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+  try require(process.terminationStatus == 0 && size > 0, "captured \(name).png")
 }
 
 func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags = []) {
@@ -297,7 +328,51 @@ do {
     int($0["appIconProbeCount"]) > 0
   }
 
-  _ = try wait("clipboard monitor captured runtime fixtures") { int($0["clipboardCaptureCount"]) >= 2 }
+  let expectedFile = "Ember_Individual_Pitch.pdf"
+  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
+  report = try wait("configured global hotkey opens the launcher for mixed file search") {
+    let value = launcher($0)
+    return bool(value["visible"])
+      && bool(value["key"])
+      && string(value["session"]) == "commands"
+      && string(value["mode"]).isEmpty
+  }
+  clickSearchField(report)
+  try require(focusPhotonTextField(pid: pid), "Accessibility focuses mixed-search field")
+  try require(setPhotonTextFieldValue(pid: pid, value: "ember"), "Accessibility enters mixed file query")
+  report = try wait("mixed launcher visibly displays the seeded PDF", timeout: 8) {
+    string(launcher($0)["query"]) == "ember"
+      && string(launcher($0)["mode"]).isEmpty
+      && displayedTitles($0).contains(expectedFile)
+  }
+  try captureLauncher(report, name: "ember-mixed-search")
+  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
+  _ = try wait("mixed file launcher dismisses") { !bool(launcher($0)["visible"]) }
+
+  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
+  report = try wait("launcher reopens for explicit Files mode") {
+    bool(launcher($0)["visible"]) && bool(launcher($0)["key"])
+  }
+  clickSearchField(report)
+  try require(setPhotonTextFieldValue(pid: pid, value: "files"), "Accessibility searches for Files command")
+  _ = try wait("launcher visibly displays Search Files") {
+    displayedTitles($0).contains("Search Files")
+  }
+  try require(confirmPhotonTextField(pid: pid), "Accessibility invokes Search Files")
+  report = try wait("explicit Files mode opens") {
+    string(launcher($0)["mode"]) == "files" && bool(launcher($0)["key"])
+  }
+  try require(setPhotonTextFieldValue(pid: pid, value: "ember"), "Accessibility enters explicit Files query")
+  report = try wait("explicit Files mode visibly displays the seeded PDF", timeout: 8) {
+    string(launcher($0)["query"]) == "ember"
+      && string(launcher($0)["mode"]) == "files"
+      && displayedTitles($0).contains(expectedFile)
+  }
+  try captureLauncher(report, name: "ember-files-mode")
+  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
+  _ = try wait("explicit Files launcher dismisses") { !bool(launcher($0)["visible"]) }
+
+  _ = try wait("clipboard monitor captured four runtime fixtures") { int($0["clipboardCaptureCount"]) >= 4 }
   postKey(9, flags: [.maskCommand, .maskShift])
   report = try wait("Cmd+Shift+V opens compact clipboard history") {
     let value = launcher($0)
@@ -361,6 +436,11 @@ do {
   report = try wait("Down cycles clipboard selection") {
     int(launcher($0)["clipboardSelectedIndex"]) != firstSelection
   }
+  try require(
+    !string(launcher(report)["clipboardSelectedTitle"]).isEmpty,
+    "expanded clipboard exposes the visibly selected row"
+  )
+  try captureLauncher(report, name: "clipboard-hotkey-selection")
   postKey(126)
   _ = try wait("Up cycles clipboard selection") {
     int(launcher($0)["clipboardSelectedIndex"]) == firstSelection
@@ -373,8 +453,15 @@ do {
       && abs(top($0) - anchoredTop) < 0.5
   }
 
-  postKey(9, flags: [.maskCommand, .maskShift])
-  _ = try wait("clipboard hotkey dismisses its open session") { !bool(launcher($0)["visible"]) }
+  postKey(36)
+  _ = try wait("Enter uses the selected clipboard item and dismisses") {
+    !bool(launcher($0)["visible"])
+  }
+  try require(
+    NSPasteboard.general.string(forType: .string)?.contains("needle") == true,
+    "Enter copied the selected clipboard item"
+  )
+
   postKey(9, flags: [.maskCommand, .maskShift])
   _ = try wait("clipboard hotkey reopens compact and unclipped") {
     let value = launcher($0)
@@ -402,6 +489,23 @@ do {
   report = try wait("launcher Clipboard History entry opens compact") {
     string(launcher($0)["session"]) == "clipboard"
       && string(launcher($0)["content"]) == "searchOnly"
+  }
+  postKey(125)
+  report = try wait("launcher-entry Down expands clipboard history") {
+    string(launcher($0)["content"]) == "rows"
+      && int(launcher($0)["clipboardSelectedIndex"]) >= 0
+      && bool(launcher($0)["key"])
+  }
+  let launcherEntryFirstSelection = int(launcher(report)["clipboardSelectedIndex"])
+  postKey(125)
+  report = try wait("launcher-entry Down visibly moves selection") {
+    int(launcher($0)["clipboardSelectedIndex"]) != launcherEntryFirstSelection
+      && !string(launcher($0)["clipboardSelectedTitle"]).isEmpty
+  }
+  try captureLauncher(report, name: "clipboard-launcher-selection")
+  postKey(126)
+  _ = try wait("launcher-entry Up visibly restores selection") {
+    int(launcher($0)["clipboardSelectedIndex"]) == launcherEntryFirstSelection
   }
 
   let light = dictionary(report["appearance"])

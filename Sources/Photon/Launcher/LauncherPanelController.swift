@@ -12,7 +12,6 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   private let frecencyURL: URL
   let model: LauncherViewModel
   var panel: LauncherPanel?
-  var localMonitor: Any?
   private var cancellables: Set<AnyCancellable> = []
   let centerGuides = LauncherCenterGuidesOverlay()
   var searchBarDragInitialOrigin: NSPoint?

@@ -58,11 +58,16 @@ final class NativeParityReporter: NSObject {
     Task { @MainActor in
       try? await Task.sleep(for: .milliseconds(500))
       let pasteboard = NSPasteboard.general
-      pasteboard.clearContents()
-      pasteboard.setString("Photon parity clipboard first", forType: .string)
-      try? await Task.sleep(for: .milliseconds(500))
-      pasteboard.clearContents()
-      pasteboard.setString("Photon parity clipboard needle", forType: .string)
+      for value in [
+        "Photon parity clipboard alpha",
+        "Photon parity clipboard bravo",
+        "Photon parity clipboard needle",
+        "Photon parity clipboard delta",
+      ] {
+        pasteboard.clearContents()
+        pasteboard.setString(value, forType: .string)
+        try? await Task.sleep(for: .milliseconds(500))
+      }
     }
   }
 
@@ -147,6 +152,13 @@ final class NativeParityReporter: NSObject {
       return ["exists": false]
     }
     let frame = panel.frame
+    let displayedTitles: [String] = if model.activeMode?.id == "files" {
+      runtime?.fileSearch?.controller.results.map(\.file.displayName) ?? []
+    } else if model.session == .clipboard {
+      model.clipboard?.results.map(\.title) ?? []
+    } else {
+      model.rows.map(\.title)
+    }
     let buttonVisible = [
       NSWindow.ButtonType.closeButton,
       .miniaturizeButton,
@@ -157,6 +169,7 @@ final class NativeParityReporter: NSObject {
       "exists": true,
       "visible": panel.isVisible,
       "key": panel.isKeyWindow,
+      "windowNumber": panel.windowNumber,
       "class": panel.className,
       "frame": [
         "x": frame.origin.x,
@@ -178,8 +191,10 @@ final class NativeParityReporter: NSObject {
       "query": model.query,
       "content": contentName(model.content),
       "resultCount": model.results.count,
+      "displayedRowTitles": displayedTitles,
       "clipboardResultCount": model.clipboard?.results.count ?? 0,
       "clipboardSelectedIndex": model.clipboard?.selectedIndex ?? -1,
+      "clipboardSelectedTitle": model.clipboard?.selectedItem?.title ?? "",
       "resolvedAppIconCount": resolvedAppIcons,
     ]
   }

@@ -39,7 +39,8 @@ public final class FileSearchEngine {
   }
 
   /// Waits out the debounce window, cancels any in-flight query, runs
-  /// `mdfind` (metadata plus `-name` fallback), and ranks off the main thread.
+  /// `mdfind` (metadata plus `-name`) and a bounded filesystem fallback, then
+  /// ranks off the main thread.
   /// Returns `nil` when a newer search superseded this one, in which case the
   /// caller should do nothing.
   public func search(_ request: Request) async -> Response? {
@@ -74,27 +75,39 @@ public final class FileSearchEngine {
       )
     }
 
-    var paths: [String] = []
-    var spotlightAvailable = true
-    for invocation in invocations {
-      guard token == generation, !Task.isCancelled else {
-        return nil
-      }
-      let outcome = await runMdfind(invocation)
-      guard token == generation else {
-        return nil
-      }
-      if outcome.cancelled {
-        continue
-      }
-      spotlightAvailable = spotlightAvailable && outcome.spotlightAvailable
-      paths.append(contentsOf: outcome.paths)
+    let home = NSHomeDirectory()
+    let fallbackTask = Task.detached(priority: .userInitiated) {
+      FileSystemFallbackSearch.paths(
+        matching: trimmed,
+        home: home,
+        extraFolders: request.settings.extraFolders,
+        resultLimit: scanLimit
+      )
     }
-    guard token == generation else {
+    let outcomes = await withTaskGroup(of: MdfindQueryRunner.Outcome.self) { group in
+      for invocation in invocations {
+        group.addTask {
+          await self.runMdfind(invocation)
+        }
+      }
+      var collected: [MdfindQueryRunner.Outcome] = []
+      for await outcome in group {
+        collected.append(outcome)
+      }
+      return collected
+    }
+    guard token == generation, !Task.isCancelled else {
+      fallbackTask.cancel()
       return nil
     }
 
-    let uniquePaths = uniqued(paths)
+    let fallbackPaths = await fallbackTask.value
+    guard token == generation, !Task.isCancelled else {
+      return nil
+    }
+    let completedOutcomes = outcomes.filter { !$0.cancelled }
+    let spotlightAvailable = completedOutcomes.allSatisfy(\.spotlightAvailable)
+    let uniquePaths = uniqued(completedOutcomes.flatMap(\.paths) + fallbackPaths)
     let ranked = await Task.detached(priority: .userInitiated) {
       let files = uniquePaths.compactMap(FileResultFactory.file(at:))
       let ranked = FileRanker.rank(

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- File search now combines concurrent Spotlight queries with a bounded filename walk, so recently created or unindexed home-folder documents appear in explicit Files mode and mixed launcher results.
+- Launcher key navigation is intercepted by the key `NSPanel` before SwiftUI's search field, restoring physical Up/Down behavior for clipboard history from both its global hotkey and the main launcher.
+- The required packaged-app macOS gate now seeds a real Documents PDF and four pasteboard entries, asserts actual displayed rows and selection changes through Accessibility and CGEvents, and captures runtime evidence screenshots.
+
 ## [0.3.1] - 2026-09-15
 
 Emergency rollback release: restore the v0.2.3 Swift/AppKit implementation after the v0.3.0 Rust/GPUI rewrite failed the native macOS parity gate.
