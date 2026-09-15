@@ -57,4 +57,5 @@ imageView.cacheDisplay(in: imageView.bounds, to: bitmap)
 guard let png = bitmap.representation(using: .png, properties: [:]) else {
   throw CocoaError(.fileWriteUnknown)
 }
+
 try png.write(to: imageURL)
