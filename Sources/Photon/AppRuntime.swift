@@ -271,6 +271,11 @@ final class AppRuntime: ObservableObject {
       Task { [weak self] in
         try? await Task.sleep(for: .milliseconds(100))
         self?.launcher.resume(mode: mode, query: query)
+        try? await Task.sleep(for: .milliseconds(500))
+        guard let self, launcher.model.query != query else {
+          return
+        }
+        launcher.resume(mode: mode, query: query)
       }
     }
   }
