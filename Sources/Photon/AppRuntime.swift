@@ -7,6 +7,7 @@ import PhotonCore
 import PhotonFiles
 import PhotonKeybinds
 import PhotonNotes
+import SwiftUI
 
 /// Process-wide wiring. Phase 2 features register here with a single line.
 @MainActor
@@ -21,6 +22,7 @@ final class AppRuntime: ObservableObject {
   private let frecencyURL: URL
   private var fileSearch: FileSearchIntegration?
   private var appearanceObserver: NSObjectProtocol?
+  private var settingsWindowController: NSWindowController?
 
   init() {
     let defaults = Self.userDefaultsForLaunch()
@@ -167,7 +169,24 @@ final class AppRuntime: ObservableObject {
 
   func openSettings() {
     NSApp.activate(ignoringOtherApps: true)
-    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    if settingsWindowController == nil {
+      let host = NSHostingController(
+        rootView: SettingsRootView()
+          .environmentObject(settings)
+          .environmentObject(clipboard)
+          .environmentObject(keybinds)
+          .frame(minWidth: 560, minHeight: 400)
+      )
+      let window = NSWindow(contentViewController: host)
+      window.title = "Settings"
+      window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+      window.setContentSize(NSSize(width: 640, height: 480))
+      window.isReleasedWhenClosed = false
+      window.center()
+      settingsWindowController = NSWindowController(window: window)
+    }
+    settingsWindowController?.showWindow(nil)
+    settingsWindowController?.window?.makeKeyAndOrderFront(nil)
   }
 
   /// Phase 2: add `registry.register(YourProvider())` here. Do not edit PhotonCore.
