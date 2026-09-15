@@ -4,6 +4,7 @@ import AppKit
 import ApplicationServices
 import CoreGraphics
 import Foundation
+import Vision
 
 enum ParityFailure: Error, CustomStringConvertible {
   case failed(String)
@@ -104,7 +105,7 @@ func displayedTitles(_ report: [String: Any]) -> [String] {
   strings(launcher(report)["displayedRowTitles"])
 }
 
-func captureLauncher(_ report: [String: Any], name: String) throws {
+func captureLauncher(_ report: [String: Any], name: String, expectedText: String) throws {
   try FileManager.default.createDirectory(
     at: screenshotDirectory,
     withIntermediateDirectories: true
@@ -123,6 +124,17 @@ func captureLauncher(_ report: [String: Any], name: String) throws {
   process.waitUntilExit()
   let size = (try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
   try require(process.terminationStatus == 0 && size > 0, "captured \(name).png")
+  let recognition = VNRecognizeTextRequest()
+  recognition.recognitionLevel = .accurate
+  let handler = VNImageRequestHandler(url: destination)
+  try handler.perform([recognition])
+  let renderedText = (recognition.results ?? [])
+    .compactMap { $0.topCandidates(1).first?.string }
+    .joined(separator: "\n")
+  try require(
+    renderedText.localizedCaseInsensitiveContains(expectedText),
+    "\(name).png visibly contains \(expectedText)"
+  )
 }
 
 func sendRuntimeCommand(_ command: String) throws {
@@ -405,7 +417,11 @@ do {
     !string(launcher(report)["clipboardSelectedTitle"]).isEmpty,
     "expanded clipboard exposes the visibly selected row"
   )
-  try captureLauncher(report, name: "clipboard-hotkey-selection")
+  try captureLauncher(
+    report,
+    name: "clipboard-hotkey-selection",
+    expectedText: string(launcher(report)["clipboardSelectedTitle"])
+  )
   postKey(126)
   _ = try wait("Up cycles clipboard selection") {
     int(launcher($0)["clipboardSelectedIndex"]) == firstSelection
@@ -477,7 +493,11 @@ do {
     int(launcher($0)["clipboardSelectedIndex"]) != launcherEntryFirstSelection
       && !string(launcher($0)["clipboardSelectedTitle"]).isEmpty
   }
-  try captureLauncher(report, name: "clipboard-launcher-selection")
+  try captureLauncher(
+    report,
+    name: "clipboard-launcher-selection",
+    expectedText: string(launcher(report)["clipboardSelectedTitle"])
+  )
   postKey(126)
   _ = try wait("launcher-entry Up visibly restores selection") {
     int(launcher($0)["clipboardSelectedIndex"]) == launcherEntryFirstSelection
@@ -504,7 +524,7 @@ do {
       && string(launcher($0)["mode"]).isEmpty
       && displayedTitles($0).contains(expectedFile)
   }
-  try captureLauncher(report, name: "ember-mixed-search")
+  try captureLauncher(report, name: "ember-mixed-search", expectedText: expectedFile)
 
   try require(bool(launcher(report)["key"]), "launcher remains the key-event target")
   try require(setPhotonTextFieldValue(pid: pid, value: "files"), "Accessibility searches for Files command")
@@ -521,7 +541,7 @@ do {
       && string(launcher($0)["mode"]) == "files"
       && displayedTitles($0).contains(expectedFile)
   }
-  try captureLauncher(report, name: "ember-files-mode")
+  try captureLauncher(report, name: "ember-files-mode", expectedText: expectedFile)
 
   let light = dictionary(report["appearance"])
   setSystemAppearance(dark: true)

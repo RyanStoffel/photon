@@ -339,7 +339,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     frame.origin.y = frame.maxY - size.height
     frame.size = size
     // No animation: the resize and SwiftUI's relayout land in the same display cycle.
-    panel.setFrame(frame, display: false, animate: false)
+    panel.setFrame(frame, display: true, animate: false)
     panel.invalidateShadow()
   }
 }
