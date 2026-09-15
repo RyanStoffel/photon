@@ -239,6 +239,14 @@ func setPhotonTextFieldValue(pid: pid_t, value: String) -> Bool {
   ) == .success
 }
 
+func confirmPhotonTextField(pid: pid_t) -> Bool {
+  let application = AXUIElementCreateApplication(pid)
+  guard let textField = findTextField(in: application) else {
+    return false
+  }
+  return AXUIElementPerformAction(textField, kAXConfirmAction as CFString) == .success
+}
+
 func setSystemAppearance(dark: Bool) {
   let process = Process()
   process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
@@ -386,7 +394,7 @@ do {
   _ = try wait("launcher search finds Clipboard History") {
     string(launcher($0)["query"]) == "clipboard" && int(launcher($0)["resultCount"]) > 0
   }
-  postKey(36)
+  try require(confirmPhotonTextField(pid: pid), "Accessibility confirms the selected launcher result")
   _ = try wait("launcher Clipboard History entry opens compact") {
     string(launcher($0)["session"]) == "clipboard"
       && string(launcher($0)["content"]) == "searchOnly"
