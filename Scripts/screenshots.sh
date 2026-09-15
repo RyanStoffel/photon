@@ -57,7 +57,7 @@ capture_scenario_window() {
     window_id="$(cat "$window_id_marker")"
   fi
   if [[ -z "$window_id" ]]; then
-    window_id="$(swift "$HELPER" --pid "$pid" --scenario "$scenario")" || {
+    window_id="$(swift "$HELPER" --pid "$pid" --owner Photon --layer 0 --scenario "$scenario")" || {
       echo "No matching Photon window for scenario $scenario (pid $pid)" >&2
       return 1
     }

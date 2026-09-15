@@ -1,18 +1,33 @@
 #!/usr/bin/env bash
-# Automated checks agents and CI must pass before merging clipboard or files work.
+# Focused parity fixtures agents and CI run in addition to the full suite.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "==> clipboard key-handling (compact, Down expands, Up/Down, dismiss reset)"
-cargo test -p photon-core --lib launcher::tests -- --nocapture
+echo "==> launcher compact layout, anchor and snap math"
+swift test --filter LauncherLayoutTests
+swift test --filter LauncherPositionTests
 
-echo "==> screenshot compact-bar layout (no overlay)"
-cargo test -p photon-core --lib screenshot::tests -- --nocapture
+echo "==> clipboard filtering, persistence and launcher entry"
+swift test --filter ClipboardSearchTests
+swift test --filter ClipboardStoreTests
 
-echo "==> files: ember ranks Ember_Individual_Pitch.pdf from a fixture home"
-cargo test -p photon-files --lib engine::tests::ember_ranks_pitch_pdf_from_fixture_without_spotlight_index -- --nocapture
-cargo test -p photon-files --lib ranker::tests::ember_surfaces_pitch_pdf_above_prefixed_folders -- --nocapture
+echo "==> app/settings search and icon metadata"
+swift test --filter PhotonAppsTests
+swift test --filter CommandIconTests
 
-echo "Harness green."
+echo "==> file fixtures (ember ranking, home scope, mixed matching)"
+swift test --filter FileRankerTests
+swift test --filter FilePathScopeTests
+swift test --filter FileFuzzyMatcherTests
+swift test --filter SpotlightQueryBuilderTests
+swift test --filter MdfindInvocationTests
+
+echo "==> notes, configurable shortcuts and window layout"
+swift test --filter PhotonNotesTests
+swift test --filter KeybindsConfigurationTests
+swift test --filter KeyShortcutTests
+swift test --filter WindowLayoutTests
+
+echo "Focused parity fixture harness green."

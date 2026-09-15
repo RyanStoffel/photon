@@ -16,11 +16,11 @@ CI rejects pull requests whose head branch does not match (Dependabot's `dependa
 | --- | --- | --- |
 | Feature | `feature/GH-<issue>-<slug>` | `feature/GH-12-clipboard-history` |
 | Bug fix | `bug/GH-<issue>-<slug>` | `bug/GH-34-hotkey-crash` |
-| Chore | `chore/<slug>` | `chore/bump-actions` |
+| Chore | `chore/<slug>` | `chore/bump-swiftlint` |
 | Docs | `docs/<slug>` | `docs/releasing` |
-| Release | `release/<slug>` | `release/0-3-0` |
+| Release | `release/<slug>` | `release/0.1.0` |
 
-`<slug>` is lowercase letters, digits, and hyphens. Create the GitHub issue first, then name the branch after it. Chore slugs must not contain dots.
+`<slug>` is lowercase letters, digits, and hyphens. Create the GitHub issue first, then name the branch after it.
 
 ## Commits
 
@@ -30,10 +30,10 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 feat(launcher): rank apps by frecency
 fix(hotkey): detect Spotlight conflict on first launch
 docs: describe how to add a provider
-chore(ci): cache cargo build artifacts
+chore(ci): cache SwiftPM build artifacts
 ```
 
-Keep commits small and scoped to one concern. Do not add `Co-authored-by: Cursor` trailers.
+Keep commits small and scoped to one concern.
 
 ## Pull requests
 
@@ -41,20 +41,19 @@ Keep commits small and scoped to one concern. Do not add `Co-authored-by: Cursor
 2. Open the PR against `develop` (never `main`, except release PRs).
 3. Fill in the PR template. Link the issue with `Closes #N`.
 4. Wait for CI: `branch-name`, `lint`, `build`, `test`, `smoke`.
-5. Do not merge a clipboard or files PR until `Scripts/check-harness.sh` is green (the `test` job runs it).
-6. Squash-merge once checks are green.
+5. Squash-merge once checks are green.
 
-Workers cannot compile GPUI/AppKit locally on Linux. GitHub Actions `macos-latest` is the compiler: push, watch the run, read failed logs, fix, repeat. Do not claim a change builds until CI is green. The `smoke` job launches the built app on the runner for eight seconds and fails on a crash; it is the only runtime check, so treat a red `smoke` as a real bug, not flakiness, until the log says otherwise.
+Workers cannot compile macOS code locally. GitHub Actions `macos-latest` is the compiler: push, watch the run, read failed logs, fix, repeat. Do not claim a change builds until CI is green. The `smoke` job launches the built app on the runner for eight seconds and fails on a crash; it is the only runtime check, so treat a red `smoke` as a real bug, not flakiness, until the log says otherwise.
 
 ## Local development
 
-Photon is a Cargo workspace. The menu-bar app is produced by `Scripts/package_app.sh`.
+Photon is a Swift Package. There is no committed `.xcodeproj`. The menu-bar app is produced by `Scripts/package_app.sh`.
 
 ### Prerequisites
 
-- macOS 14 or later to run the app
-- Rust 1.88 (`rust-toolchain.toml`)
-- Xcode / Metal for GPUI
+- macOS 14 or later
+- Xcode 16+ / a Swift 6 toolchain
+- [SwiftLint](https://github.com/realm/SwiftLint) and [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) (both are preinstalled on GitHub-hosted macOS runners)
 
 ### Build the app
 
@@ -66,19 +65,35 @@ Scripts/package_app.sh
 open build/Photon.app
 ```
 
-`Scripts/package_app.sh` builds the `photon` binary in Release, wraps it as `build/Photon.app`, writes the version from `VERSION` into `Info.plist`, and ad-hoc signs the bundle.
+`Scripts/package_app.sh` builds the `Photon` executable in Release, wraps it as `build/Photon.app`, writes the version from `VERSION` into `Info.plist`, and ad-hoc signs the bundle.
 
 ### Tests and lint
 
 ```sh
-Scripts/check-harness.sh
-cargo test --workspace
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets
+swift test --package-path .
+swiftformat --lint .
+swiftlint
 ```
 
-`photon-core`, `photon-clipboard`, and `photon-files` compile on Linux. The GPUI crate (`photon`) is macOS-only.
+`PhotonCore` (fuzzy matching, frecency, the command registry) has no AppKit dependency and compiles on Linux, as does the non-AppKit half of `PhotonClipboard` (its AppKit files are wrapped in `#if canImport(AppKit)`). The other feature modules are gated with `#if os(macOS)` in `Package.swift`.
 
-### Screenshots
+### Opening in Xcode
 
-`Scripts/screenshots.sh` (macOS) captures compact-bar stills. `Scripts/check-screenshot-compact.sh` rejects overlay-tall clipboard/files empty PNGs.
+```sh
+xed .
+```
+
+Xcode generates a workspace from `Package.swift`. Do not commit it.
+
+## Adding a feature
+
+Phase 2 features land as their own provider module. See [docs/architecture.md](docs/architecture.md). In short:
+
+1. Open (or create) the issue, branch `feature/GH-<n>-<name>` from `develop`.
+2. Implement the provider under `Sources/Photon<Name>/`. Register it in `AppRuntime` only.
+3. Keep shared files (`Command.swift`, `CommandRegistry.swift`, `AppRuntime.swift`) stable. Prefer adding a new file over editing a shared one.
+4. Open a PR against `develop`.
+
+## Releases
+
+See [docs/releasing.md](docs/releasing.md). Do not push `v*.*.*` tags unless you intend to publish a GitHub Release.
