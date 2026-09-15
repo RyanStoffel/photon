@@ -1,6 +1,6 @@
 # UI screenshot harness
 
-Photon can render deterministic UI states for automated screenshots on GitHub Actions macOS runners. This supports agent and human visual QA without a dedicated Mac.
+Photon can render deterministic UI states for automated screenshots on GitHub Actions macOS runners. Compact-bar scenarios must match the pill stills (no huge dim overlay). `Scripts/check-screenshot-compact.sh` enforces a maximum PNG height on `launcher-empty`, `clipboard-empty`, and `files-empty`.
 
 ## Scenarios
 

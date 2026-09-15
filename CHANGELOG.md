@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-15
+
+Rewrite: Photon is now a Rust + GPUI menu-bar agent. Clipboard compact bar and home-scoped file search are actually fixed, with a verification harness that CI must pass.
+
+### Changed
+
+- Photon is now a Rust + GPUI app. The Swift/SwiftUI+AppKit binary is no longer what we ship. The compact pill launcher, footer, calculator card, clipboard/files modes, drag+snap, settings, and notes are ported to match the previous UI.
+
+### Fixed
+
+- Clipboard: Cmd+Shift+V (and opening clipboard from the main launcher) always restores the compact bar. Down expands history; Up/Down cycle with or without a query. Dismiss resets compact size so the next open is not a clipped bar in a huge dim overlay.
+- File search: home-scoped `mdfind` plus filename/basename matching so `ember` ranks `Ember_Individual_Pitch.pdf` under Documents, not only folders in Developer. File hits mix into the main launcher without typing “files”. Empty Files stays compact; search cannot stick on a full-panel Searching overlay. The fixture harness passes without a full-disk Spotlight index.
+
+### Added
+
+- `Scripts/check-harness.sh` — required clipboard key-handling tests, ember ranking tests, and compact screenshot layout checks. CI `test` runs it on `macos-latest`.
+
+
 ## [0.2.3] - 2026-09-14
 
 Patch release: clipboard reopen/arrows, live-snap drag, Documents file search, and Down-to-recents.
