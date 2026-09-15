@@ -157,7 +157,6 @@ func runningWindowBounds(pid: pid_t) -> CGRect? {
   ) as? [[String: Any]] ?? []
   return windows.compactMap { entry -> CGRect? in
     guard int(entry[kCGWindowOwnerPID as String]) == pid,
-          int(entry[kCGWindowLayer as String]) == 0,
           let bounds = entry[kCGWindowBounds as String] as? [String: Any]
     else {
       return nil
