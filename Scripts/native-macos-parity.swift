@@ -400,7 +400,7 @@ do {
       && string(launcher($0)["content"]) == "searchOnly"
   }
 
-  postKey(9, flags: [.maskCommand, .maskShift])
+  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
   _ = try wait("clipboard closes before icon test") { !bool(launcher($0)["visible"]) }
   postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
   report = try wait("launcher reopens for app icon test") { bool(launcher($0)["visible"]) }
