@@ -50,6 +50,7 @@ final class LauncherViewModel: ObservableObject {
   @Published var selectedID: String?
   @Published var isLoading = false
   @Published var lastError: String?
+  @Published private(set) var focusGeneration = 0
   @Published private(set) var session: LauncherSession = .commands {
     didSet { updateContent() }
   }
@@ -143,6 +144,10 @@ final class LauncherViewModel: ObservableObject {
 
   func refreshLayout() {
     updateContent()
+  }
+
+  func requestSearchFocus() {
+    focusGeneration &+= 1
   }
 
   func resetForShow() {

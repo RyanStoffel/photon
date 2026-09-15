@@ -141,6 +141,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     position(panel)
     panel.orderFrontRegardless()
     panel.makeKey()
+    model.requestSearchFocus()
     startMonitor()
     Task {
       await registry.reloadAll()
@@ -166,6 +167,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     UIScenarioWindowLayout.position(panel, size: panel.frame.size)
     panel.orderFrontRegardless()
     panel.makeKey()
+    model.requestSearchFocus()
     startMonitor()
     if !query.isEmpty {
       model.query = query
@@ -210,6 +212,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     position(panel)
     panel.orderFrontRegardless()
     panel.makeKey()
+    model.requestSearchFocus()
     startMonitor()
     model.enterClipboard(query: "")
   }

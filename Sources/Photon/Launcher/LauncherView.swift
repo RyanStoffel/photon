@@ -9,6 +9,7 @@ struct LauncherView: View {
   var onRun: () -> Void
   var onSearchBarDrag: ((LauncherSearchBarDragPhase) -> Void)?
   @EnvironmentObject private var settings: SettingsStore
+  @FocusState private var searchFocused: Bool
 
   static let defaultPlaceholder = "Search apps, files, notes and more\u{2026}"
 
@@ -48,7 +49,11 @@ struct LauncherView: View {
         .strokeBorder(Color.primary.opacity(0.1), lineWidth: LauncherLayout.hairline)
     )
     .onAppear {
+      searchFocused = true
       Task { await model.refresh() }
+    }
+    .onChange(of: model.focusGeneration) {
+      searchFocused = true
     }
   }
 
@@ -65,6 +70,7 @@ struct LauncherView: View {
       TextField(placeholder, text: $model.query)
         .textFieldStyle(.plain)
         .font(.system(size: 20))
+        .focused($searchFocused)
         .onSubmit {
           Task { await run() }
         }
