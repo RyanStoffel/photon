@@ -9,12 +9,14 @@ Photon has two required test layers.
 - verifies `LSUIElement`, `.accessory` activation policy, a visible `NSStatusItem`, and its menu;
 - opens clipboard history with the real global `Cmd+Shift+V` registration;
 - inspects the actual `LauncherPanel` style, traffic-light state, floating level, frame, and corresponding `CGWindow`;
-- posts a mouse click, arrows, and text, then checks that expansion and filtering keep the top edge fixed;
-- cycles clipboard rows, dismisses/reopens the session, and enters clipboard from launcher search;
+- drags several safe chrome points with real mouse events, checking free X/Y movement, center-corridor snapping, stable frames, guides, and preserved search/row clicks;
+- cycles clipboard rows, validates complete text and image detail with Vision OCR, and pastes a unique sentinel into a real helper text field;
+- drives the controlled `NSOpenPanel` adapter from ungranted through persisted security-scoped access, resumes `ember`, relaunches the packaged app, and verifies the grant still works;
+- opens empty Files to seeded PDF/image recents, moves selection with Up/Down, and OCR-validates Quick Look previews and metadata before querying `ember`;
 - opens the launcher through a non-system-reserved configured hotkey and verifies application bundle icon resolution;
 - changes the system appearance while Photon remains running and verifies both effective appearance and resolved colors update;
 - attempts Accessibility window introspection when the runner grants it, with `CGWindow` as the non-TCC fallback.
 
-The app-side reporter is inert unless `PHOTON_NATIVE_PARITY_REPORT_PATH` is set. The harness also sets `PHOTON_ISOLATED_DATA_ROOT`, so it never reads or modifies the normal Photon profile.
+The app-side reporter and controlled adapters are inert unless `PHOTON_NATIVE_PARITY_REPORT_PATH` is set. The harness also sets `PHOTON_ISOLATED_DATA_ROOT`, so it never reads or modifies the normal Photon profile.
 
 `Scripts/screenshots.sh` captures every real built scenario in light and dark appearance. `Scripts/check-screenshot-compact.sh` rejects traffic-light-like title chrome and oversized empty-launcher captures.
