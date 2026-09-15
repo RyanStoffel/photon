@@ -150,15 +150,15 @@ final class NativeParityReporter: NSObject {
   }
 
   private func handleCommand(runtime: AppRuntime) {
-    guard let commandURL,
-          let command = try? String(contentsOf: commandURL, encoding: .utf8)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    else {
+    guard let commandURL, let contents = try? String(contentsOf: commandURL, encoding: .utf8) else {
       return
     }
+    let command = contents.trimmingCharacters(in: .whitespacesAndNewlines)
     try? FileManager.default.removeItem(at: commandURL)
     if command == "hideLauncher" {
       runtime.launcher.hide()
+    } else if command == "showLauncher" {
+      runtime.launcher.show()
     }
   }
 

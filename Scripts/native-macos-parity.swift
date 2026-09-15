@@ -142,21 +142,7 @@ func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags = []) {
   Thread.sleep(forTimeInterval: 0.12)
 }
 
-func postKey(to pid: pid_t, keyCode: CGKeyCode, flags: CGEventFlags = []) {
-  guard let source = CGEventSource(stateID: .combinedSessionState),
-        let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
-        let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-  else {
-    return
-  }
-  down.flags = flags
-  up.flags = flags
-  down.postToPid(pid)
-  up.postToPid(pid)
-  Thread.sleep(forTimeInterval: 0.12)
-}
-
-func postText(_ text: String, to pid: pid_t) {
+func postText(_ text: String) {
   guard let source = CGEventSource(stateID: .combinedSessionState) else {
     return
   }
@@ -169,8 +155,8 @@ func postText(_ text: String, to pid: pid_t) {
     var value = UniChar(scalar.value)
     down.keyboardSetUnicodeString(stringLength: 1, unicodeString: &value)
     up.keyboardSetUnicodeString(stringLength: 1, unicodeString: &value)
-    down.postToPid(pid)
-    up.postToPid(pid)
+    down.post(tap: .cghidEventTap)
+    up.post(tap: .cghidEventTap)
     Thread.sleep(forTimeInterval: 0.04)
   }
 }
@@ -350,46 +336,6 @@ do {
     int($0["appIconProbeCount"]) > 0
   }
 
-  let expectedFile = "Ember_Individual_Pitch.pdf"
-  postKey(35, flags: [.maskCommand, .maskAlternate, .maskControl])
-  report = try wait("configured global hotkey opens the launcher for mixed file search") {
-    let value = launcher($0)
-    return bool(value["visible"])
-      && bool(value["key"])
-      && string(value["session"]) == "commands"
-      && string(value["mode"]).isEmpty
-  }
-  clickSearchField(report)
-  try require(focusPhotonTextField(pid: pid), "Accessibility focuses mixed-search field")
-  try require(setPhotonTextFieldValue(pid: pid, value: "ember"), "Accessibility enters mixed file query")
-  report = try wait("mixed launcher visibly displays the seeded PDF", timeout: 8) {
-    string(launcher($0)["query"]) == "ember"
-      && string(launcher($0)["mode"]).isEmpty
-      && displayedTitles($0).contains(expectedFile)
-  }
-  try captureLauncher(report, name: "ember-mixed-search")
-
-  try require(bool(launcher(report)["key"]), "launcher remains the key-event target")
-  try require(setPhotonTextFieldValue(pid: pid, value: "files"), "Accessibility searches for Files command")
-  _ = try wait("launcher visibly displays Search Files") {
-    displayedTitles($0).contains("Search Files")
-  }
-  try require(confirmPhotonTextField(pid: pid), "Accessibility invokes Search Files")
-  report = try wait("explicit Files mode opens") {
-    string(launcher($0)["mode"]) == "files" && bool(launcher($0)["key"])
-  }
-  try require(setPhotonTextFieldValue(pid: pid, value: "ember"), "Accessibility enters explicit Files query")
-  report = try wait("explicit Files mode visibly displays the seeded PDF", timeout: 8) {
-    string(launcher($0)["query"]) == "ember"
-      && string(launcher($0)["mode"]) == "files"
-      && displayedTitles($0).contains(expectedFile)
-  }
-  try captureLauncher(report, name: "ember-files-mode")
-  try sendRuntimeCommand("hideLauncher")
-  _ = try wait("native runtime hook dismisses file session") {
-    !bool(launcher($0)["visible"])
-  }
-
   _ = try wait("clipboard monitor captured four runtime fixtures") { int($0["clipboardCaptureCount"]) >= 4 }
   postKey(9, flags: [.maskCommand, .maskShift])
   report = try wait("Cmd+Shift+V opens compact clipboard history") {
@@ -443,14 +389,14 @@ do {
     bool(launcher($0)["key"]) && abs(top($0) - anchoredTop) < 0.5
   }
 
-  postKey(to: pid, keyCode: 125)
+  postKey(125)
   report = try wait("Down expands clipboard results without moving the top edge") {
     string(launcher($0)["content"]) == "rows"
       && int(launcher($0)["clipboardSelectedIndex"]) >= 0
       && abs(top($0) - anchoredTop) < 0.5
   }
   let firstSelection = int(launcher(report)["clipboardSelectedIndex"])
-  postKey(to: pid, keyCode: 125)
+  postKey(125)
   report = try wait("Down cycles clipboard selection") {
     int(launcher($0)["clipboardSelectedIndex"]) != firstSelection
   }
@@ -459,19 +405,19 @@ do {
     "expanded clipboard exposes the visibly selected row"
   )
   try captureLauncher(report, name: "clipboard-hotkey-selection")
-  postKey(to: pid, keyCode: 126)
+  postKey(126)
   _ = try wait("Up cycles clipboard selection") {
     int(launcher($0)["clipboardSelectedIndex"]) == firstSelection
   }
 
-  postText("needle", to: pid)
+  postText("needle")
   _ = try wait("typing filters clipboard and preserves the anchor") {
     string(launcher($0)["query"]) == "needle"
       && int(launcher($0)["clipboardResultCount"]) == 1
       && abs(top($0) - anchoredTop) < 0.5
   }
 
-  postKey(to: pid, keyCode: 36)
+  postKey(36)
   _ = try wait("Enter uses the selected clipboard item and dismisses") {
     !bool(launcher($0)["visible"])
   }
@@ -510,23 +456,63 @@ do {
     string(launcher($0)["session"]) == "clipboard"
       && string(launcher($0)["content"]) == "searchOnly"
   }
-  postKey(to: pid, keyCode: 125)
+  postKey(125)
   report = try wait("launcher-entry Down expands clipboard history") {
     string(launcher($0)["content"]) == "rows"
       && int(launcher($0)["clipboardSelectedIndex"]) >= 0
       && bool(launcher($0)["key"])
   }
   let launcherEntryFirstSelection = int(launcher(report)["clipboardSelectedIndex"])
-  postKey(to: pid, keyCode: 125)
+  postKey(125)
   report = try wait("launcher-entry Down visibly moves selection") {
     int(launcher($0)["clipboardSelectedIndex"]) != launcherEntryFirstSelection
       && !string(launcher($0)["clipboardSelectedTitle"]).isEmpty
   }
   try captureLauncher(report, name: "clipboard-launcher-selection")
-  postKey(to: pid, keyCode: 126)
+  postKey(126)
   _ = try wait("launcher-entry Up visibly restores selection") {
     int(launcher($0)["clipboardSelectedIndex"]) == launcherEntryFirstSelection
   }
+
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("clipboard session closes before file-search tests") {
+    !bool(launcher($0)["visible"])
+  }
+  try sendRuntimeCommand("showLauncher")
+  report = try wait("native runtime hook opens the launcher for mixed file search") {
+    let value = launcher($0)
+    return bool(value["visible"])
+      && bool(value["key"])
+      && string(value["session"]) == "commands"
+      && string(value["mode"]).isEmpty
+  }
+  let expectedFile = "Ember_Individual_Pitch.pdf"
+  clickSearchField(report)
+  try require(focusPhotonTextField(pid: pid), "Accessibility focuses mixed-search field")
+  try require(setPhotonTextFieldValue(pid: pid, value: "ember"), "Accessibility enters mixed file query")
+  report = try wait("mixed launcher visibly displays the seeded PDF", timeout: 8) {
+    string(launcher($0)["query"]) == "ember"
+      && string(launcher($0)["mode"]).isEmpty
+      && displayedTitles($0).contains(expectedFile)
+  }
+  try captureLauncher(report, name: "ember-mixed-search")
+
+  try require(bool(launcher(report)["key"]), "launcher remains the key-event target")
+  try require(setPhotonTextFieldValue(pid: pid, value: "files"), "Accessibility searches for Files command")
+  _ = try wait("launcher visibly displays Search Files") {
+    displayedTitles($0).contains("Search Files")
+  }
+  try require(confirmPhotonTextField(pid: pid), "Accessibility invokes Search Files")
+  report = try wait("explicit Files mode opens") {
+    string(launcher($0)["mode"]) == "files" && bool(launcher($0)["key"])
+  }
+  try require(setPhotonTextFieldValue(pid: pid, value: "ember"), "Accessibility enters explicit Files query")
+  report = try wait("explicit Files mode visibly displays the seeded PDF", timeout: 8) {
+    string(launcher($0)["query"]) == "ember"
+      && string(launcher($0)["mode"]) == "files"
+      && displayedTitles($0).contains(expectedFile)
+  }
+  try captureLauncher(report, name: "ember-files-mode")
 
   let light = dictionary(report["appearance"])
   setSystemAppearance(dark: true)
