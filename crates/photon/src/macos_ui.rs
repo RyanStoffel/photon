@@ -106,7 +106,7 @@ pub fn run() -> Result<(), String> {
             if let ScreenshotScenario::LauncherQuery(q) = scenario {
                 state.commands = apps::search_apps(&apps, q)
                     .into_iter()
-                    .map(|a| command_from_app(a))
+                    .map(command_from_app)
                     .collect();
                 // Mix a Search Files row at the top like the Swift launcher.
                 if q.len() >= 3 {
