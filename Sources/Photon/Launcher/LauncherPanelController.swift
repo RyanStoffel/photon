@@ -282,6 +282,12 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     panel.activeMode = { [weak self] in
       self?.model.activeMode
     }
+    panel.mouseDownHandler = { [weak self, weak panel] event in
+      guard let self, let panel else {
+        return false
+      }
+      return handleChromeMouseDown(event, panel: panel)
+    }
 
     // System material behind the whole panel, clipped to the rounded shape. The window
     // shadow follows the opaque region, so the corners stay clean.
@@ -299,9 +305,6 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       model: model,
       onRun: { [weak self] in
         self?.hide()
-      },
-      onSearchBarDrag: { [weak self] phase in
-        self?.handleSearchBarDrag(phase)
       }
     ).environmentObject(settings))
     host.safeAreaRegions = []

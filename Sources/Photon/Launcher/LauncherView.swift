@@ -7,7 +7,6 @@ import SwiftUI
 struct LauncherView: View {
   @ObservedObject var model: LauncherViewModel
   var onRun: () -> Void
-  var onSearchBarDrag: ((LauncherSearchBarDragPhase) -> Void)?
   @EnvironmentObject private var settings: SettingsStore
   @FocusState private var searchFocused: Bool
 
@@ -44,9 +43,6 @@ struct LauncherView: View {
     }
     .frame(width: model.panelWidth, height: LauncherLayout.height(for: model.content), alignment: .top)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    .overlay {
-      LauncherDragChromeOverlay(onDrag: onSearchBarDrag)
-    }
     .overlay(
       RoundedRectangle(cornerRadius: LauncherLayout.cornerRadius, style: .continuous)
         .strokeBorder(Color.primary.opacity(0.1), lineWidth: LauncherLayout.hairline)
@@ -263,50 +259,6 @@ struct LauncherView: View {
         onRun()
       }
     }
-  }
-}
-
-/// Draggable outer chrome that never overlaps the search field, rows, scroll
-/// content, or footer controls. The full top edge and both side gutters are
-/// safe click-and-hold targets in every launcher layout.
-private struct LauncherDragChromeOverlay: View {
-  let onDrag: ((LauncherSearchBarDragPhase) -> Void)?
-
-  var body: some View {
-    GeometryReader { proxy in
-      ZStack {
-        VStack(spacing: 0) {
-          dragSurface
-            .frame(height: 7)
-          Spacer(minLength: 0)
-        }
-        HStack(spacing: 0) {
-          dragSurface
-            .frame(width: 8)
-          Spacer(minLength: 0)
-          dragSurface
-            .frame(width: 8)
-        }
-        .frame(width: proxy.size.width, height: proxy.size.height)
-        VStack(spacing: 0) {
-          HStack(spacing: 0) {
-            dragSurface
-              .frame(width: 20)
-            Spacer(minLength: 0)
-            dragSurface
-              .frame(width: 20)
-          }
-          .frame(height: LauncherLayout.searchFieldHeight)
-          Spacer(minLength: 0)
-        }
-      }
-    }
-  }
-
-  private var dragSurface: some View {
-    Color.clear
-      .launcherSearchBarDrag(onSearchBarDrag: onDrag)
-      .accessibilityHidden(true)
   }
 }
 
