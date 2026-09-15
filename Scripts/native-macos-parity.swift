@@ -596,7 +596,7 @@ do {
   }
   clickSearchField(report)
   try require(focusPhotonTextField(pid: pid), "Accessibility refocuses the Files mode field")
-  postText(fileAccessQuery)
+  try sendRuntimeCommand("setFilesQuery:\(fileAccessQuery)")
   report = try wait("ungranted fallback offers one guided folder action", timeout: 8) {
     string(launcher($0)["query"]) == fileAccessQuery
       && string(launcher($0)["fileStatus"]) == "needsAccess"

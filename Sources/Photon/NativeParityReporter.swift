@@ -171,6 +171,8 @@ final class NativeParityReporter: NSObject {
       if let mode = runtime.launcher.model.modes.first(where: { $0.id == "files" }) {
         runtime.launcher.model.enter(mode: mode, query: query)
       }
+    } else if command.hasPrefix("setFilesQuery:") {
+      runtime.launcher.model.query = String(command.dropFirst("setFilesQuery:".count))
     }
   }
 
