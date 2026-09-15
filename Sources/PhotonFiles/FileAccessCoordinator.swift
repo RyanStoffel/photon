@@ -175,12 +175,12 @@ public final class FileAccessCoordinator: ObservableObject {
       }
       _ = url.startAccessingSecurityScopedResource()
       activeURLs.append(url)
-      if stale,
-         let bookmark = try? url.bookmarkData(
-           options: [.withSecurityScope],
-           includingResourceValuesForKeys: nil,
-           relativeTo: nil
-         ) {
+      let refreshedBookmark = try? url.bookmarkData(
+        options: [.withSecurityScope],
+        includingResourceValuesForKeys: nil,
+        relativeTo: nil
+      )
+      if stale, let bookmark = refreshedBookmark {
         refreshed.append(Grant(path: url.standardizedFileURL.path, bookmark: bookmark))
       } else {
         refreshed.append(Grant(path: url.standardizedFileURL.path, bookmark: grant.bookmark))

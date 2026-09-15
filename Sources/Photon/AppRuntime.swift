@@ -226,8 +226,8 @@ final class AppRuntime: ObservableObject {
     let previousGrantCount = fileAccess.grants.count
     settings.selectedPane = .files
     openSettings()
-    if NativeParityReporter.isRequested,
-       let path = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION"] {
+    let paritySelection = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION"]
+    if NativeParityReporter.isRequested, let path = paritySelection {
       fileAccess.requestAccess(using: NativeParityFileAccessPanel(path: path))
     } else {
       fileAccess.requestAccess()
