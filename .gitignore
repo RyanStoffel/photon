@@ -1,6 +1,8 @@
 .build/
 .swiftpm/
+/target
 build/
+dist/
 DerivedData/
 *.xcodeproj
 *.xcworkspace
@@ -15,3 +17,4 @@ agent-tools/
 *.p12
 *.mobileprovision
 Package.resolved
+Cargo.lock.bak
