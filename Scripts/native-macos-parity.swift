@@ -438,30 +438,32 @@ do {
 
   try sendRuntimeCommand("showLauncher")
   report = try wait("drag checks open the compact launcher") {
-    bool(launcher($0)["visible"]) && string(launcher($0)["content"]) == "searchOnly"
+    bool(launcher($0)["visible"])
+      && bool(launcher($0)["key"])
+      && string(launcher($0)["content"]) == "searchOnly"
   }
   let centeredX = double(frame(report)["x"])
   let firstY = double(frame(report)["y"])
   let panelWidth = double(frame(report)["width"])
   let firstGuides = dragLauncher(
     report,
-    xFromLeft: panelWidth / 2,
-    yFromTop: 10,
+    xFromLeft: 12,
+    yFromTop: 30,
     deltaX: -430,
     deltaY: 70
   )
-  report = try wait("top chrome drag keeps outside-corridor X free and adjusts Y") {
+  report = try wait("left chrome drag keeps outside-corridor X free and adjusts Y") {
     abs(double(frame($0)["x"]) - centeredX) > 120
       && abs(double(frame($0)["y"]) - firstY) > 30
       && bool(dictionary(dictionary($0["settings"])["launcherPosition"])["centered"]) == false
   }
-  try require(firstGuides, "top chrome drag displays center guides")
+  try require(firstGuides, "left chrome drag displays center guides")
 
   let freeX = double(frame(report)["x"])
   let freeY = double(frame(report)["y"])
   let secondGuides = dragLauncher(
     report,
-    xFromLeft: 4,
+    xFromLeft: 12,
     yFromTop: 30,
     deltaX: centeredX - freeX,
     deltaY: -55
@@ -476,7 +478,7 @@ do {
   let snappedY = double(frame(report)["y"])
   _ = dragLauncher(
     report,
-    xFromLeft: panelWidth - 4,
+    xFromLeft: panelWidth - 12,
     yFromTop: 30,
     deltaX: 0,
     deltaY: 45
