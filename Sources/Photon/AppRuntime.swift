@@ -238,7 +238,10 @@ final class AppRuntime: ObservableObject {
     fileSearch?.refreshConfiguration()
     settingsWindowController?.window?.orderOut(nil)
     if let mode = launcher.model.modes.first(where: { $0.id == "files" }) {
-      launcher.resume(mode: mode, query: query)
+      Task { [weak self] in
+        try? await Task.sleep(for: .milliseconds(100))
+        self?.launcher.resume(mode: mode, query: query)
+      }
     }
   }
 
