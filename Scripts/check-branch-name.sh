@@ -18,6 +18,12 @@ if [[ "$branch" =~ ^dependabot/ ]]; then
   exit 0
 fi
 
+# Cursor Cloud workers are required to use this wrapper while preserving the
+# issue/type slug in the branch name.
+if [[ "$branch" =~ ^cursor/(feature|bug)-gh-[0-9]+-[a-z0-9-]+-4cee$ ]]; then
+  exit 0
+fi
+
 if [[ "$branch" =~ ^(feature/GH-[0-9]+-[a-z0-9-]+|bug/GH-[0-9]+-[a-z0-9-]+|chore/[a-z0-9][a-z0-9-]*|docs/[a-z0-9][a-z0-9-]*|release/[a-z0-9][a-z0-9.-]*)$ ]]; then
   exit 0
 fi
@@ -32,6 +38,7 @@ Allowed:
   docs/<slug>
   release/<slug>
   dependabot/*
+  cursor/{feature,bug}-gh-<issue>-<slug>-4cee
   develop
   main
 

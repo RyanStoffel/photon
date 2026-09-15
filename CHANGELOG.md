@@ -6,23 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-09-15
+## [0.3.1] - 2026-09-15
 
-Rewrite: Photon is now a Rust + GPUI menu-bar agent. Clipboard compact bar and home-scoped file search are actually fixed, with a verification harness that CI must pass.
-
-### Changed
-
-- Photon is now a Rust + GPUI app. The Swift/SwiftUI+AppKit binary is no longer what we ship. The compact pill launcher, footer, calculator card, clipboard/files modes, drag+snap, settings, and notes are ported to match the previous UI.
+Emergency rollback release: restore the v0.2.3 Swift/AppKit implementation after the v0.3.0 Rust/GPUI rewrite failed the native macOS parity gate.
 
 ### Fixed
 
-- Clipboard: Cmd+Shift+V (and opening clipboard from the main launcher) always restores the compact bar. Down expands history; Up/Down cycle with or without a query. Dismiss resets compact size so the next open is not a clipped bar in a huge dim overlay.
-- File search: home-scoped `mdfind` plus filename/basename matching so `ember` ranks `Ember_Individual_Pitch.pdf` under Documents, not only folders in Developer. File hits mix into the main launcher without typing “files”. Empty Files stays compact; search cannot stick on a full-panel Searching overlay. The fixture harness passes without a full-disk Spotlight index.
+- Restored the borderless floating `NSPanel`, accessory activation policy, and menu-bar item/menu. Photon stays out of the Dock and the launcher has no title bar or traffic lights.
+- Restored live system light/dark appearance, top-edge-anchored panel resizing, Finder application bundle icons, and the global `Cmd+Shift+V` clipboard workflow.
+- Restored the complete v0.2.3 feature set: app and System Settings search, calculator, home file search and mixed results, empty-Down recommendations, notes, settings, configurable hotkeys, drag/snap, keybinds, and footer actions.
+- Added a packaged-app runtime harness on `macos-latest`. It drives global hotkeys, clicks, typing, arrow navigation, live appearance changes, and clipboard reopen; it inspects `NSRunningApplication`, `CGWindow`, panel style/frame, menu status, and icon resolution.
+- Added light/dark screenshot validation that rejects traffic-light-like title chrome and oversized compact launcher captures.
 
-### Added
+### Changed
 
-- `Scripts/check-harness.sh` — required clipboard key-handling tests, ember ranking tests, and compact screenshot layout checks. CI `test` runs it on `macos-latest`.
+- The Rust/GPUI rewrite remains recorded in v0.3.0 history but is not the shipping implementation. Swift 6 + SwiftUI/AppKit is the release stack again.
 
+## [0.3.0] - 2026-09-14
+
+Rust + GPUI rewrite. Superseded by v0.3.1 because the shipped app regressed native macOS panel, Dock/menu, appearance, positioning, icon, clipboard, and feature behavior.
 
 ## [0.2.3] - 2026-09-14
 
@@ -128,7 +130,9 @@ First public build. Photon is a menu-bar launcher for macOS 14 and later; it has
 - The Intel slice of the universal binary has only been compiled, not run.
 - The Hyper key and window management need Accessibility access. The Caps Lock remap uses a per-login-session `hidutil` mapping; Settings > Keybinds > Reset Key Mapping restores the key if Photon quits abnormally.
 
-[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/RyanStoffel/photon/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/RyanStoffel/photon/releases/tag/v0.3.0
 [0.2.3]: https://github.com/RyanStoffel/photon/releases/tag/v0.2.3
 [0.2.2]: https://github.com/RyanStoffel/photon/releases/tag/v0.2.2
 [0.2.1]: https://github.com/RyanStoffel/photon/releases/tag/v0.2.1

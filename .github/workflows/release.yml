@@ -60,18 +60,11 @@ jobs:
             echo "prerelease=$prerelease"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.88.0
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-      - name: Cache cargo
+      - name: Cache SwiftPM
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'crates/**/*.rs', 'Cargo.toml') }}
+          path: .build
+          key: release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.swift', 'Sources/**/*.swift') }}
           restore-keys: |
             release-${{ runner.os }}-${{ runner.arch }}-
 
@@ -107,6 +100,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/smoke"
           ditto -x -k "dist/Photon-${VERSION}.zip" "$RUNNER_TEMP/smoke"
           Scripts/smoke-test.sh "$RUNNER_TEMP/smoke/Photon.app"
+          Scripts/check-native-parity.sh "$RUNNER_TEMP/smoke/Photon.app"
 
       - name: Write release notes
         env:
