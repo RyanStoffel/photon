@@ -31,10 +31,22 @@ final class AppRuntime: ObservableObject {
     let dir = Self.applicationSupportDirectory()
     frecencyURL = dir.appendingPathComponent("frecency.json")
     launcher = LauncherPanelController(settings: settings, registry: registry, frecencyURL: frecencyURL)
-    clipboard = ClipboardManager(
-      settings: settings.clipboardSettings,
-      directory: dir.appendingPathComponent("Clipboard", isDirectory: true)
-    )
+    let clipboardDirectory = dir.appendingPathComponent("Clipboard", isDirectory: true)
+    if Self.usesNativeParityPasteTrustOverride {
+      clipboard = ClipboardManager(
+        settings: settings.clipboardSettings,
+        directory: clipboardDirectory,
+        accessibilityTrust: { true },
+        pasteInjector: {
+          Self.nativeParityPasteInjection()
+        }
+      )
+    } else {
+      clipboard = ClipboardManager(
+        settings: settings.clipboardSettings,
+        directory: clipboardDirectory
+      )
+    }
     launcher.attachClipboard(clipboard)
     let notesDirectory = dir.appendingPathComponent("Notes", isDirectory: true)
     notes = NotesIntegration(settings: settings, notesDirectory: notesDirectory)
@@ -50,7 +62,7 @@ final class AppRuntime: ObservableObject {
         keyCode: UInt32(kVK_ANSI_P),
         carbonModifiers: UInt32(cmdKey | optionKey | controlKey)
       )
-      settings.clipboardPasteBehavior = .copy
+      settings.clipboardPasteBehavior = Self.usesNativeParityPasteTrustOverride ? .paste : .copy
       clipboard.settings = settings.clipboardSettings
       settings.appearance = .system
     }
@@ -117,6 +129,23 @@ final class AppRuntime: ObservableObject {
       return nil
     }
     return URL(fileURLWithPath: path, isDirectory: true)
+  }
+
+  private static var usesNativeParityPasteTrustOverride: Bool {
+    NativeParityReporter.isRequested
+      && ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE"] == "1"
+  }
+
+  private static func nativeParityPasteInjection() -> ClipboardPaster.PasteInjectionResult {
+    guard let path = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_INJECTION_PATH"] else {
+      return ClipboardPaster.sendPasteKeystroke(requireAccessibilityTrust: false)
+    }
+    do {
+      try "paste".write(toFile: path, atomically: true, encoding: .utf8)
+      return .posted
+    } catch {
+      return .eventCreationFailed
+    }
   }
 
   func stop() {

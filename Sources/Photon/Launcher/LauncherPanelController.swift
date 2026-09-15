@@ -88,6 +88,12 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     clipboard.onDismiss = { [weak self] in
       self?.hide()
     }
+    manager.onPrepareForPaste = { [weak self] in
+      self?.hide()
+    }
+    manager.onPasteFailure = { [weak self] in
+      self?.showClipboard()
+    }
     model.clipboard = clipboard
   }
 
@@ -140,6 +146,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     model.resetForShow()
     collapseToCompactIfNeeded(force: true)
     position(panel)
+    rememberPreviousApplication()
     panel.orderFrontRegardless()
     panel.makeKey()
     model.requestSearchFocus()
@@ -211,6 +218,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     model.resetForShow()
     collapseToCompactIfNeeded(force: true)
     position(panel)
+    rememberPreviousApplication()
     panel.orderFrontRegardless()
     panel.makeKey()
     model.requestSearchFocus()
@@ -254,9 +262,19 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       return
     }
     self.previousApplication = nil
-    if NSApp.isActive, !previousApplication.isTerminated {
+    if !previousApplication.isTerminated {
       _ = previousApplication.activate(options: [])
     }
+  }
+
+  private func rememberPreviousApplication() {
+    guard previousApplication == nil,
+          let candidate = NSWorkspace.shared.frontmostApplication,
+          candidate.processIdentifier != ProcessInfo.processInfo.processIdentifier
+    else {
+      return
+    }
+    previousApplication = candidate
   }
 
   private func makePanel() -> LauncherPanel {

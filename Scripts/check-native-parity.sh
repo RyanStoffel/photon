@@ -29,6 +29,12 @@ DATA_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/photon-native-parity.XXXXXX")"
 REPORT="$DATA_ROOT/native-report.json"
 COMMAND="$DATA_ROOT/native-command"
 APP_LOG="$DATA_ROOT/photon.log"
+PASTE_TARGET_LOG="$DATA_ROOT/paste-target.log"
+PASTE_TARGET_VALUE="$DATA_ROOT/paste-target-value.txt"
+PASTE_TARGET_COMMAND="$DATA_ROOT/paste-target-command"
+PASTE_INJECTION="$DATA_ROOT/paste-injection"
+PASTE_SENTINEL="Photon v0.3.3 paste sentinel $(uuidgen)"
+PASTE_TARGET_PID=""
 SCREENSHOT_DIR="${NATIVE_PARITY_SCREENSHOT_DIR:-$DATA_ROOT/screenshots}"
 SEED_FILE="$HOME/Documents/Photon Native Parity/Ember_Individual_Pitch.pdf"
 SEED_IMAGE="$HOME/Documents/Photon Native Parity/Photon_Recent_Image.png"
@@ -39,6 +45,9 @@ PID=""
 restore() {
   if [[ -n "$PID" ]] && kill -0 "$PID" 2>/dev/null; then
     kill -TERM "$PID" 2>/dev/null || true
+  fi
+  if [[ -n "$PASTE_TARGET_PID" ]] && kill -0 "$PASTE_TARGET_PID" 2>/dev/null; then
+    kill -TERM "$PASTE_TARGET_PID" 2>/dev/null || true
   fi
   pkill -x Photon 2>/dev/null || true
   defaults delete -g AppleInterfaceStyle 2>/dev/null || true
@@ -69,15 +78,36 @@ swift "$ROOT/Scripts/create-preview-fixtures.swift" "$SEED_FILE" "$SEED_IMAGE"
 /usr/bin/mdimport "$SEED_FILE" >/dev/null 2>&1 || true
 /usr/bin/mdimport "$SEED_IMAGE" >/dev/null 2>&1 || true
 
+swiftc "$ROOT/Scripts/native-paste-target.swift" -o "$DATA_ROOT/native-paste-target"
+"$DATA_ROOT/native-paste-target" "$PASTE_TARGET_VALUE" "$PASTE_TARGET_COMMAND" >"$PASTE_TARGET_LOG" 2>&1 &
+PASTE_TARGET_PID=$!
+for _ in {1..50}; do
+  [[ -f "$PASTE_TARGET_VALUE" ]] && break
+  sleep 0.1
+done
+[[ -f "$PASTE_TARGET_VALUE" ]] || {
+  echo "Paste target did not become ready." >&2
+  cat "$PASTE_TARGET_LOG" >&2
+  exit 1
+}
+
 PHOTON_NATIVE_PARITY_REPORT_PATH="$REPORT" \
 PHOTON_NATIVE_PARITY_COMMAND_PATH="$COMMAND" \
+PHOTON_NATIVE_PARITY_PASTE=1 \
+PHOTON_NATIVE_PARITY_PASTE_SENTINEL="$PASTE_SENTINEL" \
+PHOTON_NATIVE_PARITY_PASTE_INJECTION_PATH="$PASTE_INJECTION" \
 PHOTON_ISOLATED_DATA_ROOT="$DATA_ROOT/data" \
 PHOTON_NATIVE_PARITY_RECENT_FILES="$SEED_FILE:$SEED_IMAGE" \
 PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
   "$EXECUTABLE" >"$APP_LOG" 2>&1 &
 PID=$!
 
-swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" "$COMMAND" "$SCREENSHOT_DIR" || {
+PHOTON_NATIVE_PARITY_PASTE_SENTINEL="$PASTE_SENTINEL" \
+PHOTON_NATIVE_PARITY_PASTE_TARGET_VALUE="$PASTE_TARGET_VALUE" \
+PHOTON_NATIVE_PARITY_PASTE_TARGET_PID="$PASTE_TARGET_PID" \
+PHOTON_NATIVE_PARITY_PASTE_TARGET_COMMAND="$PASTE_TARGET_COMMAND" \
+PHOTON_NATIVE_PARITY_PASTE_INJECTION_PATH="$PASTE_INJECTION" \
+  swift "$ROOT/Scripts/native-macos-parity.swift" "$REPORT" "$COMMAND" "$SCREENSHOT_DIR" || {
   echo "--- Photon runtime log ---" >&2
   cat "$APP_LOG" >&2
   echo "--- Native report ---" >&2
