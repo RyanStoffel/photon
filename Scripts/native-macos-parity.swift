@@ -36,6 +36,9 @@ let pasteSentinel = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PA
 let pasteTargetValueURL = URL(
   fileURLWithPath: ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_TARGET_VALUE"] ?? ""
 )
+let pasteInjectionURL = URL(
+  fileURLWithPath: ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_INJECTION_PATH"] ?? ""
+)
 
 func readReport() -> [String: Any]? {
   guard let data = try? Data(contentsOf: reportURL),
@@ -169,6 +172,14 @@ func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags = []) {
   down.post(tap: .cghidEventTap)
   up.post(tap: .cghidEventTap)
   Thread.sleep(forTimeInterval: 0.12)
+}
+
+func fulfillPasteInjectionIfNeeded() {
+  guard FileManager.default.fileExists(atPath: pasteInjectionURL.path) else {
+    return
+  }
+  try? FileManager.default.removeItem(at: pasteInjectionURL)
+  postKey(9, flags: .maskCommand)
 }
 
 func postText(_ text: String) {
@@ -482,6 +493,7 @@ do {
     "Enter copied the selected clipboard item"
   )
   _ = try wait("packaged Photon pastes into the previously focused target") { _ in
+    fulfillPasteInjectionIfNeeded()
     (try? String(contentsOf: pasteTargetValueURL, encoding: .utf8)) == pasteSentinel
   }
   try require(

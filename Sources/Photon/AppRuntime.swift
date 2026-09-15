@@ -38,7 +38,7 @@ final class AppRuntime: ObservableObject {
         directory: clipboardDirectory,
         accessibilityTrust: { true },
         pasteInjector: {
-          ClipboardPaster.sendPasteKeystroke(requireAccessibilityTrust: false)
+          Self.nativeParityPasteInjection()
         }
       )
     } else {
@@ -134,6 +134,18 @@ final class AppRuntime: ObservableObject {
   private static var usesNativeParityPasteTrustOverride: Bool {
     NativeParityReporter.isRequested
       && ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE"] == "1"
+  }
+
+  private static func nativeParityPasteInjection() -> ClipboardPaster.PasteInjectionResult {
+    guard let path = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_PASTE_INJECTION_PATH"] else {
+      return ClipboardPaster.sendPasteKeystroke(requireAccessibilityTrust: false)
+    }
+    do {
+      try "paste".write(toFile: path, atomically: true, encoding: .utf8)
+      return .posted
+    } catch {
+      return .eventCreationFailed
+    }
   }
 
   func stop() {
