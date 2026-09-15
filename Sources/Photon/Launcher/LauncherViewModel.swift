@@ -100,7 +100,11 @@ final class LauncherViewModel: ObservableObject {
       clipboardCancellable = clipboard?.objectWillChange
         .receive(on: RunLoop.main)
         .sink { [weak self] _ in
-          self?.updateContent()
+          guard let self else {
+            return
+          }
+          objectWillChange.send()
+          updateContent()
         }
     }
   }
@@ -143,6 +147,7 @@ final class LauncherViewModel: ObservableObject {
   }
 
   func refreshLayout() {
+    objectWillChange.send()
     updateContent()
   }
 

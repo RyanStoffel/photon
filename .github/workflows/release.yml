@@ -95,6 +95,7 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
           SMOKE_LOG: ${{ runner.temp }}/photon-smoke.log
+          NATIVE_PARITY_SCREENSHOT_DIR: ${{ runner.temp }}/photon-native-parity-screenshots
         run: |
           rm -rf "$RUNNER_TEMP/smoke"
           mkdir -p "$RUNNER_TEMP/smoke"
@@ -123,6 +124,7 @@ jobs:
             dist/Photon-*.dmg
             dist/SHA256SUMS
             dist/RELEASE_NOTES.md
+            ${{ runner.temp }}/photon-native-parity-screenshots/*.png
           if-no-files-found: error
 
       - name: Upload smoke test log

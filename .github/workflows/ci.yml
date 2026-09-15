@@ -109,7 +109,16 @@ jobs:
           SMOKE_LOG: ${{ runner.temp }}/photon-smoke.log
         run: Scripts/smoke-test.sh build/Photon.app
       - name: Exercise native macOS parity
+        env:
+          NATIVE_PARITY_SCREENSHOT_DIR: ${{ runner.temp }}/photon-native-parity-screenshots
         run: Scripts/check-native-parity.sh build/Photon.app
+      - name: Upload native parity screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-parity-screenshots
+          path: ${{ runner.temp }}/photon-native-parity-screenshots/*.png
+          if-no-files-found: error
       - name: Upload smoke test log
         if: always()
         uses: actions/upload-artifact@v7

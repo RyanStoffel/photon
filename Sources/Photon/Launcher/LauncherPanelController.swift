@@ -12,7 +12,6 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   private let frecencyURL: URL
   let model: LauncherViewModel
   var panel: LauncherPanel?
-  var localMonitor: Any?
   private var cancellables: Set<AnyCancellable> = []
   let centerGuides = LauncherCenterGuidesOverlay()
   var searchBarDragInitialOrigin: NSPoint?
@@ -340,7 +339,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     frame.origin.y = frame.maxY - size.height
     frame.size = size
     // No animation: the resize and SwiftUI's relayout land in the same display cycle.
-    panel.setFrame(frame, display: false, animate: false)
+    panel.setFrame(frame, display: true, animate: false)
     panel.invalidateShadow()
   }
 }
