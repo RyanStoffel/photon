@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-09-15
+
+Workflow completion release for clipboard paste-back, guided file access, launcher dragging, and expanded Clipboard and Files detail views.
+
+### Added
+
+- Clipboard history expands from the compact `Cmd+Shift+V` bar into a split list and full text, link, or image preview with source, type, count, dimensions, size, and timestamp metadata.
+- Files opens to Recent Files with a persistent Quick Look thumbnail and Name, Where, Type, Size, Created, and Modified metadata; keyboard selection updates the PDF or image preview.
+- Files offers a one-time, least-privilege folder selection flow and persists security-scoped bookmarks instead of probing protected folders from the launcher.
+
+### Fixed
+
+- Clipboard paste restores the previously focused app before posting `Cmd+V`, refreshes Accessibility trust at action time, and no longer reports missing permission when event creation fails while trust is granted.
+- Launcher dragging starts from safe top and side chrome without stealing search, row, scroll, button, or footer clicks. X remains free outside a narrow center corridor, snaps inside it, and Y remains independently adjustable.
+- File fallback traversal is limited to user-selected roots, so protected-folder permission dialogs no longer cascade or close Photon; successful setup resumes the pending `ember` search and survives relaunch.
+- The required packaged-app macOS gate now verifies sentinel paste-back, folder grant persistence, free/snap drag frames, full clipboard text and image detail, Files recents and queried PDF/image previews, metadata OCR, and light/dark rendering.
+
 ## [0.3.2] - 2026-09-15
 
 Runtime reliability release for real-account file search and clipboard keyboard navigation.
