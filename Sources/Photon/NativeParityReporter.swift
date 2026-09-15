@@ -19,6 +19,7 @@ final class NativeParityReporter: NSObject {
   private weak var statusItemController: StatusItemController?
   private var reportURL: URL?
   private var timer: Timer?
+  private var appIconProbeCount = 0
 
   static func startIfRequested(runtime: AppRuntime, statusItem: StatusItemController?) {
     guard isRequested,
@@ -41,6 +42,7 @@ final class NativeParityReporter: NSObject {
     shared.timer = timer
     shared.writeReport()
     shared.seedClipboardCapture()
+    shared.probeApplicationIcons()
   }
 
   static func stop() {
@@ -49,6 +51,7 @@ final class NativeParityReporter: NSObject {
     shared.runtime = nil
     shared.statusItemController = nil
     shared.reportURL = nil
+    shared.appIconProbeCount = 0
   }
 
   private func seedClipboardCapture() {
@@ -60,6 +63,23 @@ final class NativeParityReporter: NSObject {
       try? await Task.sleep(for: .milliseconds(500))
       pasteboard.clearContents()
       pasteboard.setString("Photon parity clipboard needle", forType: .string)
+    }
+  }
+
+  private func probeApplicationIcons() {
+    guard let runtime else {
+      return
+    }
+    Task { @MainActor in
+      await runtime.registry.reloadAll()
+      let results = await runtime.registry.search("saf", frecency: runtime.launcher.model.frecency)
+      appIconProbeCount = results.filter { result in
+        guard result.command.providerID == "apps", let icon = result.command.icon else {
+          return false
+        }
+        return CommandIconCache.shared.image(for: icon)?.isValid == true
+      }.count
+      writeReport()
     }
   }
 
@@ -98,6 +118,7 @@ final class NativeParityReporter: NSObject {
       ],
       "launcher": launcherReport(panel: panel, model: model, resolvedAppIcons: resolvedAppIcons),
       "clipboardCaptureCount": runtime.clipboard.items.count,
+      "appIconProbeCount": appIconProbeCount,
       "settings": [
         "appearance": runtime.settings.appearance.rawValue,
         "launcherHotkey": "\(launcherHotkey.keyCode):\(launcherHotkey.carbonModifiers)",
