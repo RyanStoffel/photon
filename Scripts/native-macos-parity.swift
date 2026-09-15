@@ -227,6 +227,18 @@ func focusPhotonTextField(pid: pid_t) -> Bool {
   ) == .success
 }
 
+func setPhotonTextFieldValue(pid: pid_t, value: String) -> Bool {
+  let application = AXUIElementCreateApplication(pid)
+  guard let textField = findTextField(in: application) else {
+    return false
+  }
+  return AXUIElementSetAttributeValue(
+    textField,
+    kAXValueAttribute as CFString,
+    value as CFString
+  ) == .success
+}
+
 func setSystemAppearance(dark: Bool) {
   let process = Process()
   process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
@@ -370,7 +382,7 @@ do {
   }
   clickSearchField(report)
   try require(focusPhotonTextField(pid: pid), "Accessibility focuses the launcher search field")
-  postText("clipboard")
+  try require(setPhotonTextFieldValue(pid: pid, value: "clipboard"), "Accessibility enters launcher search text")
   _ = try wait("launcher search finds Clipboard History") {
     string(launcher($0)["query"]) == "clipboard" && int(launcher($0)["resultCount"]) > 0
   }
@@ -386,7 +398,7 @@ do {
   report = try wait("launcher reopens for app icon test") { bool(launcher($0)["visible"]) }
   clickSearchField(report)
   try require(focusPhotonTextField(pid: pid), "Accessibility refocuses the launcher search field")
-  postText("saf")
+  try require(setPhotonTextFieldValue(pid: pid, value: "saf"), "Accessibility enters application search text")
   report = try wait("application bundle icon resolves in the running UI", timeout: 30) {
     string(launcher($0)["query"]) == "saf"
       && int(launcher($0)["resolvedAppIconCount"]) > 0
