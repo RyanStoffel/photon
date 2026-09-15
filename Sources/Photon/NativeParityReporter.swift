@@ -98,8 +98,7 @@ final class NativeParityReporter: NSObject {
       image.unlockFocus()
       if let tiff = image.tiffRepresentation,
          let bitmap = NSBitmapImageRep(data: tiff),
-         let png = bitmap.representation(using: .png, properties: [:])
-      {
+         let png = bitmap.representation(using: .png, properties: [:]) {
         pasteboard.clearContents()
         pasteboard.setData(png, forType: .png)
       }
