@@ -91,16 +91,22 @@ struct LauncherClipboardResultsSection: View {
 struct LauncherClipboardDetailSplitView: View {
   @ObservedObject var model: LauncherViewModel
 
+  private static let listSectionHeight: Double = 200
+
   var body: some View {
-    HStack(spacing: 0) {
+    VStack(spacing: 0) {
       historyList
-        .frame(width: 360)
+        .frame(maxWidth: .infinity)
+        .frame(height: Self.listSectionHeight)
       Divider()
-      if let clipboard = model.clipboard, let item = clipboard.selectedItem {
-        ClipboardDetailView(item: item, manager: clipboard.manager)
-      } else {
-        ContentUnavailableView("No Clipboard Item", systemImage: "clipboard")
+      Group {
+        if let clipboard = model.clipboard, let item = clipboard.selectedItem {
+          ClipboardDetailView(item: item, manager: clipboard.manager)
+        } else {
+          ContentUnavailableView("No Clipboard Item", systemImage: "clipboard")
+        }
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
   }
 
@@ -151,7 +157,7 @@ private struct ClipboardDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       Divider()
       metadata
-        .frame(height: 188, alignment: .top)
+        .frame(height: 148, alignment: .top)
     }
     .task(id: item.id) {
       fullText = await manager.fullText(for: item)

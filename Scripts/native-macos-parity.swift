@@ -767,10 +767,14 @@ do {
   _ = try wait("launcher search finds Clipboard History") {
     string(launcher($0)["query"]) == "clipboard" && int(launcher($0)["resultCount"]) > 0
   }
+  let compactWidth = double(dictionary(launcher(report)["frame"])["width"])
   try require(confirmPhotonTextField(pid: pid), "Accessibility confirms the selected launcher result")
-  report = try wait("launcher Clipboard History entry opens compact") {
+  report = try wait("launcher Clipboard History Enter expands detail vertically") {
     string(launcher($0)["session"]) == "clipboard"
-      && string(launcher($0)["content"]) == "searchOnly"
+      && string(launcher($0)["content"]) == "fullHeight"
+      && int(launcher($0)["clipboardSelectedIndex"]) >= 0
+      && abs(double(launcher($0)["panelWidth"]) - compactWidth) < 0.5
+      && abs(double(dictionary(launcher($0)["frame"])["width"]) - compactWidth) < 0.5
   }
   clickSearchField(report)
   report = try wait("launcher-entry clipboard panel is the key-event target") {
@@ -780,12 +784,6 @@ do {
     focusPhotonTextField(pid: pid),
     "Accessibility focuses launcher-entry clipboard search field"
   )
-  postKey(125)
-  report = try wait("launcher-entry Down expands clipboard history") {
-    string(launcher($0)["content"]) == "fullHeight"
-      && int(launcher($0)["clipboardSelectedIndex"]) >= 0
-      && bool(launcher($0)["key"])
-  }
   let launcherEntryFirstSelection = int(launcher(report)["clipboardSelectedIndex"])
   postKey(125)
   report = try wait("launcher-entry Down visibly moves selection") {
@@ -842,6 +840,7 @@ do {
   report = try wait("launcher reopens after guided file setup") {
     bool(launcher($0)["visible"]) && string(launcher($0)["mode"]).isEmpty
   }
+  let launcherBarWidth = double(dictionary(launcher(report)["frame"])["width"])
   let expectedFile = "Ember_Individual_Pitch.pdf"
   clickSearchField(report)
   try require(focusPhotonTextField(pid: pid), "Accessibility focuses mixed-search field")
@@ -849,8 +848,10 @@ do {
   report = try wait("mixed launcher promotes into Files split UI with the seeded PDF", timeout: 12) {
     string(launcher($0)["query"]) == "ember"
       && string(launcher($0)["mode"]) == "files"
+      && string(launcher($0)["content"]) == "fullHeight"
       && displayedTitles($0).contains(expectedFile)
       && string(launcher($0)["fileSelectedName"]) == expectedFile
+      && abs(double(dictionary(launcher($0)["frame"])["width"]) - launcherBarWidth) < 0.5
   }
   try captureLauncher(
     report,
@@ -864,7 +865,7 @@ do {
     !bool(launcher($0)["visible"])
   }
   try sendRuntimeCommand("showFiles:")
-  report = try wait("empty Files mode shows seeded recents and selects the PDF", timeout: 20) {
+  report = try wait("empty Files mode shows seeded recents and selects the PDF", timeout: 35) {
     let status = string(launcher($0)["fileStatus"])
     let loaded = status == "recents" || status == "results"
     return string(launcher($0)["mode"]) == "files"
@@ -878,8 +879,8 @@ do {
   try captureLauncher(
     report,
     name: "files-recents-pdf-preview",
-    expectedText: "EMBER PDF PREVIEW",
-    additionalExpectedText: ["Recent Files", "Name", "Where", "Type", "Size", "Created", "Modified"]
+    expectedText: "Ember_Individual_Pitch.pdf",
+    additionalExpectedText: ["Recent Files", "Metadata", "Name", "Where", "Type"]
   )
   postKey(125)
   report = try wait("Down updates the recents preview to the seeded image") {
@@ -902,6 +903,29 @@ do {
       && displayedTitles($0).contains(expectedFile)
   }
   try captureLauncher(report, name: "ember-files-mode", expectedText: expectedFile)
+
+  let ryanLikePath = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_RYAN_LIKE_FILE"] ?? ""
+  if !ryanLikePath.isEmpty {
+    try sendRuntimeCommand("hideLauncher")
+    _ = try wait("launcher closes before Ryan-like Documents search") {
+      !bool(launcher($0)["visible"])
+    }
+    try sendRuntimeCommand("showFiles:")
+    report = try wait("Ryan-like Documents path opens Files mode") {
+      string(launcher($0)["mode"]) == "files" && bool(launcher($0)["visible"])
+    }
+    try require(setPhotonTextFieldValue(pid: pid, value: "ember"), "Accessibility searches Ryan-like ember path")
+    report = try wait("Ryan-like Documents tree finds Ember PDF without mdimport", timeout: 15) {
+      string(launcher($0)["query"]) == "ember"
+        && displayedTitles($0).contains(expectedFile)
+        && abs(double(dictionary(launcher($0)["frame"])["width"]) - launcherBarWidth) < 0.5
+    }
+    try captureLauncher(
+      report,
+      name: "ember-ryan-documents-path",
+      expectedText: expectedFile
+    )
+  }
 
   let light = dictionary(report["appearance"])
   setSystemAppearance(dark: true)

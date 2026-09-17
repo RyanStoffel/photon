@@ -10,18 +10,22 @@ public struct FileSearchView: View {
     self.controller = controller
   }
 
+  private static let listSectionHeight: Double = 176
+
   public var body: some View {
     VStack(spacing: 0) {
-      HStack(spacing: 0) {
-        content
-          .frame(width: 350)
-        Divider()
+      content
+        .frame(maxWidth: .infinity)
+        .frame(height: Self.listSectionHeight)
+      Divider()
+      Group {
         if let file = controller.selected {
           FileDetailView(file: file)
         } else {
           ContentUnavailableView("No File Selected", systemImage: "doc")
         }
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
       Divider()
       footer
     }
@@ -255,7 +259,7 @@ struct FileDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       Divider()
       metadata
-        .frame(height: 210, alignment: .top)
+        .frame(height: 148, alignment: .top)
     }
     .task(id: file.id) {
       loader.load(file, size: CGSize(width: 420, height: 300), scale: NSScreen.main?.backingScaleFactor ?? 2)

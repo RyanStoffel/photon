@@ -66,6 +66,20 @@ public final class FileSearchEngine {
       return nil
     }
 
+    return await runQuery(
+      request: request,
+      queryString: queryString,
+      trimmed: trimmed,
+      token: token
+    )
+  }
+
+  private func runQuery(
+    request: Request,
+    queryString: String,
+    trimmed: String,
+    token: Int
+  ) async -> Response? {
     let folders = onlyInFolders(for: request.settings)
     let scanLimit = max(500, request.limit * 20)
     let terms = SpotlightQueryBuilder.terms(from: trimmed)
@@ -79,10 +93,14 @@ public final class FileSearchEngine {
     }
 
     let home = NSHomeDirectory()
+    let fallbackRoots = FileSearchFallbackRoots.roots(for: request.settings, home: home)
+    FileSearchDebugLog.log(
+      "search '\(trimmed)' mdfind=\(folders.count) fallbackRoots=\(fallbackRoots.count)"
+    )
     let fallbackTask = Task.detached(priority: .userInitiated) {
       FileSystemFallbackSearch.paths(
         matching: trimmed,
-        roots: request.settings.grantedFolders,
+        roots: fallbackRoots,
         home: home,
         resultLimit: scanLimit
       )
