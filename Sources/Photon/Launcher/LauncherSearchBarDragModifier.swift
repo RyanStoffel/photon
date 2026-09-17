@@ -1,4 +1,5 @@
 import AppKit
+import PhotonCore
 import SwiftUI
 
 /// Drag the launcher by its search bar chrome. The gesture only starts the
@@ -12,11 +13,11 @@ struct LauncherSearchBarDragModifier: ViewModifier {
   func body(content: Content) -> some View {
     content
       .contentShape(Rectangle())
-      .highPriorityGesture(dragGesture)
+      .simultaneousGesture(dragGesture)
   }
 
   private var dragGesture: some Gesture {
-    DragGesture(minimumDistance: 3)
+    DragGesture(minimumDistance: LauncherLayout.panelDragSlop)
       .onChanged { _ in
         guard onSearchBarDrag != nil else {
           return

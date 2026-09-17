@@ -11,6 +11,8 @@ final class LauncherPanel: NSPanel {
   /// Starts a window drag after movement exceeds `LauncherLayout.panelDragSlop`.
   var mouseDownHandler: ((NSEvent) -> Bool)?
 
+  private var potentialDragStart: NSPoint?
+
   override var canBecomeKey: Bool {
     true
   }
@@ -23,37 +25,25 @@ final class LauncherPanel: NSPanel {
     if event.type == .keyDown, keyDownHandler?(event) == true {
       return
     }
-    if event.type == .leftMouseDown, handlePotentialPanelDrag(event) {
-      return
-    }
-    super.sendEvent(event)
-  }
 
-  /// Holds the mouse-down until slop decides click vs window drag, so the
-  /// search field and list cannot swallow a panel move.
-  private func handlePotentialPanelDrag(_ down: NSEvent) -> Bool {
-    let start = down.locationInWindow
-    while true {
-      let next = nextEvent(
-        matching: [.leftMouseDragged, .leftMouseUp],
-        until: Date.distantFuture,
-        inMode: .eventTracking,
-        dequeue: true
-      )
-      guard let next else {
-        super.sendEvent(down)
-        return true
+    switch event.type {
+    case .leftMouseDown:
+      potentialDragStart = event.locationInWindow
+    case .leftMouseDragged:
+      if let start = potentialDragStart {
+        let delta = hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y)
+        if delta >= LauncherLayout.panelDragSlop, mouseDownHandler?(event) == true {
+          potentialDragStart = nil
+          return
+        }
       }
-      if next.type == .leftMouseUp {
-        super.sendEvent(down)
-        super.sendEvent(next)
-        return true
-      }
-      let delta = hypot(next.locationInWindow.x - start.x, next.locationInWindow.y - start.y)
-      if delta >= LauncherLayout.panelDragSlop {
-        return mouseDownHandler?(next) == true
-      }
+    case .leftMouseUp:
+      potentialDragStart = nil
+    default:
+      break
     }
+
+    super.sendEvent(event)
   }
 
   /// These NSObject category methods are nonisolated; Quick Look calls them on

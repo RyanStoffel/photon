@@ -407,6 +407,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       model: model,
       onRun: { [weak self] in
         self?.hide()
+      },
+      onPanelDrag: { [weak self] phase in
+        self?.handleSearchBarDrag(phase)
       }
     ).environmentObject(settings))
     host.safeAreaRegions = []
