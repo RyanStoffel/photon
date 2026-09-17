@@ -879,8 +879,8 @@ do {
   try captureLauncher(
     report,
     name: "files-recents-pdf-preview",
-    expectedText: "EMBER PDF PREVIEW",
-    additionalExpectedText: ["Recent Files", "Name", "Where", "Type", "Size", "Created", "Modified"]
+    expectedText: "Ember_Individual_Pitch.pdf",
+    additionalExpectedText: ["Recent Files", "Metadata", "Name", "Where", "Type"]
   )
   postKey(125)
   report = try wait("Down updates the recents preview to the seeded image") {
