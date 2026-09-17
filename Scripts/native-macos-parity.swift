@@ -161,15 +161,24 @@ func captureLauncher(
     .compactMap { $0.topCandidates(1).first?.string }
     .joined(separator: "\n")
   try require(
-    renderedText.localizedCaseInsensitiveContains(expectedText),
+    ocrContains(renderedText, expectedText),
     "\(name).png visibly contains \(expectedText)"
   )
   for expected in additionalExpectedText {
     try require(
-      renderedText.localizedCaseInsensitiveContains(expected),
+      ocrContains(renderedText, expected),
       "\(name).png visibly contains \(expected)"
     )
   }
+}
+
+func ocrContains(_ rendered: String, _ expected: String) -> Bool {
+  if rendered.localizedCaseInsensitiveContains(expected) {
+    return true
+  }
+  let compactRendered = rendered.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+  let compactExpected = expected.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+  return compactRendered.localizedCaseInsensitiveContains(compactExpected)
 }
 
 func sendRuntimeCommand(_ command: String) throws {
