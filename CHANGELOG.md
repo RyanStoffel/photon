@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Main-bar file queries with filename hits promote into the full Files session (recents path, split preview, metadata footer) instead of a compact inline command list.
+- File search shares one Spotlight engine between inline discovery and Files mode, and empty Spotlight results no longer masquerade as missing folder access when indexing is still available.
+- Launcher snap guides sit at the centered panel's left and right edges again; horizontal snap applies only while the panel midpoint is between them.
+- Clipboard paste hides Photon, reactivates the prior app with `NSApp.hide`, and uses a longer delivery delay so Enter paste reaches the focused field when Accessibility is trusted.
+
 ## [0.3.3] - 2026-09-15
 
 Workflow completion release for clipboard paste-back, guided file access, launcher dragging, and expanded Clipboard and Files detail views.

@@ -24,8 +24,8 @@ struct AppearanceSettingsView: View {
           settings.resetLauncherPositionToCenter()
         }
         Text(
-          "Drag the search bar to move the panel. Dotted guides mark the horizontal center; "
-            + "the panel snaps when its midpoint sits between them. Vertical position is remembered."
+          "Drag the top or side chrome to move the panel. Dotted guides mark the left and right "
+            + "edges of a centered panel; releasing near the horizontal center snaps back into place."
         )
         .font(.caption)
         .foregroundStyle(.secondary)

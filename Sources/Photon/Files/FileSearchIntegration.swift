@@ -23,14 +23,23 @@ final class FileSearchIntegration {
     self.access = access
     var current = settings.fileSearchSettings
     current.grantedFolders = access.folders
-    provider = FilesProvider()
+    let engine = FileSearchEngine()
+    provider = FilesProvider(engine: engine)
     provider.update(settings: current)
-    controller = FileSearchController(settings: current)
+    controller = FileSearchController(settings: current, engine: engine)
 
     registry.register(provider)
+    launcher.filesProvider = provider
     launcher.register(mode: FileSearchMode(controller: controller))
-    provider.onInlineResultsChanged = { [weak launcher] in
-      launcher?.refreshResults()
+    provider.onInlineResultsChanged = { [weak launcher] query, hasFileHits in
+      guard let launcher else {
+        return
+      }
+      if hasFileHits {
+        launcher.promoteFilesMode(query: query)
+      } else {
+        launcher.refreshResults()
+      }
     }
 
     // objectWillChange fires before the write lands; hop once through the run loop to read the new values.

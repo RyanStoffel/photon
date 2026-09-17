@@ -27,7 +27,9 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
   public let displayName = "Files"
 
   /// Invoked on the main actor when inline results for the current query are ready.
-  public var onInlineResultsChanged: (@MainActor () -> Void)?
+  /// The query is the trimmed search string; `hasFileHits` is true when at least
+  /// one filename match was found (the launcher may promote to Files mode).
+  public var onInlineResultsChanged: (@MainActor (_ query: String, _ hasFileHits: Bool) -> Void)?
 
   private struct InlineCache {
     let query: String
@@ -133,7 +135,18 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
       synchronized {
         self.cache = cache
       }
-      onInlineResultsChanged?()
+      onInlineResultsChanged?(query, !shown.isEmpty)
+    }
+  }
+
+  /// Whether the inline cache currently holds filename hits for `query`.
+  public func hasInlineResults(for query: String) -> Bool {
+    let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    return synchronized {
+      guard let cache, cache.query == trimmed else {
+        return false
+      }
+      return !cache.files.isEmpty
     }
   }
 
