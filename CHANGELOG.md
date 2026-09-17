@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-09-17
+
+Ryan Files footer, folder grants, panel drag, and center-snap release.
+
 ### Fixed
 
 - Files and clipboard detail metadata stay above a reserved footer-safe inset, so Created / Modified dates no longer paint over Open, Reveal, Quick Look, or Copy Path.
