@@ -12,9 +12,10 @@ final class LauncherPanel: NSPanel {
   var mouseDownHandler: ((NSEvent) -> Bool)?
 
   private var potentialDragStart: NSPoint?
-  /// Posted search-field clicks must skip drag interception so the text field
-  /// can consume its matching mouse-up instead of stealing the next row click.
-  private var replayingSearchClick = false
+  /// Event numbers of re-queued search-field clicks. Stale numbers must not
+  /// disable drag interception for later HID mouse-downs.
+  private var passthroughEventNumbers: Set<Int> = []
+  private var nextReplayEventNumber = 10_000_000
 
   override var canBecomeKey: Bool {
     true
@@ -29,9 +30,8 @@ final class LauncherPanel: NSPanel {
       return
     }
 
-    if replayingSearchClick {
+    if passthroughEventNumbers.remove(event.eventNumber) != nil {
       super.sendEvent(event)
-      replayingSearchClick = false
       return
     }
 
@@ -89,25 +89,26 @@ final class LauncherPanel: NSPanel {
   /// `super.sendEvent` while the matching mouse-up is already dequeued makes
   /// the text field wait for the *next* mouse-up, which eats row clicks.
   private func replaySearchClick(down: NSEvent, up: NSEvent?) {
-    guard let queuedDown = copyMouseEvent(down) else {
-      return
+    if let queuedDown = copyMouseEvent(down) {
+      passthroughEventNumbers.insert(queuedDown.eventNumber)
+      NSApp.postEvent(queuedDown, atStart: false)
     }
-    replayingSearchClick = true
-    NSApp.postEvent(queuedDown, atStart: false)
     if let up, let queuedUp = copyMouseEvent(up) {
+      passthroughEventNumbers.insert(queuedUp.eventNumber)
       NSApp.postEvent(queuedUp, atStart: false)
     }
   }
 
   private func copyMouseEvent(_ event: NSEvent) -> NSEvent? {
-    NSEvent.mouseEvent(
+    nextReplayEventNumber += 1
+    return NSEvent.mouseEvent(
       with: event.type,
       location: event.locationInWindow,
       modifierFlags: event.modifierFlags,
-      timestamp: event.timestamp,
+      timestamp: ProcessInfo.processInfo.systemUptime,
       windowNumber: windowNumber,
       context: nil,
-      eventNumber: event.eventNumber,
+      eventNumber: nextReplayEventNumber,
       clickCount: max(event.clickCount, 1),
       pressure: event.pressure
     )
