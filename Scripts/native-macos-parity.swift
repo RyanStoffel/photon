@@ -864,10 +864,13 @@ do {
     !bool(launcher($0)["visible"])
   }
   try sendRuntimeCommand("showFiles:")
-  report = try wait("empty Files mode shows seeded recents and selects the PDF", timeout: 12) {
-    string(launcher($0)["mode"]) == "files"
+  report = try wait("empty Files mode shows seeded recents and selects the PDF", timeout: 20) {
+    let status = string(launcher($0)["fileStatus"])
+    let loaded = status == "recents" || status == "results"
+    return string(launcher($0)["mode"]) == "files"
       && string(launcher($0)["query"]).isEmpty
       && bool(launcher($0)["key"])
+      && loaded
       && displayedTitles($0).contains("Ember_Individual_Pitch.pdf")
       && displayedTitles($0).contains("Photon_Recent_Image.png")
       && string(launcher($0)["fileSelectedName"]) == "Ember_Individual_Pitch.pdf"

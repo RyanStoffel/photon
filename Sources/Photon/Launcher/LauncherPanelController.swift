@@ -14,6 +14,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   let model: LauncherViewModel
   /// Set by `FileSearchIntegration` so main-bar queries can promote into Files mode.
   weak var filesProvider: FilesProvider?
+  /// Set by `FileSearchIntegration` for parity hooks and hard resets between Files sessions.
+  weak var fileSearchController: FileSearchController?
   var panel: LauncherPanel?
   private var cancellables: Set<AnyCancellable> = []
   let centerGuides = LauncherCenterGuidesOverlay()
@@ -264,8 +266,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     panel.makeKey()
     model.requestSearchFocus()
     startMonitor()
+    fileSearchController?.deactivate()
     if model.activeMode?.id == mode.id {
-      mode.deactivate()
+      model.activeMode?.deactivate()
     }
     model.enter(mode: mode, query: query)
   }
