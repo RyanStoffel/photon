@@ -1286,7 +1286,7 @@ do {
   let filesHeight = double(frame(report)["height"])
   report = try dragAndReset(
     &report,
-    xFromLeft: filesWidth / 2,
+    xFromLeft: 16,
     yFromTop: 28,
     name: "search field",
     centeredX: filesCenteredX
@@ -1314,7 +1314,7 @@ do {
   )
   let corridorGuides = dragLauncher(
     report,
-    xFromLeft: filesWidth / 2,
+    xFromLeft: 16,
     yFromTop: 28,
     deltaX: 40,
     deltaY: 24
