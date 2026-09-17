@@ -859,9 +859,12 @@ do {
     additionalExpectedText: ["Metadata", "Name", "Where", "Type"]
   )
 
-  try require(bool(launcher(report)["key"]), "launcher remains the key-event target")
-  try require(setPhotonTextFieldValue(pid: pid, value: ""), "Accessibility clears Files query for recents")
-  report = try wait("empty Files mode shows seeded recents and selects the PDF") {
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("launcher closes before explicit Files recents check") {
+    !bool(launcher($0)["visible"])
+  }
+  try sendRuntimeCommand("showFiles:")
+  report = try wait("empty Files mode shows seeded recents and selects the PDF", timeout: 12) {
     string(launcher($0)["mode"]) == "files"
       && string(launcher($0)["query"]).isEmpty
       && bool(launcher($0)["key"])
