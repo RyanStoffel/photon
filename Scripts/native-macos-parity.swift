@@ -549,6 +549,10 @@ do {
       && bool(dictionary(dictionary($0["settings"])["launcherPosition"])["centered"]) == false
   }
   try require(firstGuides, "left chrome drag displays center guides")
+  try require(
+    double(dictionary(report["launcherDrag"])["guideSpan"]) >= panelWidth * 0.9,
+    "snap guides span the centered panel width rather than a collapsed corridor"
+  )
 
   let freeX = double(frame(report)["x"])
   let freeY = double(frame(report)["y"])
@@ -842,21 +846,27 @@ do {
   clickSearchField(report)
   try require(focusPhotonTextField(pid: pid), "Accessibility focuses mixed-search field")
   try require(setPhotonTextFieldValue(pid: pid, value: "ember"), "Accessibility enters mixed file query")
-  report = try wait("mixed launcher visibly displays the seeded PDF", timeout: 8) {
+  report = try wait("mixed launcher promotes into Files split UI with the seeded PDF", timeout: 12) {
     string(launcher($0)["query"]) == "ember"
-      && string(launcher($0)["mode"]).isEmpty
+      && string(launcher($0)["mode"]) == "files"
       && displayedTitles($0).contains(expectedFile)
+      && string(launcher($0)["fileSelectedName"]) == expectedFile
   }
-  try captureLauncher(report, name: "ember-mixed-search", expectedText: expectedFile)
+  try captureLauncher(
+    report,
+    name: "ember-mixed-search",
+    expectedText: expectedFile,
+    additionalExpectedText: ["Metadata", "Name", "Where", "Type"]
+  )
 
-  try require(bool(launcher(report)["key"]), "launcher remains the key-event target")
-  try require(setPhotonTextFieldValue(pid: pid, value: "files"), "Accessibility searches for Files command")
-  _ = try wait("launcher visibly displays Search Files") {
-    displayedTitles($0).contains("Search Files")
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("launcher closes before explicit Files recents check") {
+    !bool(launcher($0)["visible"])
   }
-  try require(confirmPhotonTextField(pid: pid), "Accessibility invokes Search Files")
-  report = try wait("empty Files mode shows seeded recents and selects the PDF") {
+  try sendRuntimeCommand("showFiles:")
+  report = try wait("empty Files mode shows seeded recents and selects the PDF", timeout: 12) {
     string(launcher($0)["mode"]) == "files"
+      && string(launcher($0)["query"]).isEmpty
       && bool(launcher($0)["key"])
       && displayedTitles($0).contains("Ember_Individual_Pitch.pdf")
       && displayedTitles($0).contains("Photon_Recent_Image.png")

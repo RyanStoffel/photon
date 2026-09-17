@@ -58,6 +58,8 @@ public struct LauncherStoredPosition: Equatable, Codable, Sendable {
 
 /// Default placement and snap geometry for the launcher panel.
 public enum LauncherPosition {
+  /// Horizontal snap applies while the panel midpoint sits in this band around screen center.
+  /// Drag guides are drawn at the centered panel edges, which are wider than the snap band.
   public static let snapCorridorHalfWidth: Double = 60
 
   /// Spotlight-like default: centred horizontally, top edge ~74% up the visible frame.
@@ -99,16 +101,14 @@ public enum LauncherPosition {
   }
 
   /// Horizontal positions of the two snap guides in screen coordinates.
-  /// The narrow corridor stays usable even when the launcher occupies most of
-  /// a small display; entering it snaps the panel's horizontal center.
+  /// Guides sit at the left and right edges of a horizontally centered panel.
+  /// When the panel midpoint moves between them, horizontal placement snaps to center.
   public static func snapGuideXPositions(
     visible: ScreenVisibleFrame,
-    panelWidth _: Double
+    panelWidth: Double
   ) -> (left: Double, right: Double) {
-    (
-      visible.midX - snapCorridorHalfWidth,
-      visible.midX + snapCorridorHalfWidth
-    )
+    let centeredOriginX = visible.midX - panelWidth / 2
+    return (centeredOriginX, centeredOriginX + panelWidth)
   }
 
   /// Resolves horizontal placement after a drag ends.
@@ -117,8 +117,9 @@ public enum LauncherPosition {
     panelWidth: Double,
     visible: ScreenVisibleFrame
   ) -> (originX: Double, isHorizontallyCentered: Bool) {
-    let guides = snapGuideXPositions(visible: visible, panelWidth: panelWidth)
-    if panelMidX >= guides.left, panelMidX <= guides.right {
+    let corridorLeft = visible.midX - snapCorridorHalfWidth
+    let corridorRight = visible.midX + snapCorridorHalfWidth
+    if panelMidX >= corridorLeft, panelMidX <= corridorRight {
       return (visible.midX - panelWidth / 2, true)
     }
     return (panelMidX - panelWidth / 2, false)
@@ -137,8 +138,8 @@ public enum LauncherPosition {
     )
   }
 
-  /// Follows the pointer on Y; snaps X into the guide corridor (centered) unless
-  /// the drag has pulled the panel midpoint clearly outside the two edge guides.
+  /// Follows the pointer on Y; snaps X to screen center only while the panel
+  /// midpoint sits between the two edge guides (centered panel width).
   public static func liveDragOrigin(
     initialOrigin: PanelOrigin,
     startMouse: PanelOrigin,
@@ -151,12 +152,7 @@ public enum LauncherPosition {
       startMouse: startMouse,
       currentMouse: currentMouse
     )
-    let horizontal = resolveHorizontalSnap(
-      panelMidX: raw.x + panelWidth / 2,
-      panelWidth: panelWidth,
-      visible: visible
-    )
-    return PanelOrigin(x: horizontal.originX, y: raw.y)
+    return clampedOrigin(raw, panelSize: PanelSize(width: panelWidth, height: 0), visible: visible)
   }
 
   public static func storedPosition(

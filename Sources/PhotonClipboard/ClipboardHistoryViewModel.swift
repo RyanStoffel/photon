@@ -170,7 +170,7 @@ public final class ClipboardHistoryViewModel: ObservableObject {
     }
     switch await manager.paste(item) {
     case .pasted:
-      break
+      onDismiss?()
     case .copied:
       onDismiss?()
     case .accessibilityRequired:

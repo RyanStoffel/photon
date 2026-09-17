@@ -9,7 +9,11 @@ final class LauncherCenterGuidesOverlay {
     window?.isVisible == true
   }
 
+  /// Screen-space span between the two guides from the most recent `show` call.
+  private(set) var lastGuideSpan: CGFloat = 0
+
   func show(visibleFrame: NSRect, guideXLeft: CGFloat, guideXRight: CGFloat) {
+    lastGuideSpan = abs(guideXRight - guideXLeft)
     hide()
     let window = NSWindow(
       contentRect: visibleFrame,

@@ -110,6 +110,11 @@ public final class FileSearchController: ObservableObject {
     searchTask?.cancel()
     guard !trimmed.isEmpty else {
       engine.cancel()
+      searchTask?.cancel()
+      results = []
+      selectedID = nil
+      isSearching = true
+      status = .searching
       loadRecents()
       return
     }
@@ -200,7 +205,11 @@ public final class FileSearchController: ObservableObject {
     if !response.spotlightAvailable {
       status = .unavailable
     } else if results.isEmpty {
-      status = settings.grantedFolders.isEmpty ? .needsAccess(response.query) : .empty(response.query)
+      if !response.spotlightAvailable, settings.grantedFolders.isEmpty {
+        status = .needsAccess(response.query)
+      } else {
+        status = .empty(response.query)
+      }
     } else {
       status = .results
     }
