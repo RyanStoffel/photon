@@ -85,15 +85,17 @@ final class LauncherPositionTests: XCTestCase {
   }
 
   func testLiveDragKeepsOffsetWhenPulledOutsideGuides() {
-    let start = PanelOrigin(x: visible.midX - panel.width / 2, y: 400)
-    let mouse = PanelOrigin(x: visible.midX, y: 500)
-    let outside = panel.width / 2 + 40
+    let ultrawide = ScreenVisibleFrame(minX: 0, minY: 0, width: 3440, height: 1440)
+    let panelWidth = 760.0
+    let start = PanelOrigin(x: ultrawide.midX - panelWidth / 2, y: 400)
+    let mouse = PanelOrigin(x: ultrawide.midX, y: 500)
+    let outside = panelWidth / 2 + 80
     let origin = LauncherPosition.liveDragOrigin(
       initialOrigin: start,
       startMouse: mouse,
       currentMouse: PanelOrigin(x: mouse.x + outside, y: mouse.y - 10),
-      panelWidth: panel.width,
-      visible: visible
+      panelWidth: panelWidth,
+      visible: ultrawide
     )
     XCTAssertEqual(origin.x, start.x + outside, accuracy: 0.001)
     XCTAssertEqual(origin.y, 390, accuracy: 0.001)

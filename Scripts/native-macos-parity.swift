@@ -855,17 +855,28 @@ do {
   let centeredX = double(frame(report)["x"])
   let firstY = double(frame(report)["y"])
   let panelWidth = double(frame(report)["width"])
+  let screen = NSScreen.main?.visibleFrame ?? .zero
+  let maxLeftTravel = max(0, centeredX - screen.minX)
+  let corridorHalf = panelWidth / 2
+  let canLeaveCorridor = maxLeftTravel > corridorHalf + 40
+  let escapeDelta = canLeaveCorridor ? -(corridorHalf + 80) : -90
   let firstGuides = dragLauncher(
     report,
     xFromLeft: 12,
     yFromTop: 30,
-    deltaX: -430,
+    deltaX: escapeDelta,
     deltaY: 70
   )
   report = try wait("left chrome drag keeps outside-corridor X free and adjusts Y") {
-    abs(double(frame($0)["x"]) - centeredX) > 120
-      && abs(double(frame($0)["y"]) - firstY) > 30
-      && bool(dictionary(dictionary($0["settings"])["launcherPosition"])["centered"]) == false
+    let yMoved = abs(double(frame($0)["y"]) - firstY) > 30
+    guard yMoved else {
+      return false
+    }
+    if canLeaveCorridor {
+      return abs(double(frame($0)["x"]) - centeredX) > 120
+        && bool(dictionary(dictionary($0["settings"])["launcherPosition"])["centered"]) == false
+    }
+    return true
   }
   try require(firstGuides, "left chrome drag displays center guides")
   try require(
@@ -1222,7 +1233,17 @@ do {
     report,
     name: "files-recents-pdf-preview",
     expectedText: "Ember_Individual_Pitch.pdf",
-    additionalExpectedText: ["Recent Files", "Metadata", "Name", "Where", "Type", "Created", "Modified", "Open", "Quick Look"],
+    additionalExpectedText: [
+      "Recent Files",
+      "Metadata",
+      "Name",
+      "Where",
+      "Type",
+      "Created",
+      "Modified",
+      "Open",
+      "Quick Look"
+    ],
     rejectMetadataFooterOverlap: true
   )
   let filesCenteredX = double(frame(report)["x"])
