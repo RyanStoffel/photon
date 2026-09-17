@@ -12,6 +12,9 @@ final class LauncherPanel: NSPanel {
   var mouseDownHandler: ((NSEvent) -> Bool)?
 
   private var potentialDragStart: NSPoint?
+  /// Posted search-field clicks must skip drag interception so the text field
+  /// can consume its matching mouse-up instead of stealing the next row click.
+  private var replayingSearchClick = false
 
   override var canBecomeKey: Bool {
     true
@@ -26,24 +29,88 @@ final class LauncherPanel: NSPanel {
       return
     }
 
-    switch event.type {
-    case .leftMouseDown:
-      potentialDragStart = event.locationInWindow
-    case .leftMouseDragged:
-      if let start = potentialDragStart {
-        let delta = hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y)
-        if delta >= LauncherLayout.panelDragSlop, mouseDownHandler?(event) == true {
-          potentialDragStart = nil
-          return
-        }
+    if replayingSearchClick {
+      super.sendEvent(event)
+      replayingSearchClick = false
+      return
+    }
+
+    if event.type == .leftMouseDown {
+      let distanceFromTop = frame.height - event.locationInWindow.y
+      if distanceFromTop <= LauncherLayout.searchFieldHeight {
+        handleSearchFieldDragOrClick(event)
+        return
       }
-    case .leftMouseUp:
+      potentialDragStart = event.locationInWindow
+    } else if event.type == .leftMouseDragged, let start = potentialDragStart {
+      let delta = hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y)
+      if delta >= LauncherLayout.panelDragSlop, mouseDownHandler?(event) == true {
+        potentialDragStart = nil
+        return
+      }
+    } else if event.type == .leftMouseUp {
       potentialDragStart = nil
-    default:
-      break
     }
 
     super.sendEvent(event)
+  }
+
+  /// The search field's text view swallows HID drags once it sees mouse-down.
+  /// Hold that click until slop decides click vs moving the panel, then either
+  /// start a window drag or re-queue the click so the field can focus.
+  private func handleSearchFieldDragOrClick(_ down: NSEvent) {
+    let start = down.locationInWindow
+    while true {
+      let next = nextEvent(
+        matching: [.leftMouseDragged, .leftMouseUp],
+        until: Date.distantFuture,
+        inMode: .eventTracking,
+        dequeue: true
+      )
+      guard let next else {
+        if NSEvent.pressedMouseButtons & 1 == 0 {
+          replaySearchClick(down: down, up: nil)
+          return
+        }
+        continue
+      }
+      if next.type == .leftMouseUp {
+        replaySearchClick(down: down, up: next)
+        return
+      }
+      let delta = hypot(next.locationInWindow.x - start.x, next.locationInWindow.y - start.y)
+      if delta >= LauncherLayout.panelDragSlop, mouseDownHandler?(next) == true {
+        return
+      }
+    }
+  }
+
+  /// Re-queue the click after this `sendEvent` returns. Replaying with
+  /// `super.sendEvent` while the matching mouse-up is already dequeued makes
+  /// the text field wait for the *next* mouse-up, which eats row clicks.
+  private func replaySearchClick(down: NSEvent, up: NSEvent?) {
+    guard let queuedDown = copyMouseEvent(down) else {
+      return
+    }
+    replayingSearchClick = true
+    NSApp.postEvent(queuedDown, atStart: false)
+    if let up, let queuedUp = copyMouseEvent(up) {
+      NSApp.postEvent(queuedUp, atStart: false)
+    }
+  }
+
+  private func copyMouseEvent(_ event: NSEvent) -> NSEvent? {
+    NSEvent.mouseEvent(
+      with: event.type,
+      location: event.locationInWindow,
+      modifierFlags: event.modifierFlags,
+      timestamp: event.timestamp,
+      windowNumber: windowNumber,
+      context: nil,
+      eventNumber: event.eventNumber,
+      clickCount: max(event.clickCount, 1),
+      pressure: event.pressure
+    )
   }
 
   /// These NSObject category methods are nonisolated; Quick Look calls them on

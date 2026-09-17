@@ -7,7 +7,6 @@ import SwiftUI
 struct LauncherView: View {
   @ObservedObject var model: LauncherViewModel
   var onRun: () -> Void
-  var onPanelDrag: ((LauncherSearchBarDragPhase) -> Void)?
   @EnvironmentObject private var settings: SettingsStore
   @FocusState private var searchFocused: Bool
 
@@ -82,8 +81,6 @@ struct LauncherView: View {
     }
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
-    .contentShape(Rectangle())
-    .launcherSearchBarDrag(onSearchBarDrag: onPanelDrag)
   }
 
   private var placeholder: String {

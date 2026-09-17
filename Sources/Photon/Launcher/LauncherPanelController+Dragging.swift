@@ -41,18 +41,6 @@ extension LauncherPanelController {
     panel.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
   }
 
-  func handleSearchBarDrag(_ phase: LauncherSearchBarDragPhase) {
-    guard let panel else {
-      return
-    }
-    switch phase {
-    case .began:
-      trackLiveDrag(panel: panel)
-    case .changed, .ended:
-      break
-    }
-  }
-
   /// Follows `NSEvent.mouseLocation` until the button is released so the panel
   /// cannot fight SwiftUI's view-local drag translation.
   func trackLiveDrag(panel: NSPanel) {
