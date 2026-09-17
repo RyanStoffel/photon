@@ -253,33 +253,40 @@ final class AppRuntime: ObservableObject {
     }
     let query = controller.currentQuery
     let previousGrantCount = fileAccess.grants.count
+    let parent = launcher.panel
+    launcher.suppressAutoHide(for: 60)
+    controller.beginAccessRequest()
+    defer { controller.endAccessRequest() }
+
     let paritySelection = ProcessInfo.processInfo.environment["PHOTON_NATIVE_PARITY_FILE_ACCESS_SELECTION"]
     if NativeParityReporter.isRequested, let path = paritySelection {
-      fileAccess.requestAccess(using: NativeParityFileAccessPanel(path: path))
-      guard fileAccess.grants.count > previousGrantCount else {
-        return
-      }
-      fileSearch?.refreshConfiguration()
-      launcher.model.query = query
-      controller.resumeAfterAccess(query: query)
+      fileAccess.requestAccess(using: NativeParityFileAccessPanel(path: path), parent: parent)
+      resumeFilesAfterGrant(controller: controller, query: query, previousGrantCount: previousGrantCount)
       return
     }
-    launcher.hide()
-    settings.selectedPane = .files
-    openSettings()
-    fileAccess.requestAccess()
+
+    fileAccess.requestAccess(parent: parent)
+    resumeFilesAfterGrant(controller: controller, query: query, previousGrantCount: previousGrantCount)
+  }
+
+  /// Keeps the Files panel on screen and continues the pending query.
+  private func resumeFilesAfterGrant(
+    controller: FileSearchController,
+    query: String,
+    previousGrantCount: Int
+  ) {
     guard fileAccess.grants.count > previousGrantCount else {
       return
     }
     fileSearch?.refreshConfiguration()
-    settingsWindowController?.window?.orderOut(nil)
-    if let mode = launcher.model.modes.first(where: { $0.id == "files" }) {
-      Task { [weak self] in
-        try? await Task.sleep(for: .milliseconds(100))
-        self?.launcher.resume(mode: mode, query: query)
-        controller.resumeAfterAccess(query: query)
-      }
+    launcher.model.query = query
+    controller.resumeAfterAccess(query: query)
+    guard launcher.panel?.isVisible != true,
+          let mode = launcher.model.modes.first(where: { $0.id == "files" })
+    else {
+      return
     }
+    launcher.resume(mode: mode, query: query)
   }
 
   private func applyHotkey() {
@@ -325,7 +332,7 @@ final class AppRuntime: ObservableObject {
 private struct NativeParityFileAccessPanel: FileAccessPanelPresenting {
   let path: String
 
-  func chooseFolders() -> FileAccessSelection {
+  func chooseFolders(parent _: NSWindow?, directory _: URL?) -> FileAccessSelection {
     .selected([URL(fileURLWithPath: path, isDirectory: true)])
   }
 }

@@ -2,7 +2,7 @@ import XCTest
 @testable import PhotonFiles
 
 final class FileSearchFallbackRootsTests: XCTestCase {
-  func testIncludesGrantedFoldersAndStandardHomeFolders() throws {
+  func testIncludesGrantedFoldersOnly() throws {
     let root = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString, isDirectory: true)
     let documents = root.appendingPathComponent("Documents", isDirectory: true)
@@ -16,11 +16,11 @@ final class FileSearchFallbackRootsTests: XCTestCase {
       grantedFolders: [documents.path]
     )
     let roots = FileSearchFallbackRoots.roots(for: settings, home: root.path)
-    XCTAssertTrue(roots.contains(documents.path))
-    XCTAssertTrue(roots.contains(desktop.path))
+    XCTAssertEqual(roots, [documents.path])
+    XCTAssertFalse(roots.contains(desktop.path))
   }
 
-  func testStandardRootsCanBeDisabledForTests() throws {
+  func testDoesNotProbeStandardHomeFoldersWithoutAGrant() throws {
     let root = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(
@@ -29,10 +29,13 @@ final class FileSearchFallbackRootsTests: XCTestCase {
     )
     defer { try? FileManager.default.removeItem(at: root) }
 
-    setenv("PHOTON_FILE_SEARCH_STANDARD_ROOTS", "0", 1)
-    defer { unsetenv("PHOTON_FILE_SEARCH_STANDARD_ROOTS") }
-
     let roots = FileSearchFallbackRoots.roots(for: FileSearchSettings(scope: .home), home: root.path)
     XCTAssertTrue(roots.isEmpty)
+  }
+
+  func testSuggestedGrantFoldersAreStandardUserDirectories() {
+    let home = "/Users/ryan"
+    let suggested = FileSearchFallbackRoots.suggestedGrantFolders(home: home).map(\.lastPathComponent)
+    XCTAssertEqual(suggested, ["Documents", "Desktop", "Downloads"])
   }
 }

@@ -75,12 +75,14 @@ struct LauncherView: View {
         .textFieldStyle(.plain)
         .font(.system(size: 20))
         .focused($searchFocused)
+        .allowsHitTesting(false)
         .onSubmit {
           Task { await run() }
         }
     }
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
+    .contentShape(Rectangle())
   }
 
   private var placeholder: String {

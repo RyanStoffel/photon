@@ -85,7 +85,7 @@ final class FileSystemFallbackSearchTests: XCTestCase {
     defer { try? FileManager.default.removeItem(at: root) }
 
     let roots = FileSearchFallbackRoots.roots(
-      for: FileSearchSettings(scope: .home, grantedFolders: []),
+      for: FileSearchSettings(scope: .home, grantedFolders: [root.appendingPathComponent("Documents").path]),
       home: root.path
     )
     let matches = FileSystemFallbackSearch.paths(
