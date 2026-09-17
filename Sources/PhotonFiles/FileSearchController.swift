@@ -110,6 +110,11 @@ public final class FileSearchController: ObservableObject {
     searchTask?.cancel()
     guard !trimmed.isEmpty else {
       engine.cancel()
+      searchTask?.cancel()
+      results = []
+      selectedID = nil
+      isSearching = true
+      status = .searching
       loadRecents()
       return
     }

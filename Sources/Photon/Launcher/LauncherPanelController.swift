@@ -264,6 +264,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     panel.makeKey()
     model.requestSearchFocus()
     startMonitor()
+    if model.activeMode?.id == mode.id {
+      mode.deactivate()
+    }
     model.enter(mode: mode, query: query)
   }
 
