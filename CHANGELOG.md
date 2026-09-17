@@ -6,12 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-09-17
+
+Regression fix release for Ryan's v0.3.3 file search, drag guides, main-bar Files layout, and clipboard Enter paste.
+
 ### Fixed
 
 - Main-bar file queries with filename hits promote into the full Files session (recents path, split preview, metadata footer) instead of a compact inline command list.
-- File search shares one Spotlight engine between inline discovery and Files mode, and empty Spotlight results no longer masquerade as missing folder access when indexing is still available.
-- Launcher snap guides sit at the centered panel's left and right edges again; horizontal snap applies only while the panel midpoint is between them.
+- File search shares one Spotlight engine between inline discovery and Files mode, and empty Spotlight results no longer masquerade as missing folder access when Spotlight is still available.
+- Launcher drag guides mark the centered panel's left and right edges again; horizontal snap uses a narrow center band so off-center placement is preserved on release.
 - Clipboard paste hides Photon, reactivates the prior app with `NSApp.hide`, and uses a longer delivery delay so Enter paste reaches the focused field when Accessibility is trusted.
+- The packaged macOS gate verifies mixed-bar Files promotion, guide span, and real paste sentinel delivery.
 
 ## [0.3.3] - 2026-09-15
 
