@@ -21,4 +21,15 @@ final class FileSearchControllerSessionTests: XCTestCase {
     controller.activate(query: "")
     XCTAssertEqual(controller.currentQuery, "")
   }
+
+  func testAccessRequestKeepsFocusAndProtectsTheSession() {
+    let controller = FileSearchController()
+    controller.beginAccessRequest()
+    XCTAssertTrue(controller.holdsFocus)
+    controller.resumeAfterAccess(query: "ember")
+    controller.deactivate()
+    XCTAssertEqual(controller.currentQuery, "ember")
+    controller.endAccessRequest()
+    XCTAssertFalse(controller.holdsFocus)
+  }
 }

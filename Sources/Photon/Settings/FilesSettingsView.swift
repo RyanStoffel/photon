@@ -61,7 +61,7 @@ struct FilesSettingsView: View {
           }
         }
         Button(fileAccess.grants.isEmpty ? "Choose Folders…" : "Add Folder…") {
-          fileAccess.requestAccess()
+          fileAccess.requestAccess(parent: NSApp.keyWindow)
         }
         if fileAccess.status == .requesting {
           ProgressView()

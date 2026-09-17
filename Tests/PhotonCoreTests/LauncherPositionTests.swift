@@ -70,7 +70,7 @@ final class LauncherPositionTests: XCTestCase {
     XCTAssertEqual(moved.y, 380, accuracy: 0.001)
   }
 
-  func testLiveDragFollowsPointerWithoutHorizontalSnap() {
+  func testLiveDragSnapsXInsideGuideCorridor() {
     let start = PanelOrigin(x: visible.midX - panel.width / 2, y: 400)
     let mouse = PanelOrigin(x: visible.midX, y: 500)
     let origin = LauncherPosition.liveDragOrigin(
@@ -80,20 +80,22 @@ final class LauncherPositionTests: XCTestCase {
       panelWidth: panel.width,
       visible: visible
     )
-    XCTAssertEqual(origin.x, start.x + 20, accuracy: 0.001)
+    XCTAssertEqual(origin.x, start.x, accuracy: 0.001)
     XCTAssertEqual(origin.y, 320, accuracy: 0.001)
   }
 
-  func testLiveDragKeepsOffsetWhenPulledHorizontally() {
-    let start = PanelOrigin(x: visible.midX - panel.width / 2, y: 400)
-    let mouse = PanelOrigin(x: visible.midX, y: 500)
-    let outside = 200.0
+  func testLiveDragKeepsOffsetWhenPulledOutsideGuides() {
+    let ultrawide = ScreenVisibleFrame(minX: 0, minY: 0, width: 3440, height: 1440)
+    let panelWidth = 760.0
+    let start = PanelOrigin(x: ultrawide.midX - panelWidth / 2, y: 400)
+    let mouse = PanelOrigin(x: ultrawide.midX, y: 500)
+    let outside = panelWidth / 2 + 80
     let origin = LauncherPosition.liveDragOrigin(
       initialOrigin: start,
       startMouse: mouse,
       currentMouse: PanelOrigin(x: mouse.x + outside, y: mouse.y - 10),
-      panelWidth: panel.width,
-      visible: visible
+      panelWidth: panelWidth,
+      visible: ultrawide
     )
     XCTAssertEqual(origin.x, start.x + outside, accuracy: 0.001)
     XCTAssertEqual(origin.y, 390, accuracy: 0.001)
@@ -109,14 +111,38 @@ final class LauncherPositionTests: XCTestCase {
     XCTAssertTrue(stored.isHorizontallyCentered)
   }
 
-  func testResolveHorizontalSnapUsesCenterCorridorNotGuideSpan() {
-    let offsetMidX = visible.midX + panel.width / 2 + 40
+  func testResolveHorizontalSnapUsesGuideSpanNotCollapsedBand() {
+    let offsetMidX = visible.midX + 80
     let result = LauncherPosition.resolveHorizontalSnap(
       panelMidX: offsetMidX,
       panelWidth: panel.width,
       visible: visible
     )
-    XCTAssertFalse(result.isHorizontallyCentered)
+    XCTAssertTrue(result.isHorizontallyCentered)
+  }
+
+  func testSnapCorridorIsGuideSpanNotWholeScreenOnUltrawide() {
+    let ultrawide = ScreenVisibleFrame(minX: 0, minY: 0, width: 3440, height: 1440)
+    let panelWidth = 760.0
+    let corridor = LauncherPosition.snapCorridor(visible: ultrawide, panelWidth: panelWidth)
+    XCTAssertEqual(corridor.right - corridor.left, panelWidth, accuracy: 0.001)
+    XCTAssertLessThan(corridor.right - corridor.left, ultrawide.width / 2)
+
+    let inside = LauncherPosition.resolveHorizontalSnap(
+      panelMidX: corridor.right - 1,
+      panelWidth: panelWidth,
+      visible: ultrawide
+    )
+    XCTAssertTrue(inside.isHorizontallyCentered)
+    XCTAssertEqual(inside.originX, ultrawide.midX - panelWidth / 2, accuracy: 0.001)
+
+    let outside = LauncherPosition.resolveHorizontalSnap(
+      panelMidX: corridor.right + 1,
+      panelWidth: panelWidth,
+      visible: ultrawide
+    )
+    XCTAssertFalse(outside.isHorizontallyCentered)
+    XCTAssertEqual(outside.originX, corridor.right + 1 - panelWidth / 2, accuracy: 0.001)
   }
 
   func testOriginByMouseDeltaIsStableWhenMouseHolds() {

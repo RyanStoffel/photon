@@ -117,6 +117,8 @@ private struct ClipboardDetailSplitBody: View {
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+    .frame(maxHeight: .infinity)
+    .clipped()
   }
 
   private var historyList: some View {
@@ -176,8 +178,8 @@ private struct ClipboardDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       Divider()
       metadata
-        .frame(height: 148, alignment: .top)
     }
+    .clipped()
     .task(id: item.id) {
       fullText = await manager.fullText(for: item)
       image = await manager.image(for: item)
@@ -229,28 +231,34 @@ private struct ClipboardDetailView: View {
   }
 
   private var metadata: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      Text("Information")
-        .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(.secondary)
-        .padding(.bottom, 6)
-      metadataRow("Source", item.sourceAppName ?? "Unknown app")
-      metadataRow("Content type", item.kind.label)
-      switch item.kind {
-      case .text, .link:
-        metadataRow("Characters", "\(displayText.count)")
-        metadataRow("Words", "\(wordCount)")
-      case .image:
-        metadataRow("Dimensions", dimensions)
-        metadataRow("Image size", formattedBytes)
-      case .file:
-        metadataRow("Items", "\(item.filePaths.count)")
-        metadataRow("Size", formattedBytes)
+    ScrollView(.vertical) {
+      VStack(alignment: .leading, spacing: 0) {
+        Text("Information")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.secondary)
+          .padding(.bottom, 6)
+        metadataRow("Source", item.sourceAppName ?? "Unknown app")
+        metadataRow("Content type", item.kind.label)
+        switch item.kind {
+        case .text, .link:
+          metadataRow("Characters", "\(displayText.count)")
+          metadataRow("Words", "\(wordCount)")
+        case .image:
+          metadataRow("Dimensions", dimensions)
+          metadataRow("Image size", formattedBytes)
+        case .file:
+          metadataRow("Items", "\(item.filePaths.count)")
+          metadataRow("Size", formattedBytes)
+        }
+        metadataRow("Copied", item.copiedAt.formatted(date: .abbreviated, time: .shortened))
       }
-      metadataRow("Copied", item.copiedAt.formatted(date: .abbreviated, time: .shortened))
+      .padding(.horizontal, 20)
+      .padding(.top, 10)
+      .padding(.bottom, 6)
     }
-    .padding(.horizontal, 20)
-    .padding(.vertical, 12)
+    .frame(height: LauncherLayout.detailMetadataHeight, alignment: .top)
+    .padding(.bottom, LauncherLayout.detailFooterSafeInset)
+    .clipped()
   }
 
   private func metadataRow(_ label: String, _ value: String) -> some View {
@@ -264,7 +272,7 @@ private struct ClipboardDetailView: View {
         .textSelection(.enabled)
     }
     .font(.system(size: 13))
-    .padding(.vertical, 4)
+    .padding(.vertical, 3)
     .overlay(alignment: .bottom) {
       Divider()
     }

@@ -24,8 +24,9 @@ struct AppearanceSettingsView: View {
           settings.resetLauncherPositionToCenter()
         }
         Text(
-          "Drag the top or side chrome to move the panel. Dotted guides mark the left and right "
-            + "edges of a centered panel; releasing near the horizontal center snaps back into place."
+          "Click and drag anywhere on the launcher to move it; a small slop keeps row and button clicks working. "
+            + "Dotted guides mark the left and right edges of a centered panel. Releasing while the panel center "
+            + "is between those guides snaps back to screen center."
         )
         .font(.caption)
         .foregroundStyle(.secondary)

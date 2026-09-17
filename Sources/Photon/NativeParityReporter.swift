@@ -177,6 +177,8 @@ final class NativeParityReporter: NSObject {
         "grantCount": runtime.fileAccess.grants.count,
         "folders": runtime.fileAccess.folders,
         "status": fileAccessStatus(runtime.fileAccess.status),
+        "requesting": runtime.fileAccess.isRequestingAccess
+          || runtime.fileSearch?.controller.isRequestingAccess == true,
       ],
       "settings": [
         "appearance": runtime.settings.appearance.rawValue,
@@ -287,6 +289,7 @@ final class NativeParityReporter: NSObject {
       "clipboardNotice": model.clipboard?.notice?.message ?? "",
       "resolvedAppIconCount": resolvedAppIcons,
       "fileStatus": fileStatus(runtime?.fileSearch?.controller.status),
+      "fileRequestingAccess": runtime?.fileSearch?.controller.isRequestingAccess == true,
     ]
   }
 

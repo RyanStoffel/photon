@@ -2,21 +2,17 @@ import AppKit
 import PhotonCore
 
 extension LauncherPanelController {
-  func handleChromeMouseDown(_ event: NSEvent, panel: NSPanel) -> Bool {
+  /// Starts a window drag from anywhere on the panel. Clicks still reach rows
+  /// and buttons because `LauncherPanel` only calls this after drag slop.
+  func handlePanelDrag(_: NSEvent, panel: NSPanel) -> Bool {
     chromeMouseDownCount += 1
-    let point = event.locationInWindow
-    let width = panel.frame.width
-    let height = panel.frame.height
-    let distanceFromTop = height - point.y
-    let isOuterChrome = distanceFromTop <= 14 || point.x <= 8 || point.x >= width - 8
-    let isSearchGutter = distanceFromTop <= LauncherLayout.searchFieldHeight
-      && (point.x <= 20 || point.x >= width - 20)
-    guard isOuterChrome || isSearchGutter else {
-      return false
-    }
     acceptedChromeDragCount += 1
     trackLiveDrag(panel: panel)
     return true
+  }
+
+  func handleChromeMouseDown(_ event: NSEvent, panel: NSPanel) -> Bool {
+    handlePanelDrag(event, panel: panel)
   }
 
   func visibleFrame(for panel: NSPanel) -> ScreenVisibleFrame {
@@ -43,18 +39,6 @@ extension LauncherPanelController {
       stored: settings.launcherStoredPosition
     )
     panel.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
-  }
-
-  func handleSearchBarDrag(_ phase: LauncherSearchBarDragPhase) {
-    guard let panel else {
-      return
-    }
-    switch phase {
-    case .began:
-      trackLiveDrag(panel: panel)
-    case .changed, .ended:
-      break
-    }
   }
 
   /// Follows `NSEvent.mouseLocation` until the button is released so the panel
