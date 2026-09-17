@@ -12,10 +12,6 @@ final class LauncherPanel: NSPanel {
   var mouseDownHandler: ((NSEvent) -> Bool)?
 
   private var potentialDragStart: NSPoint?
-  /// Event numbers of re-queued search-field clicks. Stale numbers must not
-  /// disable drag interception for later HID mouse-downs.
-  private var passthroughEventNumbers: Set<Int> = []
-  private var nextReplayEventNumber = 10_000_000
 
   override var canBecomeKey: Bool {
     true
@@ -27,11 +23,6 @@ final class LauncherPanel: NSPanel {
 
   override func sendEvent(_ event: NSEvent) {
     if event.type == .keyDown, keyDownHandler?(event) == true {
-      return
-    }
-
-    if passthroughEventNumbers.remove(event.eventNumber) != nil {
-      super.sendEvent(event)
       return
     }
 
@@ -56,8 +47,10 @@ final class LauncherPanel: NSPanel {
   }
 
   /// The search field's text view swallows HID drags once it sees mouse-down.
-  /// Hold that click until slop decides click vs moving the panel, then either
-  /// start a window drag or re-queue the click so the field can focus.
+  /// Hold that click until slop decides click vs moving the panel. Clicks do
+  /// not need to be replayed: the field is already first responder, and posting
+  /// the dequeued mouse-up back into the queue left tracking loops that ate
+  /// later search-bar drags.
   private func handleSearchFieldDragOrClick(_ down: NSEvent) {
     let start = down.locationInWindow
     while true {
@@ -69,13 +62,11 @@ final class LauncherPanel: NSPanel {
       )
       guard let next else {
         if NSEvent.pressedMouseButtons & 1 == 0 {
-          replaySearchClick(down: down, up: nil)
           return
         }
         continue
       }
       if next.type == .leftMouseUp {
-        replaySearchClick(down: down, up: next)
         return
       }
       let delta = hypot(next.locationInWindow.x - start.x, next.locationInWindow.y - start.y)
@@ -83,35 +74,6 @@ final class LauncherPanel: NSPanel {
         return
       }
     }
-  }
-
-  /// Re-queue the click after this `sendEvent` returns. Replaying with
-  /// `super.sendEvent` while the matching mouse-up is already dequeued makes
-  /// the text field wait for the *next* mouse-up, which eats row clicks.
-  private func replaySearchClick(down: NSEvent, up: NSEvent?) {
-    if let queuedDown = copyMouseEvent(down) {
-      passthroughEventNumbers.insert(queuedDown.eventNumber)
-      NSApp.postEvent(queuedDown, atStart: false)
-    }
-    if let up, let queuedUp = copyMouseEvent(up) {
-      passthroughEventNumbers.insert(queuedUp.eventNumber)
-      NSApp.postEvent(queuedUp, atStart: false)
-    }
-  }
-
-  private func copyMouseEvent(_ event: NSEvent) -> NSEvent? {
-    nextReplayEventNumber += 1
-    return NSEvent.mouseEvent(
-      with: event.type,
-      location: event.locationInWindow,
-      modifierFlags: event.modifierFlags,
-      timestamp: ProcessInfo.processInfo.systemUptime,
-      windowNumber: windowNumber,
-      context: nil,
-      eventNumber: nextReplayEventNumber,
-      clickCount: max(event.clickCount, 1),
-      pressure: event.pressure
-    )
   }
 
   /// These NSObject category methods are nonisolated; Quick Look calls them on
