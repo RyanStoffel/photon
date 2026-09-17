@@ -115,6 +115,6 @@ public struct LauncherPanelSize: Equatable, Sendable {
 
   public init(width: Double, content: LauncherContent) {
     self.width = width
-    height = LauncherLayout.height(for: content)
+    self.height = LauncherLayout.height(for: content)
   }
 }
