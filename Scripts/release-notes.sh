@@ -13,7 +13,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="${VERSION:-$(tr -d '[:space:]' < "$ROOT/VERSION")}"
 SIGNING="${SIGNING:-adhoc}"
 CHANGELOG="${CHANGELOG:-$ROOT/CHANGELOG.md}"
-REPO="${GITHUB_REPOSITORY:-RyanStoffel/photon}"
+REPO="${GITHUB_REPOSITORY:-ryan-stoffel/photon}"
 
 changelog_section() {
   [[ -f "$CHANGELOG" ]] || return 1
@@ -77,11 +77,22 @@ cat <<EOF
 ## Install
 
 \`\`\`sh
-brew tap ryanstoffel/taps
-brew install --cask ryanstoffel/taps/photon
+brew tap ryan-stoffel/taps
+brew trust ryan-stoffel/taps          # Homebrew 7+
+brew install --cask ryan-stoffel/taps/photon
 \`\`\`
 
-On Homebrew 7 or later, run \`brew trust ryanstoffel/taps\` once so that \`brew upgrade\` can load the cask.
+If Homebrew still references the retired singular tap, repair the existing installation with:
+
+\`\`\`sh
+brew untap ryanstoffel/homebrew-tap   # only if that stale tap is present
+brew tap ryan-stoffel/taps
+brew trust ryan-stoffel/taps          # Homebrew 7+
+brew update
+brew upgrade --cask ryan-stoffel/taps/photon
+\`\`\`
+
+Ryan's GitHub account was renamed from \`RyanStoffel\` to \`ryan-stoffel\`. GitHub redirects old repository links, but Homebrew records tap trust by name, so use \`ryan-stoffel/taps\`.
 
 Or download \`Photon-${VERSION}.zip\` (or the \`.dmg\`) below and move \`Photon.app\` to \`/Applications\`. Verify a download with \`shasum -a 256 -c SHA256SUMS\` after placing the file next to it.
 

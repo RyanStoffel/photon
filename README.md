@@ -21,16 +21,29 @@ Photon is written in **Swift 6**, with AppKit for native macOS window/process be
 
 ## Install
 
+For a fresh install:
+
 ```sh
-brew tap ryanstoffel/taps
-brew install --cask ryanstoffel/taps/photon
+brew tap ryan-stoffel/taps
+brew trust ryan-stoffel/taps          # Homebrew 7+
+brew install --cask ryan-stoffel/taps/photon
 ```
 
-Homebrew 7 and later only load casks from third-party taps that you have trusted, unless you spell out the full name as above. Run `brew trust ryanstoffel/taps` once so that `brew upgrade` and the short name `photon` work too.
+If Photon is already installed and Homebrew still references the retired tap:
 
-Or download `Photon-<version>.zip` or `.dmg` from the [latest release](https://github.com/RyanStoffel/photon/releases) and move `Photon.app` to `/Applications`. Requires macOS 14 or later; the binary is universal (Apple silicon and Intel).
+```sh
+brew untap ryanstoffel/homebrew-tap   # only if that stale tap is present
+brew tap ryan-stoffel/taps
+brew trust ryan-stoffel/taps          # Homebrew 7+
+brew update
+brew upgrade --cask ryan-stoffel/taps/photon
+```
 
-Photon is distributed from [RyanStoffel/homebrew-taps](https://github.com/RyanStoffel/homebrew-taps). Current builds are ad-hoc signed and not notarized, so macOS Gatekeeper blocks the first launch of a downloaded copy:
+Ryan's GitHub account was renamed from `RyanStoffel` to `ryan-stoffel`. GitHub redirects old repository links, but Homebrew records tap trust by name, so use the canonical `ryan-stoffel/taps` name in every Homebrew command.
+
+Or download `Photon-<version>.zip` or `.dmg` from the [latest release](https://github.com/ryan-stoffel/photon/releases) and move `Photon.app` to `/Applications`. Requires macOS 14 or later; the binary is universal (Apple silicon and Intel).
+
+Photon is distributed from [ryan-stoffel/homebrew-taps](https://github.com/ryan-stoffel/homebrew-taps). Current builds are ad-hoc signed and not notarized, so macOS Gatekeeper blocks the first launch of a downloaded copy:
 
 - macOS 14: Control-click `Photon.app` and choose **Open**.
 - macOS 15 and later: open Photon once, then go to **System Settings > Privacy & Security** and click **Open Anyway**.
@@ -60,7 +73,7 @@ While the Hyper key is enabled and Accessibility is granted, Photon remaps the c
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the branching model, commit style, and PR flow.
 
 ```sh
-git clone https://github.com/RyanStoffel/photon.git
+git clone https://github.com/ryan-stoffel/photon.git
 cd photon
 Scripts/package_app.sh
 Scripts/check-harness.sh
