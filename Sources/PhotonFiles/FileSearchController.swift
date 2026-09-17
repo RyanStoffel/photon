@@ -103,6 +103,22 @@ public final class FileSearchController: ObservableObject {
     update(query: query)
   }
 
+  /// Keeps inline filename hits visible while the full Files search runs.
+  public func seedResults(_ files: [RankedFile], query: String) {
+    guard !files.isEmpty else {
+      return
+    }
+    let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else {
+      return
+    }
+    results = files
+    status = .results
+    selectedID = files.first?.id
+    isSearching = true
+    self.query = trimmed
+  }
+
   public func update(query: String) {
     let requested = query.trimmingCharacters(in: .whitespacesAndNewlines)
     let trimmed = requested.isEmpty ? protectedResumeQuery ?? requested : requested

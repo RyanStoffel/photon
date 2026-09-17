@@ -79,10 +79,14 @@ public final class FileSearchEngine {
     }
 
     let home = NSHomeDirectory()
+    let fallbackRoots = FileSearchFallbackRoots.roots(for: request.settings, home: home)
+    FileSearchDebugLog.log(
+      "search '\(trimmed)' mdfind=\(folders.count) fallbackRoots=\(fallbackRoots.count)"
+    )
     let fallbackTask = Task.detached(priority: .userInitiated) {
       FileSystemFallbackSearch.paths(
         matching: trimmed,
-        roots: request.settings.grantedFolders,
+        roots: fallbackRoots,
         home: home,
         resultLimit: scanLimit
       )

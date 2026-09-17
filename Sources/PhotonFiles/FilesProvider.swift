@@ -139,6 +139,19 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
     }
   }
 
+  /// Ranked inline hits for `query`, when the cache matches.
+  public func inlineRankedFiles(for query: String) -> [RankedFile]? {
+    let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    return synchronized {
+      guard let cache, cache.query == trimmed, !cache.files.isEmpty else {
+        return nil
+      }
+      return cache.files.enumerated().map { index, file in
+        RankedFile(file: file, relevance: Double(FileSearchSettings.inlineLimit - index))
+      }
+    }
+  }
+
   /// Whether the inline cache currently holds filename hits for `query`.
   public func hasInlineResults(for query: String) -> Bool {
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)

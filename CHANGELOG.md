@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-09-17
+
+Ryan UX and real-world file search release.
+
+### Fixed
+
+- Files mode and clipboard history expand downward inside the launcher width preset; the panel no longer jumps to a wider detail width.
+- File search walks security-scoped grants plus readable Documents, Desktop, and Downloads under the home scope when Spotlight misses unindexed files.
+- Main-bar Files promotion seeds the Files session from inline hits so results do not clear while the full search runs.
+- Enter on Clipboard History from the main launcher opens the split detail view immediately.
+
+### Added
+
+- macOS parity gate for Ryan-like `Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf` via filesystem fallback (without relying on `mdimport` for that path).
+
 ## [0.3.4] - 2026-09-17
 
 Regression fix release for Ryan's v0.3.3 file search, drag guides, main-bar Files layout, and clipboard Enter paste.
