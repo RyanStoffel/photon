@@ -15,27 +15,6 @@ extension LauncherPanelController {
     handlePanelDrag(event, panel: panel)
   }
 
-  /// `performWindowDrag` is safe to call from a local monitor while the search
-  /// field is tracking. Live `nextEvent` tracking nested in that loop does not
-  /// consume the remaining HID drags.
-  func handleSearchBarWindowDrag(_ event: NSEvent, panel: NSPanel) -> Bool {
-    guard !isDraggingLauncher else {
-      return true
-    }
-    chromeMouseDownCount += 1
-    acceptedChromeDragCount += 1
-    let selector = Selector(("performWindowDragWithEvent:"))
-    if panel.responds(to: selector) {
-      isDraggingLauncher = true
-      showCenterGuides(for: panel)
-      panel.perform(selector, with: event)
-      finishLiveDrag(panel: panel)
-      return true
-    }
-    trackLiveDrag(panel: panel)
-    return true
-  }
-
   func visibleFrame(for panel: NSPanel) -> ScreenVisibleFrame {
     let rect = (panel.screen ?? NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? .zero
     return ScreenVisibleFrame(

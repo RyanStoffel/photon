@@ -390,12 +390,6 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       }
       return handlePanelDrag(event, panel: panel)
     }
-    panel.searchBarDragHandler = { [weak self, weak panel] event in
-      guard let self, let panel else {
-        return false
-      }
-      return handleSearchBarWindowDrag(event, panel: panel)
-    }
     panel.installSearchBarDragMonitor()
 
     // System material behind the whole panel, clipped to the rounded shape. The window
