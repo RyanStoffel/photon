@@ -36,8 +36,12 @@ final class FileSearchIntegration {
       guard let launcher else {
         return
       }
+      let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard launcher.model.query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else {
+        return
+      }
       if hasFileHits {
-        launcher.promoteFilesMode(query: query)
+        launcher.promoteFilesMode(query: trimmed)
       } else {
         launcher.refreshResults()
       }

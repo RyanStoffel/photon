@@ -40,6 +40,7 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
   private let engine: FileSearchEngine
   private var settings = FileSearchSettings()
   private var cache: InlineCache?
+  private var inlineGeneration = 0
 
   @MainActor
   public init(engine: FileSearchEngine = FileSearchEngine()) {
@@ -117,6 +118,8 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
   }
 
   private func scheduleInlineSearch(query: String, settings: FileSearchSettings) {
+    inlineGeneration += 1
+    let generation = inlineGeneration
     Task { @MainActor [weak self] in
       guard let self else {
         return
@@ -128,6 +131,9 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
         includeApplications: false
       )
       guard let response = await engine.search(request) else {
+        return
+      }
+      guard generation == inlineGeneration else {
         return
       }
       let shown = Array(response.files.prefix(FileSearchSettings.inlineLimit))
@@ -166,6 +172,7 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
   /// Cancels in-flight inline Spotlight work so Files mode recents/search are not raced.
   @MainActor
   public func prepareForFullSession() {
+    inlineGeneration += 1
     engine.cancel()
     synchronized {
       cache = nil

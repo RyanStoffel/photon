@@ -264,16 +264,16 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       return
     }
     filesProvider?.prepareForFullSession()
+    fileSearchController?.deactivate()
+    if model.activeMode?.id == mode.id {
+      model.activeMode?.deactivate()
+    }
     position(panel)
     rememberPreviousApplication()
     panel.orderFrontRegardless()
     panel.makeKey()
     model.requestSearchFocus()
     startMonitor()
-    fileSearchController?.deactivate()
-    if model.activeMode?.id == mode.id {
-      model.activeMode?.deactivate()
-    }
     model.enter(mode: mode, query: query)
   }
 
