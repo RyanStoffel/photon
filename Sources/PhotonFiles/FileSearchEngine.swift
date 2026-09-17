@@ -66,6 +66,20 @@ public final class FileSearchEngine {
       return nil
     }
 
+    return await runQuery(
+      request: request,
+      queryString: queryString,
+      trimmed: trimmed,
+      token: token
+    )
+  }
+
+  private func runQuery(
+    request: Request,
+    queryString: String,
+    trimmed: String,
+    token: Int
+  ) async -> Response? {
     let folders = onlyInFolders(for: request.settings)
     let scanLimit = max(500, request.limit * 20)
     let terms = SpotlightQueryBuilder.terms(from: trimmed)

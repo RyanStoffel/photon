@@ -10,7 +10,7 @@ public struct FileSearchView: View {
     self.controller = controller
   }
 
-  private static let listSectionHeight: Double = 228
+  private static let listSectionHeight: Double = 200
 
   public var body: some View {
     VStack(spacing: 0) {

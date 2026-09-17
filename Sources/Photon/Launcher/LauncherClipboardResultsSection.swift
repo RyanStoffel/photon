@@ -91,7 +91,7 @@ struct LauncherClipboardResultsSection: View {
 struct LauncherClipboardDetailSplitView: View {
   @ObservedObject var model: LauncherViewModel
 
-  private static let listSectionHeight: Double = 228
+  private static let listSectionHeight: Double = 200
 
   var body: some View {
     VStack(spacing: 0) {
@@ -157,7 +157,7 @@ private struct ClipboardDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       Divider()
       metadata
-        .frame(height: 188, alignment: .top)
+        .frame(height: 148, alignment: .top)
     }
     .task(id: item.id) {
       fullText = await manager.fullText(for: item)

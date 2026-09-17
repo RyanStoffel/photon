@@ -55,7 +55,7 @@ public enum LauncherLayout {
   public static let cornerRadius: Double = 12
   public static let iconSize: Double = 28
   public static let detailWidth: Double = 980
-  public static let detailHeight: Double = 620
+  public static let detailHeight: Double = 680
   /// Raycast-style calculator hero card (section label + split card).
   public static let calculatorSectionSpacing: Double = 8
   public static let calculatorCardHeight: Double = 108
