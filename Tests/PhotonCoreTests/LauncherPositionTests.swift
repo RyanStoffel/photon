@@ -87,7 +87,7 @@ final class LauncherPositionTests: XCTestCase {
   func testLiveDragKeepsOffsetWhenPulledHorizontally() {
     let start = PanelOrigin(x: visible.midX - panel.width / 2, y: 400)
     let mouse = PanelOrigin(x: visible.midX, y: 500)
-    let outside = panel.width / 2 + 40
+    let outside = 200.0
     let origin = LauncherPosition.liveDragOrigin(
       initialOrigin: start,
       startMouse: mouse,
