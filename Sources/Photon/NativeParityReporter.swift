@@ -167,6 +167,7 @@ final class NativeParityReporter: NSObject {
         "acceptedCount": runtime.launcher.acceptedChromeDragCount,
         "active": runtime.launcher.isDraggingLauncher,
         "guidesVisible": runtime.launcher.centerGuides.isVisible,
+        "guideSpan": runtime.launcher.centerGuides.lastGuideSpan,
         "mouseDownCount": runtime.launcher.chromeMouseDownCount,
       ],
       "clipboardCaptureCount": runtime.clipboard.items.count,

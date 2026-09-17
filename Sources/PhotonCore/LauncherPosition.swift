@@ -58,7 +58,6 @@ public struct LauncherStoredPosition: Equatable, Codable, Sendable {
 
 /// Default placement and snap geometry for the launcher panel.
 public enum LauncherPosition {
-  public static let snapCorridorHalfWidth: Double = 60
 
   /// Spotlight-like default: centred horizontally, top edge ~74% up the visible frame.
   public static func defaultOrigin(panelSize: PanelSize, visible: ScreenVisibleFrame) -> PanelOrigin {
@@ -99,16 +98,14 @@ public enum LauncherPosition {
   }
 
   /// Horizontal positions of the two snap guides in screen coordinates.
-  /// The narrow corridor stays usable even when the launcher occupies most of
-  /// a small display; entering it snaps the panel's horizontal center.
+  /// Guides sit at the left and right edges of a horizontally centered panel.
+  /// When the panel midpoint moves between them, horizontal placement snaps to center.
   public static func snapGuideXPositions(
     visible: ScreenVisibleFrame,
-    panelWidth _: Double
+    panelWidth: Double
   ) -> (left: Double, right: Double) {
-    (
-      visible.midX - snapCorridorHalfWidth,
-      visible.midX + snapCorridorHalfWidth
-    )
+    let centeredOriginX = visible.midX - panelWidth / 2
+    return (centeredOriginX, centeredOriginX + panelWidth)
   }
 
   /// Resolves horizontal placement after a drag ends.
@@ -137,8 +134,8 @@ public enum LauncherPosition {
     )
   }
 
-  /// Follows the pointer on Y; snaps X into the guide corridor (centered) unless
-  /// the drag has pulled the panel midpoint clearly outside the two edge guides.
+  /// Follows the pointer on Y; snaps X to screen center only while the panel
+  /// midpoint sits between the two edge guides (centered panel width).
   public static func liveDragOrigin(
     initialOrigin: PanelOrigin,
     startMouse: PanelOrigin,

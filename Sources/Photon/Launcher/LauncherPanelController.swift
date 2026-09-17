@@ -2,6 +2,7 @@ import AppKit
 import Combine
 import PhotonClipboard
 import PhotonCore
+import PhotonFiles
 import QuickLookUI
 import SwiftUI
 
@@ -11,6 +12,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   private let registry: CommandRegistry
   private let frecencyURL: URL
   let model: LauncherViewModel
+  /// Set by `FileSearchIntegration` so main-bar queries can promote into Files mode.
+  weak var filesProvider: FilesProvider?
   var panel: LauncherPanel?
   private var cancellables: Set<AnyCancellable> = []
   let centerGuides = LauncherCenterGuidesOverlay()
@@ -91,7 +94,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       self?.hide()
     }
     manager.onPrepareForPaste = { [weak self] in
-      self?.hide()
+      self?.prepareForPasteDelivery()
     }
     manager.onPasteFailure = { [weak self] in
       self?.showClipboard()
@@ -111,6 +114,27 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       return
     }
     Task { await model.refresh() }
+  }
+
+  /// Opens the full Files session (split preview, recents, footer) for a main-bar query.
+  func promoteFilesMode(query: String) {
+    guard panel?.isVisible == true else {
+      return
+    }
+    guard model.showsCommandList, model.activeMode == nil else {
+      return
+    }
+    let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.count >= FileSearchSettings.inlineMinimumQueryLength else {
+      return
+    }
+    guard filesProvider?.hasInlineResults(for: trimmed) == true else {
+      return
+    }
+    guard let mode = model.modes.first(where: { $0.id == "files" }) else {
+      return
+    }
+    model.enter(mode: mode, query: trimmed)
   }
 
   func preload() {
@@ -286,8 +310,15 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     }
     self.previousApplication = nil
     if !previousApplication.isTerminated {
-      _ = previousApplication.activate(options: [])
+      _ = previousApplication.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
     }
+  }
+
+  /// Hides the panel and returns key focus to the app that was frontmost before Photon opened.
+  private func prepareForPasteDelivery() {
+    hide()
+    NSApp.hide(nil)
+    RunLoop.current.run(until: Date().addingTimeInterval(0.05))
   }
 
   private func rememberPreviousApplication() {

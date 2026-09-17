@@ -38,7 +38,7 @@ public final class ClipboardManager: ObservableObject {
   private var isStarted = false
 
   /// Delay between hiding the panel and sending Cmd+V, so key focus is back in the target app.
-  public var pasteDelay: Duration = .milliseconds(120)
+  public var pasteDelay: Duration = .milliseconds(300)
   /// Hides the launcher and restores the app that owned focus before Photon opened.
   public var onPrepareForPaste: (@MainActor () -> Void)?
   /// Reopens clipboard history when trusted event creation unexpectedly fails.
