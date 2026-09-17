@@ -3,7 +3,6 @@ import Combine
 import PhotonClipboard
 import PhotonCore
 import PhotonFiles
-import QuartzCore
 import QuickLookUI
 import SwiftUI
 
@@ -360,7 +359,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   }
 
   private func makePanel() -> LauncherPanel {
-    let size = NSSize(width: model.panelWidth, height: LauncherLayout.height(for: model.content))
+    let layoutSize = LauncherPanelSize(width: model.panelWidth, content: model.content)
+    let size = NSSize(width: layoutSize.width, height: layoutSize.height)
     let panel = LauncherPanel(
       contentRect: NSRect(origin: .zero, size: size),
       styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
@@ -432,7 +432,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     guard let panel else {
       return
     }
-    let size = NSSize(width: width, height: LauncherLayout.height(for: content))
+    let layoutSize = LauncherPanelSize(width: width, content: content)
+    let size = NSSize(width: layoutSize.width, height: layoutSize.height)
     var frame = panel.frame
     guard force || frame.size != size else {
       return
@@ -442,18 +443,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       frame.origin.x = frame.midX - size.width / 2
     }
     frame.origin.y = frame.maxY - size.height
-    let animate = !force && abs(frame.size.width - size.width) < 0.5 && abs(frame.size.height - size.height) > 0.5
     frame.size = size
-    if animate {
-      NSAnimationContext.runAnimationGroup { context in
-        context.duration = LauncherLayout.expandAnimationDuration
-        context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-        context.allowsImplicitAnimation = true
-        panel.animator().setFrame(frame, display: true)
-      }
-    } else {
-      panel.setFrame(frame, display: true, animate: false)
-    }
+    panel.setFrame(frame, display: true, animate: false)
     panel.invalidateShadow()
   }
 }

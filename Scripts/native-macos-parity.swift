@@ -748,6 +748,33 @@ do {
       && bool(launcher($0)["key"])
       && string(launcher($0)["content"]) == "searchOnly"
   }
+  let compactLauncherFrame = frame(report)
+  let compactLauncherWidth = double(compactLauncherFrame["width"])
+  let compactLauncherHeight = double(compactLauncherFrame["height"])
+  let compactLauncherTop = top(report)
+  postKey(125)
+  report = try wait("Down instantly reveals launcher recommendations at the shared expanded size") {
+    string(launcher($0)["content"]) == "recommendations"
+      && int(launcher($0)["resultCount"]) > 0
+      && abs(double(frame($0)["width"]) - compactLauncherWidth) < 0.5
+      && double(frame($0)["height"]) > compactLauncherHeight
+      && abs(top($0) - compactLauncherTop) < 0.5
+  }
+  let launcherRecommendationsFrame = frame(report)
+  let sharedExpandedWidth = double(launcherRecommendationsFrame["width"])
+  let sharedExpandedHeight = double(launcherRecommendationsFrame["height"])
+  try captureLauncher(report, name: "launcher-recs", expectedText: "Photon")
+
+  try sendRuntimeCommand("hideLauncher")
+  _ = try wait("launcher recommendations close before drag checks") {
+    !bool(launcher($0)["visible"])
+  }
+  try sendRuntimeCommand("showLauncher")
+  report = try wait("drag checks reopen the compact launcher") {
+    bool(launcher($0)["visible"])
+      && bool(launcher($0)["key"])
+      && string(launcher($0)["content"]) == "searchOnly"
+  }
   let centeredX = double(frame(report)["x"])
   let firstY = double(frame(report)["y"])
   let panelWidth = double(frame(report)["width"])
@@ -891,6 +918,8 @@ do {
     string(launcher($0)["content"]) == "fullHeight"
       && int(launcher($0)["clipboardSelectedIndex"]) >= 0
       && abs(top($0) - anchoredTop) < 0.5
+      && abs(double(frame($0)["width"]) - sharedExpandedWidth) < 0.5
+      && abs(double(frame($0)["height"]) - sharedExpandedHeight) < 0.5
   }
   try require(
     string(launcher(report)["clipboardSelectedKind"]) == "image",
@@ -995,6 +1024,8 @@ do {
       && int(launcher($0)["clipboardSelectedIndex"]) >= 0
       && abs(double(launcher($0)["panelWidth"]) - compactWidth) < 0.5
       && abs(double(dictionary(launcher($0)["frame"])["width"]) - compactWidth) < 0.5
+      && abs(double(frame($0)["width"]) - sharedExpandedWidth) < 0.5
+      && abs(double(frame($0)["height"]) - sharedExpandedHeight) < 0.5
   }
   clickSearchField(report)
   report = try wait("launcher-entry clipboard panel is the key-event target") {
@@ -1072,6 +1103,8 @@ do {
       && displayedTitles($0).contains(expectedFile)
       && string(launcher($0)["fileSelectedName"]) == expectedFile
       && abs(double(dictionary(launcher($0)["frame"])["width"]) - launcherBarWidth) < 0.5
+      && abs(double(frame($0)["width"]) - sharedExpandedWidth) < 0.5
+      && abs(double(frame($0)["height"]) - sharedExpandedHeight) < 0.5
   }
   try captureLauncher(
     report,
@@ -1096,6 +1129,8 @@ do {
       && displayedTitles($0).contains("Ember_Individual_Pitch.pdf")
       && displayedTitles($0).contains("Photon_Recent_Image.png")
       && string(launcher($0)["fileSelectedName"]) == "Ember_Individual_Pitch.pdf"
+      && abs(double(frame($0)["width"]) - sharedExpandedWidth) < 0.5
+      && abs(double(frame($0)["height"]) - sharedExpandedHeight) < 0.5
   }
   try captureLauncher(
     report,

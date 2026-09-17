@@ -18,6 +18,10 @@ struct LauncherView: View {
       switch model.content {
       case .searchOnly:
         EmptyView()
+      case .recommendations:
+        Hairline(emphasized: true)
+        resultsList
+          .frame(height: LauncherLayout.expandedListHeight)
       case .rows:
         Hairline(emphasized: true)
         if model.session == .clipboard {
@@ -135,12 +139,7 @@ struct LauncherView: View {
         }
       }
     }
-    .frame(
-      height: LauncherLayout.listHeight(
-        rowCount: model.rows.count,
-        showsCalculatorHero: model.calculatorHero != nil
-      )
-    )
+    .frame(maxHeight: .infinity)
   }
 
   private var messageRow: some View {
