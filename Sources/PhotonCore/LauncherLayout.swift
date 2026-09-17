@@ -54,8 +54,14 @@ public enum LauncherLayout {
   public static let hairline: Double = 1
   public static let cornerRadius: Double = 12
   public static let iconSize: Double = 28
+  /// Legacy wide-panel metric. Expanded Files/clipboard keep `panelWidth` and
+  /// split list/preview horizontally inside `detailListWidth` instead.
   public static let detailWidth: Double = 980
   public static let detailHeight: Double = 720
+  /// Left-hand results column inside an expanded Files or clipboard panel.
+  public static let detailListWidth: Double = 268
+  /// Compact bar → dropdown height. Snappy ease-out, not AppKit's default window timing.
+  public static let expandAnimationDuration: Double = 0.15
   /// Raycast-style calculator hero card (section label + split card).
   public static let calculatorSectionSpacing: Double = 8
   public static let calculatorCardHeight: Double = 108

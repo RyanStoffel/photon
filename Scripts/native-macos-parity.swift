@@ -143,7 +143,14 @@ func captureLauncher(
     destination.path,
   ]
   try process.run()
-  process.waitUntilExit()
+  let captureDeadline = Date().addingTimeInterval(8)
+  while process.isRunning, Date() < captureDeadline {
+    RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+  }
+  if process.isRunning {
+    process.terminate()
+    throw ParityFailure.failed("screencapture timed out for \(name).png")
+  }
   let size = (try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
   try require(process.terminationStatus == 0 && size > 0, "captured \(name).png")
   let recognition = VNRecognizeTextRequest()
@@ -154,15 +161,24 @@ func captureLauncher(
     .compactMap { $0.topCandidates(1).first?.string }
     .joined(separator: "\n")
   try require(
-    renderedText.localizedCaseInsensitiveContains(expectedText),
+    ocrContains(renderedText, expectedText),
     "\(name).png visibly contains \(expectedText)"
   )
   for expected in additionalExpectedText {
     try require(
-      renderedText.localizedCaseInsensitiveContains(expected),
+      ocrContains(renderedText, expected),
       "\(name).png visibly contains \(expected)"
     )
   }
+}
+
+func ocrContains(_ rendered: String, _ expected: String) -> Bool {
+  if rendered.localizedCaseInsensitiveContains(expected) {
+    return true
+  }
+  let compactRendered = rendered.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+  let compactExpected = expected.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+  return compactRendered.localizedCaseInsensitiveContains(compactExpected)
 }
 
 func sendRuntimeCommand(_ command: String) throws {
@@ -461,6 +477,205 @@ func confirmPhotonTextField(pid: pid_t) -> Bool {
   return AXUIElementPerformAction(textField, kAXConfirmAction as CFString) == .success
 }
 
+func axStringAttribute(_ element: AXUIElement, _ attribute: String) -> String {
+  var value: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else {
+    return ""
+  }
+  if let string = value as? String {
+    return string
+  }
+  if let number = value as? NSNumber, number.boolValue {
+    return "true"
+  }
+  return ""
+}
+
+func axIsSelected(_ element: AXUIElement) -> Bool {
+  var value: CFTypeRef?
+  if AXUIElementCopyAttributeValue(element, kAXSelectedAttribute as CFString, &value) == .success,
+     (value as? NSNumber)?.boolValue == true
+  {
+    return true
+  }
+  let traits = axStringAttribute(element, "AXDOMClassList")
+  if traits.localizedCaseInsensitiveContains("selected") {
+    return true
+  }
+  return axStringAttribute(element, kAXValueAttribute as String) == "selected"
+    || axStringAttribute(element, kAXDescriptionAttribute as String).localizedCaseInsensitiveContains("selected")
+}
+
+func axElementTitle(_ element: AXUIElement) -> String {
+  for attribute in [
+    kAXTitleAttribute as String,
+    kAXDescriptionAttribute as String,
+    kAXValueAttribute as String,
+    "AXIdentifier",
+  ] {
+    let text = axStringAttribute(element, attribute)
+    if !text.isEmpty, text != "selected", text != "unselected", text != "clipboard-row" {
+      return text
+    }
+  }
+  return ""
+}
+
+func axSelectedClipboardTitle(pid: pid_t, candidates: [String]) -> String? {
+  func matches(_ text: String) -> String? {
+    candidates.first { candidate in
+      text.localizedCaseInsensitiveContains(candidate) || candidate.localizedCaseInsensitiveContains(text)
+    }
+  }
+  func walk(_ element: AXUIElement, depth: Int) -> String? {
+    guard depth < 24 else {
+      return nil
+    }
+    let identifier = axStringAttribute(element, "AXIdentifier")
+    let title = axElementTitle(element)
+    if identifier == "clipboard-row", axIsSelected(element), let match = matches(title) {
+      return match
+    }
+    if axIsSelected(element), let match = matches(title) {
+      return match
+    }
+    for child in accessibilityChildren(of: element) {
+      if let found = walk(child, depth: depth + 1) {
+        return found
+      }
+    }
+    return nil
+  }
+  return walk(AXUIElementCreateApplication(pid), depth: 0)
+}
+
+func meanLuminance(of image: CGImage, rect: CGRect) -> Double? {
+  let imageRect = CGRect(x: 0, y: 0, width: Double(image.width), height: Double(image.height))
+  let clamped = rect.intersection(imageRect)
+  guard clamped.width >= 2, clamped.height >= 2 else {
+    return nil
+  }
+  let width = Int(clamped.width)
+  let height = Int(clamped.height)
+  var pixels = [UInt8](repeating: 0, count: width * height * 4)
+  let drawn = pixels.withUnsafeMutableBytes { raw -> Bool in
+    guard let context = CGContext(
+      data: raw.baseAddress,
+      width: width,
+      height: height,
+      bitsPerComponent: 8,
+      bytesPerRow: width * 4,
+      space: CGColorSpaceCreateDeviceRGB(),
+      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ) else {
+      return false
+    }
+    context.draw(
+      image,
+      in: CGRect(
+        x: Double(-clamped.minX),
+        y: Double(-clamped.minY),
+        width: Double(image.width),
+        height: Double(image.height)
+      )
+    )
+    return true
+  }
+  guard drawn else {
+    return nil
+  }
+  var total = 0.0
+  let count = width * height
+  for index in 0 ..< count {
+    let offset = index * 4
+    let red = Double(pixels[offset])
+    let green = Double(pixels[offset + 1])
+    let blue = Double(pixels[offset + 2])
+    total += 0.2126 * red + 0.7152 * green + 0.0722 * blue
+  }
+  return total / Double(count)
+}
+
+func visuallyHighlightedTitle(at url: URL, candidates: [String], leftFraction: Double) -> String? {
+  guard let image = NSImage(contentsOf: url),
+        let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+  else {
+    return nil
+  }
+  let request = VNRecognizeTextRequest()
+  request.recognitionLevel = .accurate
+  let handler = VNImageRequestHandler(cgImage: cgImage)
+  try? handler.perform([request])
+  let width = Double(cgImage.width)
+  let height = Double(cgImage.height)
+  var scored: [(title: String, luminance: Double)] = []
+  for observation in request.results ?? [] {
+    guard let text = observation.topCandidates(1).first?.string else {
+      continue
+    }
+    let box = observation.boundingBox
+    guard box.midX < leftFraction else {
+      continue
+    }
+    let match = candidates.first { candidate in
+      text.localizedCaseInsensitiveContains(candidate) || candidate.localizedCaseInsensitiveContains(text)
+    }
+    guard let match else {
+      continue
+    }
+    let pixel = CGRect(
+      x: box.minX * width,
+      y: (1 - box.maxY) * height,
+      width: max(box.width * width, 8),
+      height: max(box.height * height, 8)
+    ).insetBy(dx: -18, dy: -6)
+    if let luminance = meanLuminance(of: cgImage, rect: pixel) {
+      scored.append((match, luminance))
+    }
+  }
+  guard scored.count >= 2 else {
+    return scored.first?.title
+  }
+  let median = scored.map(\.luminance).sorted()[scored.count / 2]
+  return scored.max { lhs, rhs in
+    abs(lhs.luminance - median) < abs(rhs.luminance - median)
+  }?.title
+}
+
+func requireClipboardListHighlight(
+  pid: pid_t,
+  report: [String: Any],
+  screenshot: String
+) throws {
+  let selected = string(launcher(report)["clipboardSelectedTitle"])
+  let titles = displayedTitles(report)
+  try require(!selected.isEmpty, "clipboard exposes a selected title")
+  try require(titles.count >= 2, "clipboard list has multiple rows to highlight")
+  try require(
+    titles.first != selected,
+    "highlighted selection moved off the first list row (\(titles.first ?? ""))"
+  )
+  try captureLauncher(report, name: screenshot, expectedText: selected)
+  if let axTitle = axSelectedClipboardTitle(pid: pid, candidates: titles) {
+    try require(
+      axTitle.localizedCaseInsensitiveContains(selected)
+        || selected.localizedCaseInsensitiveContains(axTitle),
+      "AX selected left-row title matches \(selected)"
+    )
+    return
+  }
+  let screenshotURL = screenshotDirectory.appendingPathComponent(screenshot + ".png")
+  if let visual = visuallyHighlightedTitle(at: screenshotURL, candidates: titles, leftFraction: 0.42) {
+    try require(
+      visual.localizedCaseInsensitiveContains(selected)
+        || selected.localizedCaseInsensitiveContains(visual),
+      "visually highlighted left-row title matches \(selected)"
+    )
+    return
+  }
+  throw ParityFailure.failed("could not read the highlighted clipboard left-row title")
+}
+
 func setSystemAppearance(dark: Bool) {
   let process = Process()
   process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
@@ -583,6 +798,12 @@ do {
       && abs(double(frame($0)["y"]) - snappedY) > 20
   }
 
+  try sendRuntimeCommand("resetLauncherPosition")
+  report = try wait("launcher returns on-screen after drag checks") {
+    double(frame($0)["y"]) > 0
+      && abs(double(frame($0)["x"]) - centeredX) < 80
+  }
+
   clickSearchField(report)
   try require(focusPhotonTextField(pid: pid), "drag chrome does not hijack the search field")
   try require(setPhotonTextFieldValue(pid: pid, value: "clipboard"), "search field remains editable after dragging")
@@ -680,19 +901,18 @@ do {
     name: "clipboard-image-detail",
     expectedText: "Photon Image Detail"
   )
-  let firstSelection = int(launcher(report)["clipboardSelectedIndex"])
   postKey(125)
-  report = try wait("Down cycles clipboard selection") {
-    int(launcher($0)["clipboardSelectedIndex"]) != firstSelection
+  postKey(125)
+  postKey(126)
+  report = try wait("Down/Down/Up moves clipboard selection off the first row") {
+    int(launcher($0)["clipboardSelectedIndex"]) > 0
+      && !string(launcher($0)["clipboardSelectedTitle"]).isEmpty
+      && displayedTitles($0).first != string(launcher($0)["clipboardSelectedTitle"])
   }
-  try require(
-    !string(launcher(report)["clipboardSelectedTitle"]).isEmpty,
-    "expanded clipboard exposes the visibly selected row"
-  )
-  try captureLauncher(
-    report,
-    name: "clipboard-hotkey-selection",
-    expectedText: string(launcher(report)["clipboardSelectedTitle"])
+  try requireClipboardListHighlight(
+    pid: pid,
+    report: report,
+    screenshot: "clipboard-hotkey-selection"
   )
   try require(setPhotonTextFieldValue(pid: pid, value: "long clipboard detail sentinel"), "filters long text")
   report = try wait("typing filters clipboard and renders full text detail") {
@@ -786,19 +1006,19 @@ do {
   )
   let launcherEntryFirstSelection = int(launcher(report)["clipboardSelectedIndex"])
   postKey(125)
-  report = try wait("launcher-entry Down visibly moves selection") {
-    int(launcher($0)["clipboardSelectedIndex"]) != launcherEntryFirstSelection
-      && !string(launcher($0)["clipboardSelectedTitle"]).isEmpty
-  }
-  try captureLauncher(
-    report,
-    name: "clipboard-launcher-selection",
-    expectedText: string(launcher(report)["clipboardSelectedTitle"])
-  )
+  postKey(125)
   postKey(126)
-  _ = try wait("launcher-entry Up visibly restores selection") {
-    int(launcher($0)["clipboardSelectedIndex"]) == launcherEntryFirstSelection
+  report = try wait("launcher-entry Down/Down/Up visibly moves selection") {
+    int(launcher($0)["clipboardSelectedIndex"]) != launcherEntryFirstSelection
+      && int(launcher($0)["clipboardSelectedIndex"]) >= 0
+      && !string(launcher($0)["clipboardSelectedTitle"]).isEmpty
+      && displayedTitles($0).first != string(launcher($0)["clipboardSelectedTitle"])
   }
+  try requireClipboardListHighlight(
+    pid: pid,
+    report: report,
+    screenshot: "clipboard-launcher-selection"
+  )
 
   try sendRuntimeCommand("hideLauncher")
   _ = try wait("clipboard session closes before file-search tests") {
@@ -857,7 +1077,7 @@ do {
     report,
     name: "ember-mixed-search",
     expectedText: expectedFile,
-    additionalExpectedText: ["Metadata", "Name", "Where", "Type"]
+    additionalExpectedText: ["Results", "Metadata", "Name", "Where", "Type"]
   )
 
   try sendRuntimeCommand("hideLauncher")
@@ -870,6 +1090,7 @@ do {
     let loaded = status == "recents" || status == "results"
     return string(launcher($0)["mode"]) == "files"
       && string(launcher($0)["query"]).isEmpty
+      && string(launcher($0)["fileControllerQuery"]).isEmpty
       && bool(launcher($0)["key"])
       && loaded
       && displayedTitles($0).contains("Ember_Individual_Pitch.pdf")

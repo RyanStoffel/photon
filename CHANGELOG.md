@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Files mode and clipboard history expanded views split **list left, preview and metadata right** inside the compact launcher width. The panel no longer stacks preview below the list or jumps sideways.
+- Launcher height animation is a snappy ~150ms ease-out dropdown for Files promotion and Clipboard History Enter.
+- Clipboard Up/Down redraws the selected left-list row so the highlight tracks the preview.
+- Packaged `smoke` native-parity: empty Files after an `ember` search loads recents instead of replaying the previous query; EXIT cleanup no longer dumps SIGTERM as the failure.
+
 ## [0.3.5] - 2026-09-17
 
 Ryan UX and real-world file search release.

@@ -23,7 +23,16 @@ public final class ClipboardHistoryViewModel: ObservableObject {
   }
 
   @Published public private(set) var results: [ClipboardItem] = []
-  @Published public var selectedID: UUID?
+  @Published public var selectedID: UUID? {
+    didSet {
+      if selectedID != oldValue {
+        selectionEpoch &+= 1
+      }
+    }
+  }
+
+  /// Increments whenever the selected row changes so SwiftUI list rows redraw.
+  @Published public private(set) var selectionEpoch = 0
   @Published public private(set) var notice: Notice?
   @Published public private(set) var isConfirmingClear = false
 
