@@ -99,7 +99,7 @@ final class LauncherPositionTests: XCTestCase {
     XCTAssertEqual(origin.y, 390, accuracy: 0.001)
   }
 
-  func testStoredPositionSnapsInsideGuideCorridorOnRelease() {
+  func testStoredPositionSnapsInsideCenterCorridorOnRelease() {
     let midInside = visible.midX
     let stored = LauncherPosition.storedPosition(
       origin: PanelOrigin(x: midInside - panel.width / 2, y: 400),
@@ -107,6 +107,16 @@ final class LauncherPositionTests: XCTestCase {
       visible: visible
     )
     XCTAssertTrue(stored.isHorizontallyCentered)
+  }
+
+  func testResolveHorizontalSnapUsesCenterCorridorNotGuideSpan() {
+    let offsetMidX = visible.midX + panel.width / 2 + 40
+    let result = LauncherPosition.resolveHorizontalSnap(
+      panelMidX: offsetMidX,
+      panelWidth: panel.width,
+      visible: visible
+    )
+    XCTAssertFalse(result.isHorizontallyCentered)
   }
 
   func testOriginByMouseDeltaIsStableWhenMouseHolds() {

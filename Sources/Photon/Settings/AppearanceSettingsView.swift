@@ -25,7 +25,7 @@ struct AppearanceSettingsView: View {
         }
         Text(
           "Drag the top or side chrome to move the panel. Dotted guides mark the left and right "
-            + "edges of a centered panel; the panel snaps horizontally when its midpoint sits between them."
+            + "edges of a centered panel; releasing near the horizontal center snaps back into place."
         )
         .font(.caption)
         .foregroundStyle(.secondary)
