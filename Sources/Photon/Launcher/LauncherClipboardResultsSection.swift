@@ -60,10 +60,9 @@ struct LauncherClipboardResultsSection: View {
 
   @ViewBuilder
   private func resultRow(_ item: ClipboardItem) -> some View {
-    let selected = item.id == model.clipboard?.selectedID
-    ClipboardLauncherRow(item: item, isSelected: selected)
-      .contextMenu {
-        if let clipboard = model.clipboard {
+    if let clipboard = model.clipboard {
+      ClipboardHistoryObservingRow(item: item, clipboard: clipboard)
+        .contextMenu {
           Button(clipboard.manager.settings.pasteBehavior == .paste ? "Paste" : "Copy") {
             clipboard.paste(item)
           }
@@ -78,29 +77,39 @@ struct LauncherClipboardResultsSection: View {
             clipboard.delete(item)
           }
         }
-      }
-      .onTapGesture(count: 2) {
-        model.clipboard?.paste(item)
-      }
-      .onTapGesture {
-        model.clipboard?.selectedID = item.id
-      }
+        .onTapGesture(count: 2) {
+          clipboard.paste(item)
+        }
+        .onTapGesture {
+          clipboard.selectedID = item.id
+        }
+    }
   }
 }
 
 struct LauncherClipboardDetailSplitView: View {
   @ObservedObject var model: LauncherViewModel
 
-  private static let listSectionHeight: Double = 200
+  var body: some View {
+    if let clipboard = model.clipboard {
+      ClipboardDetailSplitBody(clipboard: clipboard)
+    } else {
+      ContentUnavailableView("No Clipboard Item", systemImage: "clipboard")
+    }
+  }
+}
+
+private struct ClipboardDetailSplitBody: View {
+  @ObservedObject var clipboard: ClipboardHistoryViewModel
 
   var body: some View {
-    VStack(spacing: 0) {
+    HStack(spacing: 0) {
       historyList
-        .frame(maxWidth: .infinity)
-        .frame(height: Self.listSectionHeight)
+        .frame(width: LauncherLayout.detailListWidth)
+        .frame(maxHeight: .infinity, alignment: .top)
       Divider()
       Group {
-        if let clipboard = model.clipboard, let item = clipboard.selectedItem {
+        if let item = clipboard.selectedItem {
           ClipboardDetailView(item: item, manager: clipboard.manager)
         } else {
           ContentUnavailableView("No Clipboard Item", systemImage: "clipboard")
@@ -119,29 +128,39 @@ struct LauncherClipboardDetailSplitView: View {
             .foregroundStyle(.secondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-          if let clipboard = model.clipboard {
-            ForEach(clipboard.results) { item in
-              ClipboardLauncherRow(item: item, isSelected: item.id == clipboard.selectedID)
-                .id(item.id)
-                .contentShape(Rectangle())
-                .onTapGesture(count: 2) {
-                  clipboard.paste(item)
-                }
-                .onTapGesture {
-                  clipboard.selectedID = item.id
-                }
-            }
+          ForEach(clipboard.results) { item in
+            ClipboardHistoryObservingRow(item: item, clipboard: clipboard)
+              .id(item.id)
+              .contentShape(Rectangle())
+              .onTapGesture(count: 2) {
+                clipboard.paste(item)
+              }
+              .onTapGesture {
+                clipboard.selectedID = item.id
+              }
           }
         }
         .padding(.horizontal, 8)
         .padding(.bottom, LauncherLayout.listInset)
       }
-      .onChange(of: model.clipboard?.selectedID) { _, selectedID in
+      .onChange(of: clipboard.selectedID) { _, selectedID in
         if let selectedID {
           proxy.scrollTo(selectedID, anchor: .center)
         }
       }
     }
+    .frame(maxHeight: .infinity)
+  }
+}
+
+/// Observes the clipboard VM so Up/Down selection highlight redraws even when
+/// the results array identity is unchanged.
+private struct ClipboardHistoryObservingRow: View {
+  let item: ClipboardItem
+  @ObservedObject var clipboard: ClipboardHistoryViewModel
+
+  var body: some View {
+    ClipboardLauncherRow(item: item, isSelected: item.id == clipboard.selectedID)
   }
 }
 

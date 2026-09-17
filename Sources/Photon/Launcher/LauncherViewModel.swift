@@ -121,8 +121,8 @@ final class LauncherViewModel: ObservableObject {
     self.frecency = frecency
   }
 
-  /// Launcher bar width stays on the Appearance preset; Files and clipboard detail
-  /// layouts grow downward inside the same width.
+  /// Launcher bar width stays on the Appearance preset. Files and clipboard
+  /// detail split list/preview horizontally and grow downward inside that width.
   var panelWidth: Double {
     preferences.width.points
   }

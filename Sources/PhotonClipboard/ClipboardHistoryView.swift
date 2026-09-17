@@ -101,6 +101,11 @@ public struct ClipboardLauncherRow: View {
         .fill(isSelected ? Color.primary.opacity(0.09) : Color.clear)
     )
     .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("clipboard-row")
+    .accessibilityLabel(item.title.isEmpty ? item.kind.label : item.title)
+    .accessibilityValue(isSelected ? "selected" : "unselected")
+    .accessibilityAddTraits(isSelected ? .isSelected : [])
   }
 
   private func symbolTile(_ name: String) -> some View {

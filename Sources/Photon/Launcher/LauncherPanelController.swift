@@ -3,6 +3,7 @@ import Combine
 import PhotonClipboard
 import PhotonCore
 import PhotonFiles
+import QuartzCore
 import QuickLookUI
 import SwiftUI
 
@@ -264,6 +265,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       return
     }
     filesProvider?.prepareForFullSession()
+    fileSearchController?.clearResumeProtection()
     fileSearchController?.deactivate()
     if model.activeMode?.id == mode.id {
       model.activeMode?.deactivate()
@@ -442,7 +444,16 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     frame.origin.y = frame.maxY - size.height
     let animate = !force && abs(frame.size.width - size.width) < 0.5 && abs(frame.size.height - size.height) > 0.5
     frame.size = size
-    panel.setFrame(frame, display: true, animate: animate)
+    if animate {
+      NSAnimationContext.runAnimationGroup { context in
+        context.duration = LauncherLayout.expandAnimationDuration
+        context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        context.allowsImplicitAnimation = true
+        panel.animator().setFrame(frame, display: true)
+      }
+    } else {
+      panel.setFrame(frame, display: true, animate: false)
+    }
     panel.invalidateShadow()
   }
 }

@@ -46,13 +46,23 @@ SEED_IMAGE_CREATED=0
 RYAN_LIKE_CREATED=0
 PID=""
 
+stop_job() {
+  local pid="${1:-}"
+  [[ -n "$pid" ]] || return 0
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -TERM "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+  fi
+}
+
 restore() {
-  if [[ -n "$PID" ]] && kill -0 "$PID" 2>/dev/null; then
-    kill -TERM "$PID" 2>/dev/null || true
-  fi
-  if [[ -n "$PASTE_TARGET_PID" ]] && kill -0 "$PASTE_TARGET_PID" 2>/dev/null; then
-    kill -TERM "$PASTE_TARGET_PID" 2>/dev/null || true
-  fi
+  # Cleanup must not change a successful harness exit, or mask a real assertion
+  # failure with a bare SIGTERM dump from Photon / native-paste-target.
+  set +e
+  stop_job "$PID"
+  PID=""
+  stop_job "$PASTE_TARGET_PID"
+  PASTE_TARGET_PID=""
   pkill -x Photon 2>/dev/null || true
   defaults delete -g AppleInterfaceStyle 2>/dev/null || true
   killall cfprefsd 2>/dev/null || true
@@ -143,8 +153,7 @@ kill -0 "$PID" 2>/dev/null || {
   exit 1
 }
 
-kill -TERM "$PID"
-wait "$PID" 2>/dev/null || true
+stop_job "$PID"
 PID=""
 rm -f "$REPORT" "$COMMAND"
 PHOTON_NATIVE_PARITY_REPORT_PATH="$REPORT" \
@@ -178,3 +187,7 @@ kill -0 "$PID" 2>/dev/null || {
 
 echo "Native macOS runtime parity green for $APP"
 echo "Native parity screenshots: $SCREENSHOT_DIR"
+stop_job "$PID"
+PID=""
+stop_job "$PASTE_TARGET_PID"
+PASTE_TARGET_PID=""
