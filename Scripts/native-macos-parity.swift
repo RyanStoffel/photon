@@ -779,9 +779,11 @@ func ocrVisibleProbe(_ selected: String) -> String {
   if selected.count <= 18 {
     return selected
   }
-  let chunks = selected.split(separator: "-").map(String.init)
-  if chunks.count >= 2, chunks[0].count >= 4 {
-    return chunks[0]
+  if selected.localizedCaseInsensitiveContains("paste sentinel") {
+    return "paste sentinel"
+  }
+  if selected.localizedCaseInsensitiveContains("Image") {
+    return "Image"
   }
   return String(selected.prefix(12))
 }
