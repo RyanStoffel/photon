@@ -58,23 +58,20 @@ final class LauncherPanel: NSPanel {
         inMode: .common,
         dequeue: true
       )
-      if next == nil {
-        if NSEvent.pressedMouseButtons & (1 << 0) == 0 {
+      guard let next else {
+        if NSEvent.pressedMouseButtons & 1 == 0 {
           super.sendEvent(down)
           return true
         }
         continue
       }
-      if next?.type == .leftMouseUp {
+      if next.type == .leftMouseUp {
         super.sendEvent(down)
-        if let next {
-          super.sendEvent(next)
-        }
+        super.sendEvent(next)
         return true
       }
-      let location = next?.locationInWindow ?? start
-      let delta = hypot(location.x - start.x, location.y - start.y)
-      if delta >= LauncherLayout.panelDragSlop, let next, mouseDownHandler?(next) == true {
+      let delta = hypot(next.locationInWindow.x - start.x, next.locationInWindow.y - start.y)
+      if delta >= LauncherLayout.panelDragSlop, mouseDownHandler?(next) == true {
         return true
       }
     }

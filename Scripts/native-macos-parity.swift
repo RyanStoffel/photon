@@ -406,7 +406,7 @@ func dragAndReset(
     xFromLeft: xFromLeft,
     yFromTop: yFromTop,
     deltaX: 90,
-    deltaY: 40
+    deltaY: 55
   )
   report = try wait("\(name) drag moves the panel") {
     abs(double(frame($0)["x"]) - startX) > 15 || abs(double(frame($0)["y"]) - startY) > 12
