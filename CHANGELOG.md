@@ -6,12 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-09-17
+
+Ryan layout, animation, clipboard selection, and smoke-harness release.
+
 ### Fixed
 
 - Files mode and clipboard history expanded views split **list left, preview and metadata right** inside the compact launcher width. The panel no longer stacks preview below the list or jumps sideways.
 - Launcher height animation is a snappy ~150ms ease-out dropdown for Files promotion and Clipboard History Enter.
 - Clipboard Up/Down redraws the selected left-list row so the highlight tracks the preview.
-- Packaged `smoke` native-parity: empty Files after an `ember` search loads recents instead of replaying the previous query; EXIT cleanup no longer dumps SIGTERM as the failure.
+- Packaged `smoke` native-parity: empty Files after an `ember` search loads recents instead of replaying the previous query; EXIT cleanup waits for child processes instead of dumping SIGTERM as the failure.
 
 ## [0.3.5] - 2026-09-17
 
@@ -191,7 +195,9 @@ First public build. Photon is a menu-bar launcher for macOS 14 and later; it has
 - The Intel slice of the universal binary has only been compiled, not run.
 - The Hyper key and window management need Accessibility access. The Caps Lock remap uses a per-login-session `hidutil` mapping; Settings > Keybinds > Reset Key Mapping restores the key if Photon quits abnormally.
 
-[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/RyanStoffel/photon/compare/v0.3.5...v0.3.6
+[0.3.5]: https://github.com/RyanStoffel/photon/compare/v0.3.4...v0.3.5
 [0.3.1]: https://github.com/RyanStoffel/photon/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/RyanStoffel/photon/releases/tag/v0.3.0
 [0.2.3]: https://github.com/RyanStoffel/photon/releases/tag/v0.2.3
