@@ -9,22 +9,25 @@ public enum FileAccessSelection: Sendable {
 
 @MainActor
 public protocol FileAccessPanelPresenting {
-  func chooseFolders() -> FileAccessSelection
+  func chooseFolders(parent: NSWindow?, directory: URL?) -> FileAccessSelection
 }
 
 @MainActor
 public struct SystemFileAccessPanel: FileAccessPanelPresenting {
   public init() {}
 
-  public func chooseFolders() -> FileAccessSelection {
+  public func chooseFolders(parent: NSWindow?, directory: URL?) -> FileAccessSelection {
     let panel = NSOpenPanel()
     panel.canChooseDirectories = true
     panel.canChooseFiles = false
     panel.allowsMultipleSelection = true
     panel.canCreateDirectories = false
     panel.prompt = "Grant Access"
-    panel.message = "Choose the folders Photon may search, such as Documents."
-    let response = panel.runModal()
+    panel.message = "Choose the folders Photon may search, such as Documents, Desktop, or Downloads."
+    if let directory {
+      panel.directoryURL = directory
+    }
+    let response = present(panel, parent: parent)
     if response == .cancel {
       return .cancelled
     }
@@ -32,6 +35,21 @@ public struct SystemFileAccessPanel: FileAccessPanelPresenting {
       return .failed("Photon could not read the selected folders.")
     }
     return .selected(panel.urls)
+  }
+
+  /// Sheets attach to a visible Files window so Photon never has to hide first.
+  private func present(_ panel: NSOpenPanel, parent: NSWindow?) -> NSApplication.ModalResponse {
+    guard let parent, parent.isVisible else {
+      return panel.runModal()
+    }
+    var response: NSApplication.ModalResponse?
+    panel.beginSheetModal(for: parent) { result in
+      response = result
+    }
+    while response == nil {
+      RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+    }
+    return response ?? .cancel
   }
 }
 
@@ -58,6 +76,8 @@ public final class FileAccessCoordinator: ObservableObject {
 
   @Published public private(set) var grants: [Grant] = []
   @Published public private(set) var status: Status = .idle
+  /// True while an open panel or sequential grant is on screen.
+  @Published public private(set) var isRequestingAccess = false
 
   public var folders: [String] {
     grants.map(\.path)
@@ -88,10 +108,14 @@ public final class FileAccessCoordinator: ObservableObject {
   }
 
   public func requestAccess(
-    using presenter: any FileAccessPanelPresenting = SystemFileAccessPanel()
+    using presenter: any FileAccessPanelPresenting = SystemFileAccessPanel(),
+    parent: NSWindow? = nil,
+    directory: URL? = nil
   ) {
+    isRequestingAccess = true
     status = .requesting
-    switch presenter.chooseFolders() {
+    defer { isRequestingAccess = false }
+    switch presenter.chooseFolders(parent: parent, directory: directory) {
     case let .selected(urls):
       persist(urls)
     case .cancelled:
@@ -99,6 +123,41 @@ public final class FileAccessCoordinator: ObservableObject {
     case let .failed(message):
       status = .failed(message)
     }
+  }
+
+  /// Presents one folder picker per remaining suggested URL so macOS can show
+  /// a single grant dialog at a time while Photon stays visible.
+  @discardableResult
+  public func requestAccessSequentially(
+    suggestedFolders: [URL],
+    using presenter: any FileAccessPanelPresenting = SystemFileAccessPanel(),
+    parent: NSWindow? = nil
+  ) -> Int {
+    let remaining = suggestedFolders.filter { url in
+      let path = url.standardizedFileURL.path(percentEncoded: false)
+      return !grants.contains { $0.path == path }
+    }
+    guard !remaining.isEmpty else {
+      requestAccess(using: presenter, parent: parent)
+      return grants.count
+    }
+    isRequestingAccess = true
+    status = .requesting
+    defer { isRequestingAccess = false }
+    let before = grants.count
+    for url in remaining {
+      switch presenter.chooseFolders(parent: parent, directory: url) {
+      case let .selected(urls):
+        persist(urls)
+      case .cancelled:
+        status = .cancelled
+        return grants.count - before
+      case let .failed(message):
+        status = .failed(message)
+        return grants.count - before
+      }
+    }
+    return grants.count - before
   }
 
   public func remove(path: String) {

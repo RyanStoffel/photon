@@ -27,6 +27,8 @@ public struct FileSearchView: View {
           }
           .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxHeight: .infinity)
+        .clipped()
       } else {
         content
           .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -274,8 +276,8 @@ struct FileDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       Divider()
       metadata
-        .frame(height: 148, alignment: .top)
     }
+    .clipped()
     .task(id: file.id) {
       loader.load(file, size: CGSize(width: 420, height: 300), scale: NSScreen.main?.backingScaleFactor ?? 2)
     }
@@ -303,30 +305,36 @@ struct FileDetailView: View {
   }
 
   private var metadata: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      Text("Metadata")
-        .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(.secondary)
-        .padding(.bottom, 6)
-      ForEach(rows) { row in
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
-          Text(row.label)
-            .foregroundStyle(.secondary)
-          Spacer(minLength: 12)
-          Text(row.value)
-            .lineLimit(1)
-            .truncationMode(.middle)
-            .textSelection(.enabled)
-        }
-        .font(.system(size: 13))
-        .padding(.vertical, 4)
-        .overlay(alignment: .bottom) {
-          Divider()
+    ScrollView(.vertical) {
+      VStack(alignment: .leading, spacing: 0) {
+        Text("Metadata")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.secondary)
+          .padding(.bottom, 6)
+        ForEach(rows) { row in
+          HStack(alignment: .firstTextBaseline, spacing: 16) {
+            Text(row.label)
+              .foregroundStyle(.secondary)
+            Spacer(minLength: 12)
+            Text(row.value)
+              .lineLimit(1)
+              .truncationMode(.middle)
+              .textSelection(.enabled)
+          }
+          .font(.system(size: 13))
+          .padding(.vertical, 3)
+          .overlay(alignment: .bottom) {
+            Divider()
+          }
         }
       }
+      .padding(.horizontal, 20)
+      .padding(.top, 10)
+      .padding(.bottom, 6)
     }
-    .padding(.horizontal, 20)
-    .padding(.vertical, 12)
+    .frame(height: LauncherLayout.detailMetadataHeight, alignment: .top)
+    .padding(.bottom, LauncherLayout.detailFooterSafeInset)
+    .clipped()
   }
 
   private var rows: [Row] {

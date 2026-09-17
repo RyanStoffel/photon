@@ -86,4 +86,15 @@ final class LauncherLayoutTests: XCTestCase {
     let heroPlusOne = LauncherLayout.listHeight(rowCount: 2, showsCalculatorHero: true)
     XCTAssertEqual(heroPlusOne - heroOnly, LauncherLayout.rowHeight + 2 * LauncherLayout.listInset)
   }
+
+  func testDetailMetadataReservesFooterSafeInset() {
+    XCTAssertGreaterThan(LauncherLayout.detailFooterSafeInset, 0)
+    XCTAssertGreaterThan(LauncherLayout.detailMetadataHeight, 120)
+    XCTAssertLessThan(
+      LauncherLayout.detailMetadataHeight + LauncherLayout.detailFooterSafeInset,
+      LauncherLayout.expandedListHeight / 2
+    )
+    XCTAssertGreaterThan(LauncherLayout.panelDragSlop, 0)
+    XCTAssertLessThan(LauncherLayout.panelDragSlop, LauncherLayout.rowHeight)
+  }
 }
