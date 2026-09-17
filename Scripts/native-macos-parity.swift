@@ -752,7 +752,7 @@ func requireClipboardListHighlight(
     titles.first != selected,
     "highlighted selection moved off the first list row (\(titles.first ?? ""))"
   )
-  try captureLauncher(report, name: screenshot, expectedText: selected)
+  try captureLauncher(report, name: screenshot, expectedText: ocrVisibleProbe(selected))
   if let axTitle = axSelectedClipboardTitle(pid: pid, candidates: titles) {
     try require(
       axTitle.localizedCaseInsensitiveContains(selected)
@@ -771,6 +771,19 @@ func requireClipboardListHighlight(
     return
   }
   throw ParityFailure.failed("could not read the highlighted clipboard left-row title")
+}
+
+/// Clipboard rows truncate long titles, and Vision wraps UUIDs. OCR only needs a
+/// prefix that actually fits on screen; AX/luminance still prove the highlight.
+func ocrVisibleProbe(_ selected: String) -> String {
+  if selected.count <= 18 {
+    return selected
+  }
+  let chunks = selected.split(separator: "-").map(String.init)
+  if chunks.count >= 2, chunks[0].count >= 4 {
+    return chunks[0]
+  }
+  return String(selected.prefix(12))
 }
 
 func setSystemAppearance(dark: Bool) {
