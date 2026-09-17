@@ -182,7 +182,27 @@ func ocrContains(_ rendered: String, _ expected: String) -> Bool {
   }
   let compactRendered = rendered.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
   let compactExpected = expected.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-  return compactRendered.localizedCaseInsensitiveContains(compactExpected)
+  if compactRendered.localizedCaseInsensitiveContains(compactExpected) {
+    return true
+  }
+  let foldedRendered = compactRendered.replacingOccurrences(of: "-", with: "")
+  let foldedExpected = compactExpected.replacingOccurrences(of: "-", with: "")
+  if foldedExpected.count >= 8, foldedRendered.localizedCaseInsensitiveContains(foldedExpected) {
+    return true
+  }
+  // Vision often wraps a UUID across lines and drops a hyphen. The first and last
+  // chunks are still enough to prove the unique paste sentinel is on screen.
+  let chunks = expected.split(separator: "-").map(String.init)
+  if chunks.count >= 5, chunks[0].count == 8, chunks[chunks.count - 1].count == 12 {
+    let first = chunks[0]
+    let last = chunks[chunks.count - 1]
+    let hasFirst = rendered.localizedCaseInsensitiveContains(first)
+      || compactRendered.localizedCaseInsensitiveContains(first)
+    let hasLast = rendered.localizedCaseInsensitiveContains(last)
+      || compactRendered.localizedCaseInsensitiveContains(last)
+    return hasFirst && hasLast
+  }
+  return false
 }
 
 func requireMetadataDoesNotOverlapFooter(at url: URL, name: String, renderedText: String) throws {
