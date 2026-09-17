@@ -267,6 +267,7 @@ final class NativeParityReporter: NSObject {
       "mode": model.activeMode?.id ?? "",
       "query": model.query,
       "content": contentName(model.content),
+      "panelWidth": model.panelWidth,
       "resultCount": model.results.count,
       "displayedRowTitles": displayedTitles,
       "fileSelectedName": runtime?.fileSearch?.controller.selected?.displayName ?? "",

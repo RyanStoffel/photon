@@ -40,6 +40,7 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
   private let engine: FileSearchEngine
   private var settings = FileSearchSettings()
   private var cache: InlineCache?
+  private var inlineGeneration = 0
 
   @MainActor
   public init(engine: FileSearchEngine = FileSearchEngine()) {
@@ -117,6 +118,8 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
   }
 
   private func scheduleInlineSearch(query: String, settings: FileSearchSettings) {
+    inlineGeneration += 1
+    let generation = inlineGeneration
     Task { @MainActor [weak self] in
       guard let self else {
         return
@@ -130,12 +133,28 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
       guard let response = await engine.search(request) else {
         return
       }
+      guard generation == inlineGeneration else {
+        return
+      }
       let shown = Array(response.files.prefix(FileSearchSettings.inlineLimit))
       let cache = InlineCache(query: query, files: shown.map(\.file))
       synchronized {
         self.cache = cache
       }
       onInlineResultsChanged?(query, !shown.isEmpty)
+    }
+  }
+
+  /// Ranked inline hits for `query`, when the cache matches.
+  public func inlineRankedFiles(for query: String) -> [RankedFile]? {
+    let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    return synchronized {
+      guard let cache, cache.query == trimmed, !cache.files.isEmpty else {
+        return nil
+      }
+      return cache.files.enumerated().map { index, file in
+        RankedFile(file: file, relevance: Double(FileSearchSettings.inlineLimit - index))
+      }
     }
   }
 
@@ -150,9 +169,19 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
     }
   }
 
+  /// Cancels in-flight inline Spotlight work so Files mode recents/search are not raced.
+  @MainActor
+  public func prepareForFullSession() {
+    inlineGeneration += 1
+    engine.cancel()
+    synchronized {
+      cache = nil
+    }
+  }
+
   private func cancelInlineSearch() {
     Task { @MainActor [weak self] in
-      self?.engine.cancel()
+      self?.prepareForFullSession()
     }
   }
 

@@ -121,14 +121,10 @@ final class LauncherViewModel: ObservableObject {
     self.frecency = frecency
   }
 
+  /// Launcher bar width stays on the Appearance preset; Files and clipboard detail
+  /// layouts grow downward inside the same width.
   var panelWidth: Double {
-    if session == .clipboard, clipboardShowsResults {
-      return max(preferences.width.points, LauncherLayout.detailWidth)
-    }
-    if let activeMode, !activeMode.prefersCompactLauncherLayout {
-      return max(preferences.width.points, LauncherLayout.detailWidth)
-    }
-    return preferences.width.points
+    preferences.width.points
   }
 
   var rows: [LauncherRow] {
@@ -261,7 +257,7 @@ final class LauncherViewModel: ObservableObject {
     if ranked.command.id == ClipboardProvider.historyCommandID, clipboard != nil {
       frecency.recordUse(id: ranked.command.id)
       lastError = nil
-      enterClipboard(query: "")
+      enterClipboard(query: "", expandDetail: true)
       return false
     }
     if let mode = modes.first(where: { $0.activationCommandID == ranked.command.id }) {
@@ -284,15 +280,13 @@ final class LauncherViewModel: ObservableObject {
   // MARK: Clipboard session
 
   /// Switches the panel to clipboard history. `query` seeds its search field.
-  func enterClipboard(query initialQuery: String) {
+  func enterClipboard(query initialQuery: String, expandDetail: Bool = false) {
     guard let clipboard else {
       return
     }
     exitMode(clearingQuery: false)
     lastError = nil
-    // Collapse before switching session so the first `updateContent` is compact
-    // unless this open already has a filter (and therefore rows to show).
-    clipboardShowsResults = !initialQuery.isEmpty
+    clipboardShowsResults = expandDetail || !initialQuery.isEmpty
     session = .clipboard
     clipboard.reset()
     if query != initialQuery {

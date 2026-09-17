@@ -33,15 +33,17 @@ PASTE_TARGET_LOG="$DATA_ROOT/paste-target.log"
 PASTE_TARGET_VALUE="$DATA_ROOT/paste-target-value.txt"
 PASTE_TARGET_COMMAND="$DATA_ROOT/paste-target-command"
 PASTE_INJECTION="$DATA_ROOT/paste-injection"
-PASTE_SENTINEL="Photon v0.3.4 paste sentinel $(uuidgen)"
+PASTE_SENTINEL="Photon v0.3.5 paste sentinel $(uuidgen)"
 PASTE_TARGET_PID=""
 SCREENSHOT_DIR="${NATIVE_PARITY_SCREENSHOT_DIR:-$DATA_ROOT/screenshots}"
 SEED_FILE="$HOME/Documents/Photon Native Parity/Ember_Individual_Pitch.pdf"
 SEED_IMAGE="$HOME/Documents/Photon Native Parity/Photon_Recent_Image.png"
+RYAN_LIKE_FILE="$HOME/Documents/School/Capstone/Individual Pitch/Ember_Individual_Pitch.pdf"
 GRANT_DIR="$(dirname "$SEED_FILE")"
 GRANT_QUERY="ember"
 SEED_CREATED=0
 SEED_IMAGE_CREATED=0
+RYAN_LIKE_CREATED=0
 PID=""
 
 restore() {
@@ -60,6 +62,12 @@ restore() {
   if [[ "$SEED_IMAGE_CREATED" == "1" ]]; then
     rm -f "$SEED_IMAGE"
   fi
+  if [[ "$RYAN_LIKE_CREATED" == "1" ]]; then
+    rm -f "$RYAN_LIKE_FILE"
+    rmdir "$HOME/Documents/School/Capstone/Individual Pitch" 2>/dev/null || true
+    rmdir "$HOME/Documents/School/Capstone" 2>/dev/null || true
+    rmdir "$HOME/Documents/School" 2>/dev/null || true
+  fi
   if [[ "${KEEP_PARITY_ARTIFACTS:-0}" != "1" ]]; then
     rm -rf "$DATA_ROOT"
   else
@@ -77,6 +85,9 @@ mkdir -p "$(dirname "$SEED_FILE")" "$SCREENSHOT_DIR"
 SEED_CREATED=1
 SEED_IMAGE_CREATED=1
 swift "$ROOT/Scripts/create-preview-fixtures.swift" "$SEED_FILE" "$SEED_IMAGE"
+mkdir -p "$(dirname "$RYAN_LIKE_FILE")"
+cp "$SEED_FILE" "$RYAN_LIKE_FILE"
+RYAN_LIKE_CREATED=1
 /usr/bin/mdimport "$SEED_FILE" >/dev/null 2>&1 || true
 /usr/bin/mdimport "$SEED_IMAGE" >/dev/null 2>&1 || true
 
@@ -104,6 +115,7 @@ PHOTON_NATIVE_PARITY_FILE_ACCESS_QUERY="$GRANT_QUERY" \
 PHOTON_NATIVE_PARITY_FILE_ACCESS_RESULT="$(basename "$SEED_FILE")" \
 PHOTON_NATIVE_PARITY_GRANTED_FILES="$SEED_FILE" \
 PHOTON_NATIVE_PARITY_RECENT_FILES="$SEED_FILE:$SEED_IMAGE" \
+PHOTON_NATIVE_PARITY_RYAN_LIKE_FILE="$RYAN_LIKE_FILE" \
 PHOTON_APPLICATIONS_EXTRA="/Applications:/System/Applications" \
   "$EXECUTABLE" >"$APP_LOG" 2>&1 &
 PID=$!

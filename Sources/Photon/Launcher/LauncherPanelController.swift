@@ -53,11 +53,11 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     model.$preferences
       .map(\.width)
       .removeDuplicates()
-      .sink { [weak self] width in
+      .sink { [weak self] _ in
         guard let self else {
           return
         }
-        resize(width: width.points, content: model.content)
+        resize(width: model.panelWidth, content: model.content)
       }
       .store(in: &cancellables)
     // objectWillChange fires before the write lands; hop once through the run loop to read the new values.
@@ -135,6 +135,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     }
     guard let mode = model.modes.first(where: { $0.id == "files" }) else {
       return
+    }
+    if let prefetched = filesProvider?.inlineRankedFiles(for: trimmed) {
+      fileSearchController?.seedResults(prefetched, query: trimmed)
     }
     model.enter(mode: mode, query: trimmed)
   }
@@ -260,16 +263,17 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     guard let panel, let mode = model.modes.first(where: { $0.id == "files" }) else {
       return
     }
+    filesProvider?.prepareForFullSession()
+    fileSearchController?.deactivate()
+    if model.activeMode?.id == mode.id {
+      model.activeMode?.deactivate()
+    }
     position(panel)
     rememberPreviousApplication()
     panel.orderFrontRegardless()
     panel.makeKey()
     model.requestSearchFocus()
     startMonitor()
-    fileSearchController?.deactivate()
-    if model.activeMode?.id == mode.id {
-      model.activeMode?.deactivate()
-    }
     model.enter(mode: mode, query: query)
   }
 
@@ -289,6 +293,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
 
   func hide() {
     model.prepareForHide()
+    filesProvider?.prepareForFullSession()
     model.resetForHide()
     collapseToCompactIfNeeded(force: true)
     panel?.orderOut(nil)
@@ -435,9 +440,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       frame.origin.x = frame.midX - size.width / 2
     }
     frame.origin.y = frame.maxY - size.height
+    let animate = !force && abs(frame.size.width - size.width) < 0.5 && abs(frame.size.height - size.height) > 0.5
     frame.size = size
-    // No animation: the resize and SwiftUI's relayout land in the same display cycle.
-    panel.setFrame(frame, display: true, animate: false)
+    panel.setFrame(frame, display: true, animate: animate)
     panel.invalidateShadow()
   }
 }
