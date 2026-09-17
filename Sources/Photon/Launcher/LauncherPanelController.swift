@@ -252,6 +252,21 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     model.enterClipboard(query: "")
   }
 
+  /// Opens Files mode without resetting the command registry (native parity / resume flows).
+  func showFilesMode(query: String) {
+    preload()
+    guard let panel, let mode = model.modes.first(where: { $0.id == "files" }) else {
+      return
+    }
+    position(panel)
+    rememberPreviousApplication()
+    panel.orderFrontRegardless()
+    panel.makeKey()
+    model.requestSearchFocus()
+    startMonitor()
+    model.enter(mode: mode, query: query)
+  }
+
   func resume(mode: any LauncherMode, query: String) {
     preload()
     guard let panel else {
