@@ -263,6 +263,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
     guard let panel, let mode = model.modes.first(where: { $0.id == "files" }) else {
       return
     }
+    filesProvider?.prepareForFullSession()
     position(panel)
     rememberPreviousApplication()
     panel.orderFrontRegardless()
@@ -292,6 +293,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
 
   func hide() {
     model.prepareForHide()
+    filesProvider?.prepareForFullSession()
     model.resetForHide()
     collapseToCompactIfNeeded(force: true)
     panel?.orderOut(nil)

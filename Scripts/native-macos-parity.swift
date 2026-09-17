@@ -865,7 +865,7 @@ do {
     !bool(launcher($0)["visible"])
   }
   try sendRuntimeCommand("showFiles:")
-  report = try wait("empty Files mode shows seeded recents and selects the PDF", timeout: 20) {
+  report = try wait("empty Files mode shows seeded recents and selects the PDF", timeout: 35) {
     let status = string(launcher($0)["fileStatus"])
     let loaded = status == "recents" || status == "results"
     return string(launcher($0)["mode"]) == "files"

@@ -163,10 +163,17 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
     }
   }
 
-  private func cancelInlineSearch() {
-    Task { @MainActor [weak self] in
-      self?.engine.cancel()
+  /// Cancels in-flight inline Spotlight work so Files mode recents/search are not raced.
+  @MainActor
+  public func prepareForFullSession() {
+    engine.cancel()
+    synchronized {
+      cache = nil
     }
+  }
+
+  private func cancelInlineSearch() {
+    prepareForFullSession()
   }
 
   private func synchronized<T>(_ body: () throws -> T) rethrows -> T {
