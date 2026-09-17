@@ -60,7 +60,6 @@ struct LauncherView: View {
     .onChange(of: model.focusGeneration) {
       searchFocused = true
     }
-    .launcherSearchBarDrag(onSearchBarDrag: onPanelDrag)
   }
 
   // MARK: Search field
@@ -83,6 +82,8 @@ struct LauncherView: View {
     }
     .padding(.horizontal, 20)
     .frame(height: LauncherLayout.searchFieldHeight)
+    .contentShape(Rectangle())
+    .launcherSearchBarDrag(onSearchBarDrag: onPanelDrag)
   }
 
   private var placeholder: String {

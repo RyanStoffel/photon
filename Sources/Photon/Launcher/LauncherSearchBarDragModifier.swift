@@ -13,7 +13,7 @@ struct LauncherSearchBarDragModifier: ViewModifier {
   func body(content: Content) -> some View {
     content
       .contentShape(Rectangle())
-      .simultaneousGesture(dragGesture)
+      .highPriorityGesture(dragGesture)
   }
 
   private var dragGesture: some Gesture {
