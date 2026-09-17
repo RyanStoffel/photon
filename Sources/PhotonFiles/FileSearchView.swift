@@ -10,24 +10,38 @@ public struct FileSearchView: View {
     self.controller = controller
   }
 
-  private static let listSectionHeight: Double = 176
-
   public var body: some View {
     VStack(spacing: 0) {
-      content
-        .frame(maxWidth: .infinity)
-        .frame(height: Self.listSectionHeight)
-      Divider()
-      Group {
-        if let file = controller.selected {
-          FileDetailView(file: file)
-        } else {
-          ContentUnavailableView("No File Selected", systemImage: "doc")
+      if showsHorizontalSplit {
+        HStack(spacing: 0) {
+          content
+            .frame(width: LauncherLayout.detailListWidth)
+            .frame(maxHeight: .infinity, alignment: .top)
+          Divider()
+          Group {
+            if let file = controller.selected {
+              FileDetailView(file: file)
+            } else {
+              ContentUnavailableView("No File Selected", systemImage: "doc")
+            }
+          }
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+      } else {
+        content
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
       Divider()
       footer
+    }
+  }
+
+  private var showsHorizontalSplit: Bool {
+    switch controller.status {
+    case .recents, .results:
+      true
+    default:
+      false
     }
   }
 
@@ -143,6 +157,7 @@ public struct FileSearchView: View {
         }
       }
     }
+    .frame(maxHeight: .infinity)
   }
 
   private var footer: some View {
@@ -205,7 +220,7 @@ struct FileResultRow: View {
           .font(.system(size: 14, weight: .medium))
           .lineLimit(1)
           .layoutPriority(1)
-        Text(PathFormatter.parentDisplay(for: file.path, maxLength: 56))
+        Text(PathFormatter.parentDisplay(for: file.path, maxLength: 28))
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
           .lineLimit(1)
