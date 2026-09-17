@@ -390,6 +390,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       }
       return handlePanelDrag(event, panel: panel)
     }
+    panel.installSearchBarDragMonitor()
 
     // System material behind the whole panel, clipped to the rounded shape. The window
     // shadow follows the opaque region, so the corners stay clean.

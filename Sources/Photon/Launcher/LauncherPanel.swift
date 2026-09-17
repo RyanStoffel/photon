@@ -12,6 +12,8 @@ final class LauncherPanel: NSPanel {
   var mouseDownHandler: ((NSEvent) -> Bool)?
 
   private var potentialDragStart: NSPoint?
+  private var searchBarDragStart: NSPoint?
+  private var searchBarDragMonitor: Any?
 
   override var canBecomeKey: Bool {
     true
@@ -21,6 +23,20 @@ final class LauncherPanel: NSPanel {
     false
   }
 
+  func installSearchBarDragMonitor() {
+    guard searchBarDragMonitor == nil else {
+      return
+    }
+    searchBarDragMonitor = NSEvent.addLocalMonitorForEvents(
+      matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp]
+    ) { [weak self] event in
+      guard let self else {
+        return event
+      }
+      return self.handleSearchBarMonitor(event)
+    }
+  }
+
   override func sendEvent(_ event: NSEvent) {
     if event.type == .keyDown, keyDownHandler?(event) == true {
       return
@@ -28,11 +44,9 @@ final class LauncherPanel: NSPanel {
 
     if event.type == .leftMouseDown {
       let distanceFromTop = frame.height - event.locationInWindow.y
-      if distanceFromTop <= LauncherLayout.searchFieldHeight {
-        handleSearchFieldDragOrClick(event)
-        return
+      if distanceFromTop > LauncherLayout.searchFieldHeight {
+        potentialDragStart = event.locationInWindow
       }
-      potentialDragStart = event.locationInWindow
     } else if event.type == .leftMouseDragged, let start = potentialDragStart {
       let delta = hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y)
       if delta >= LauncherLayout.panelDragSlop, mouseDownHandler?(event) == true {
@@ -46,34 +60,37 @@ final class LauncherPanel: NSPanel {
     super.sendEvent(event)
   }
 
-  /// The search field's text view swallows HID drags once it sees mouse-down.
-  /// Hold that click until slop decides click vs moving the panel. Clicks do
-  /// not need to be replayed: the field is already first responder, and posting
-  /// the dequeued mouse-up back into the queue left tracking loops that ate
-  /// later search-bar drags.
-  private func handleSearchFieldDragOrClick(_ down: NSEvent) {
-    let start = down.locationInWindow
-    while true {
-      let next = nextEvent(
-        matching: [.leftMouseDragged, .leftMouseUp],
-        until: Date.distantFuture,
-        inMode: .eventTracking,
-        dequeue: true
-      )
-      guard let next else {
-        if NSEvent.pressedMouseButtons & 1 == 0 {
-          return
+  /// Search-field mouse-down reaches the text view (and often a field editor)
+  /// which dequeues drags before `sendEvent` sees them. A local monitor still
+  /// observes those HID events in screen space so the panel can move.
+  private func handleSearchBarMonitor(_ event: NSEvent) -> NSEvent? {
+    switch event.type {
+    case .leftMouseDown:
+      searchBarDragStart = isInSearchBarBand ? NSEvent.mouseLocation : nil
+    case .leftMouseDragged:
+      if let start = searchBarDragStart {
+        let mouse = NSEvent.mouseLocation
+        let delta = hypot(mouse.x - start.x, mouse.y - start.y)
+        if delta >= LauncherLayout.panelDragSlop, mouseDownHandler?(event) == true {
+          searchBarDragStart = nil
+          return nil
         }
-        continue
       }
-      if next.type == .leftMouseUp {
-        return
-      }
-      let delta = hypot(next.locationInWindow.x - start.x, next.locationInWindow.y - start.y)
-      if delta >= LauncherLayout.panelDragSlop, mouseDownHandler?(next) == true {
-        return
-      }
+    case .leftMouseUp:
+      searchBarDragStart = nil
+    default:
+      break
     }
+    return event
+  }
+
+  private var isInSearchBarBand: Bool {
+    let mouse = NSEvent.mouseLocation
+    guard frame.contains(mouse) else {
+      return false
+    }
+    let distanceFromTop = frame.maxY - mouse.y
+    return distanceFromTop >= 0 && distanceFromTop <= LauncherLayout.searchFieldHeight
   }
 
   /// These NSObject category methods are nonisolated; Quick Look calls them on
