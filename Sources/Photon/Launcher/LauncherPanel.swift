@@ -10,6 +10,9 @@ final class LauncherPanel: NSPanel {
   var keyDownHandler: ((NSEvent) -> Bool)?
   /// Starts a window drag after movement exceeds `LauncherLayout.panelDragSlop`.
   var mouseDownHandler: ((NSEvent) -> Bool)?
+  /// Moves the window from search-bar HID drags without nesting `nextEvent`
+  /// inside the text field's mouse-tracking loop.
+  var searchBarDragHandler: ((NSEvent) -> Bool)?
 
   private var potentialDragStart: NSPoint?
   private var searchBarDragStart: NSPoint?
@@ -28,13 +31,14 @@ final class LauncherPanel: NSPanel {
       return
     }
     searchBarDragMonitor = NSEvent.addLocalMonitorForEvents(
-      matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp]
-    ) { [weak self] event in
-      guard let self else {
-        return event
+      matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp],
+      handler: { [weak self] event in
+        guard let panel = self else {
+          return event
+        }
+        return panel.handleSearchBarMonitor(event)
       }
-      return self.handleSearchBarMonitor(event)
-    }
+    )
   }
 
   override func sendEvent(_ event: NSEvent) {
@@ -71,7 +75,7 @@ final class LauncherPanel: NSPanel {
       if let start = searchBarDragStart {
         let mouse = NSEvent.mouseLocation
         let delta = hypot(mouse.x - start.x, mouse.y - start.y)
-        if delta >= LauncherLayout.panelDragSlop, mouseDownHandler?(event) == true {
+        if delta >= LauncherLayout.panelDragSlop, searchBarDragHandler?(event) == true {
           searchBarDragStart = nil
           return nil
         }
