@@ -213,6 +213,11 @@ final class NativeParityReporter: NSObject {
       runtime.launcher.showFilesMode(query: query)
     } else if command.hasPrefix("setFilesQuery:") {
       runtime.launcher.model.query = String(command.dropFirst("setFilesQuery:".count))
+    } else if command == "resetLauncherPosition" {
+      runtime.settings.resetLauncherPositionToCenter()
+      if let panel = runtime.launcher.panel {
+        runtime.launcher.position(panel)
+      }
     } else if command.hasPrefix("requestFileAccess:") {
       let query = String(command.dropFirst("requestFileAccess:".count))
       runtime.fileSearch?.controller.update(query: query)

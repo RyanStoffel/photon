@@ -46,6 +46,19 @@ final class LauncherLayoutTests: XCTestCase {
     XCTAssertGreaterThan(LauncherLayout.detailWidth, LauncherPanelWidth.wide.points)
   }
 
+  func testExpandedSplitFitsInsideTheCompactLauncherWidth() {
+    XCTAssertLessThan(LauncherLayout.detailListWidth, LauncherPanelWidth.compact.points)
+    XCTAssertGreaterThan(LauncherLayout.detailListWidth, LauncherLayout.iconSize * 4)
+    for width in LauncherPanelWidth.allCases.map(\.points) {
+      XCTAssertGreaterThan(width - LauncherLayout.detailListWidth, 300)
+    }
+  }
+
+  func testExpandAnimationIsSnappy() {
+    XCTAssertGreaterThanOrEqual(LauncherLayout.expandAnimationDuration, 0.12)
+    XCTAssertLessThanOrEqual(LauncherLayout.expandAnimationDuration, 0.18)
+  }
+
   func testSuggestionsFitOnOnePage() {
     XCTAssertLessThanOrEqual(LauncherLayout.suggestionCount, LauncherLayout.maxVisibleRows)
   }

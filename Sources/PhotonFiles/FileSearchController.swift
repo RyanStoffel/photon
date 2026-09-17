@@ -103,6 +103,14 @@ public final class FileSearchController: ObservableObject {
     update(query: query)
   }
 
+  /// Drops grant-resume protection so the next `deactivate`/`activate` is a
+  /// real session, not a replay of the previous Files query.
+  public func clearResumeProtection() {
+    resumeProtectionTask?.cancel()
+    resumeProtectionTask = nil
+    protectedResumeQuery = nil
+  }
+
   /// Keeps inline filename hits visible while the full Files search runs.
   public func seedResults(_ files: [RankedFile], query: String) {
     guard !files.isEmpty else {
