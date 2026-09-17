@@ -42,6 +42,7 @@ public final class FileSearchController: ObservableObject {
   @Published public private(set) var showsInfo = false
   @Published public private(set) var notice: String?
   @Published public private(set) var accessNotice: String?
+  @Published public private(set) var isRequestingAccess = false
   @Published public var selectedID: String? {
     didSet {
       if selectedID != oldValue {
@@ -81,9 +82,17 @@ public final class FileSearchController: ObservableObject {
     results.first { $0.id == selectedID }?.file
   }
 
-  /// True while Quick Look owns keyboard focus; the launcher must not hide itself then.
+  /// True while Quick Look or a folder-grant sheet owns focus; the launcher must not hide itself then.
   public var holdsFocus: Bool {
-    quickLook.isVisible
+    quickLook.isVisible || isRequestingAccess
+  }
+
+  public func beginAccessRequest() {
+    isRequestingAccess = true
+  }
+
+  public func endAccessRequest() {
+    isRequestingAccess = false
   }
 
   public var keyHints: [KeyHint] {
@@ -197,7 +206,7 @@ public final class FileSearchController: ObservableObject {
   }
 
   public func deactivate() {
-    if protectedResumeQuery != nil {
+    if protectedResumeQuery != nil || isRequestingAccess {
       quickLook.hide()
       return
     }

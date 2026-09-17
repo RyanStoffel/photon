@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Files and clipboard detail metadata stay above a reserved footer-safe inset, so Created / Modified dates no longer paint over Open, Reveal, Quick Look, or Copy Path.
+- Folder grants keep the Files panel visible. Photon presents NSOpenPanel as a sheet on the launcher, queues remaining grants one at a time, persists security-scoped bookmarks, and resumes search without a relaunch. Ungranted Documents / Desktop / Downloads are no longer walked in a way that fires TCC from a disappearing panel.
+- The whole launcher is draggable after a small movement slop, including the search field, list padding, preview, and footer, while clicks still select rows and activate buttons.
+- Horizontal snap uses the span between the dotted edge guides. If the panel's horizontal center sits between those guides, X snaps to screen center on live drag and on release.
+
 ## [0.3.7] - 2026-09-17
 
 Ryan shared-panel sizing and instant expansion release.

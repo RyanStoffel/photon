@@ -47,6 +47,14 @@ public enum LauncherContent: Equatable, Sendable {
 public enum LauncherLayout {
   public static let searchFieldHeight: Double = 56
   public static let footerHeight: Double = 32
+  /// Bottom padding inside the Files/clipboard detail pane so metadata cannot
+  /// paint over the command footer.
+  public static let detailFooterSafeInset: Double = 10
+  /// Metadata / Information block height, excluding the footer-safe inset.
+  public static let detailMetadataHeight: Double = 156
+  /// Movement before a panel-wide mouse-down becomes a window drag, so clicks
+  /// still select rows and activate footer buttons.
+  public static let panelDragSlop: Double = 6
   public static let rowHeight: Double = 40
   /// Padding above the first and below the last row.
   public static let listInset: Double = 6

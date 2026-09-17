@@ -1,4 +1,5 @@
 import AppKit
+import PhotonCore
 import QuickLookUI
 
 final class LauncherPanel: NSPanel {
@@ -7,8 +8,11 @@ final class LauncherPanel: NSPanel {
   var activeMode: (@MainActor () -> (any LauncherMode)?)?
   /// Intercepts navigation before SwiftUI's TextField responder consumes it.
   var keyDownHandler: ((NSEvent) -> Bool)?
-  /// Starts a window drag only from AppKit-classified safe chrome.
+  /// Starts a window drag after movement exceeds `LauncherLayout.panelDragSlop`.
   var mouseDownHandler: ((NSEvent) -> Bool)?
+
+  private var potentialDragStart: NSPoint?
+  private var panelDragInProgress = false
 
   override var canBecomeKey: Bool {
     true
@@ -22,9 +26,35 @@ final class LauncherPanel: NSPanel {
     if event.type == .keyDown, keyDownHandler?(event) == true {
       return
     }
-    if event.type == .leftMouseDown, mouseDownHandler?(event) == true {
+
+    switch event.type {
+    case .leftMouseDown:
+      potentialDragStart = event.locationInWindow
+      panelDragInProgress = false
+      super.sendEvent(event)
       return
+    case .leftMouseDragged:
+      if !panelDragInProgress, let start = potentialDragStart {
+        let delta = hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y)
+        if delta >= LauncherLayout.panelDragSlop {
+          panelDragInProgress = true
+          if mouseDownHandler?(event) == true {
+            potentialDragStart = nil
+            panelDragInProgress = false
+            return
+          }
+        }
+      }
+      if panelDragInProgress {
+        return
+      }
+    case .leftMouseUp:
+      potentialDragStart = nil
+      panelDragInProgress = false
+    default:
+      break
     }
+
     super.sendEvent(event)
   }
 

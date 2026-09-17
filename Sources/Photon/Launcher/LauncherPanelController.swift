@@ -24,7 +24,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
   var chromeMouseDownCount = 0
   var acceptedChromeDragCount = 0
   private var focusTransitionGeneration = 0
-  private var autoHideSuppressedUntil = Date.distantPast
+  var autoHideSuppressedUntil = Date.distantPast
   /// App that was frontmost before a mode asked us to activate; restored on hide.
   private var previousApplication: NSRunningApplication?
 
@@ -388,7 +388,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate {
       guard let self, let panel else {
         return false
       }
-      return handleChromeMouseDown(event, panel: panel)
+      return handlePanelDrag(event, panel: panel)
     }
 
     // System material behind the whole panel, clipped to the rounded shape. The window
@@ -473,5 +473,10 @@ extension LauncherPanelController: LauncherModeHost {
 
   func modeRequestsLayoutUpdate() {
     model.refreshLayout()
+  }
+
+  func suppressAutoHide(for interval: TimeInterval) {
+    focusTransitionGeneration &+= 1
+    autoHideSuppressedUntil = Date().addingTimeInterval(interval)
   }
 }

@@ -9,10 +9,10 @@ Photon has two required test layers.
 - verifies `LSUIElement`, `.accessory` activation policy, a visible `NSStatusItem`, and its menu;
 - opens clipboard history with the real global `Cmd+Shift+V` registration;
 - inspects the actual `LauncherPanel` style, traffic-light state, floating level, frame, and corresponding `CGWindow`;
-- drags several safe chrome points with real mouse events, checking free X/Y movement, center-corridor snapping, stable frames, guides, and preserved search/row clicks;
+- drags the search field, list padding, preview, and footer with real mouse events (after click slop), checking free X/Y movement, guide-span center snapping, stable frames, guides, and preserved search/row clicks;
 - cycles clipboard rows, validates complete text and image detail with Vision OCR, and pastes a unique sentinel into a real helper text field;
-- drives the controlled `NSOpenPanel` adapter from ungranted through persisted security-scoped access, resumes `ember`, relaunches the packaged app, and verifies the grant still works;
-- opens empty Files to seeded PDF/image recents, moves selection with Up/Down, and OCR-validates Quick Look previews and metadata before querying `ember`;
+- drives the controlled `NSOpenPanel` adapter from ungranted through persisted security-scoped access without hiding the Files panel, resumes `ember`, relaunches the packaged app, and verifies the grant still works;
+- opens empty Files to seeded PDF/image recents, OCR-validates that metadata dates do not overlap footer shortcuts, moves selection with Up/Down, and OCR-validates Quick Look previews and metadata before querying `ember`;
 - opens the launcher through a non-system-reserved configured hotkey and verifies application bundle icon resolution;
 - changes the system appearance while Photon remains running and verifies both effective appearance and resolved colors update;
 - attempts Accessibility window introspection when the runner grants it, with `CGWindow` as the non-TCC fallback.

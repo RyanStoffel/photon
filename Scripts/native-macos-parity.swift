@@ -126,7 +126,8 @@ func captureLauncher(
   _ report: [String: Any],
   name: String,
   expectedText: String,
-  additionalExpectedText: [String] = []
+  additionalExpectedText: [String] = [],
+  rejectMetadataFooterOverlap: Bool = false
 ) throws {
   try FileManager.default.createDirectory(
     at: screenshotDirectory,
@@ -170,6 +171,9 @@ func captureLauncher(
       "\(name).png visibly contains \(expected)"
     )
   }
+  if rejectMetadataFooterOverlap {
+    try requireMetadataDoesNotOverlapFooter(at: destination, name: name, renderedText: renderedText)
+  }
 }
 
 func ocrContains(_ rendered: String, _ expected: String) -> Bool {
@@ -179,6 +183,52 @@ func ocrContains(_ rendered: String, _ expected: String) -> Bool {
   let compactRendered = rendered.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
   let compactExpected = expected.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
   return compactRendered.localizedCaseInsensitiveContains(compactExpected)
+}
+
+func requireMetadataDoesNotOverlapFooter(at url: URL, name: String, renderedText: String) throws {
+  let forbidden = [
+    "Modified in Finder",
+    "Created Open",
+    "Modified Open",
+    "Created Reveal",
+    "Modified Reveal",
+  ]
+  for phrase in forbidden {
+    try require(
+      !ocrContains(renderedText, phrase),
+      "\(name).png OCR must not merge metadata dates with footer shortcuts (\(phrase))"
+    )
+  }
+
+  let request = VNRecognizeTextRequest()
+  request.recognitionLevel = .accurate
+  let handler = VNImageRequestHandler(url: url)
+  try handler.perform([request])
+  let observations = request.results ?? []
+
+  func boxes(matching keywords: [String]) -> [CGRect] {
+    observations.compactMap { observation in
+      guard let text = observation.topCandidates(1).first?.string else {
+        return nil
+      }
+      let hit = keywords.contains { keyword in
+        text.localizedCaseInsensitiveContains(keyword)
+      }
+      return hit ? observation.boundingBox : nil
+    }
+  }
+
+  let metadataBoxes = boxes(matching: ["Created", "Modified"])
+  let footerBoxes = boxes(matching: ["Open", "Quick Look", "Copy Path", "Reveal"])
+  for meta in metadataBoxes {
+    for footer in footerBoxes {
+      let overlapHeight = min(meta.maxY, footer.maxY) - max(meta.minY, footer.minY)
+      try require(
+        overlapHeight < 0.012,
+        "\(name).png metadata \(meta) overlaps footer shortcut \(footer)"
+      )
+    }
+  }
 }
 
 func sendRuntimeCommand(_ command: String) throws {
@@ -340,6 +390,33 @@ func dragLauncher(
   }
   Thread.sleep(forTimeInterval: 0.25)
   return sawGuides
+}
+
+func dragAndReset(
+  _ report: inout [String: Any],
+  xFromLeft: Double,
+  yFromTop: Double,
+  name: String,
+  centeredX: Double
+) throws -> [String: Any] {
+  let startX = double(frame(report)["x"])
+  let startY = double(frame(report)["y"])
+  let guides = dragLauncher(
+    report,
+    xFromLeft: xFromLeft,
+    yFromTop: yFromTop,
+    deltaX: 90,
+    deltaY: 40
+  )
+  report = try wait("\(name) drag moves the panel") {
+    abs(double(frame($0)["x"]) - startX) > 15 || abs(double(frame($0)["y"]) - startY) > 12
+  }
+  try require(guides, "\(name) drag displays center guides")
+  try sendRuntimeCommand("resetLauncherPosition")
+  report = try wait("\(name) drag recenters the panel") {
+    abs(double(frame($0)["x"]) - centeredX) < 80 && bool(launcher($0)["visible"])
+  }
+  return report
 }
 
 func runningWindowBounds(pid: pid_t, expectedSize: CGSize) -> CGRect? {
@@ -1068,15 +1145,24 @@ do {
     "packaged app starts with no folder grant"
   )
   try sendRuntimeCommand("requestFileAccess:\(fileAccessQuery)")
+  var stayedVisible = true
   report = try wait("controlled folder grant is persisted while Photon remains alive", timeout: 8) {
-    int($0["pid"]) == Int(pid)
+    if !bool(launcher($0)["visible"]) {
+      stayedVisible = false
+    }
+    return int($0["pid"]) == Int(pid)
       && int(dictionary($0["fileAccess"])["grantCount"]) == 1
       && string(dictionary($0["fileAccess"])["status"]) == "granted"
+      && bool(launcher($0)["visible"])
+      && abs(double(frame($0)["width"])) > 0
+      && abs(double(frame($0)["height"])) > 0
   }
-  report = try wait("guided setup restores the pending Files session", timeout: 8) {
+  try require(stayedVisible, "Files panel stayed visible throughout folder grant")
+  report = try wait("guided setup keeps the pending Files session on screen", timeout: 8) {
     bool(launcher($0)["visible"])
       && string(launcher($0)["mode"]) == "files"
       && string(launcher($0)["query"]) == fileAccessQuery
+      && abs(double(frame($0)["width"])) > 0
   }
   report = try wait("guided setup resumes the pending file search", timeout: 12) {
     displayedTitles($0).contains(fileAccessResult)
@@ -1136,8 +1222,58 @@ do {
     report,
     name: "files-recents-pdf-preview",
     expectedText: "Ember_Individual_Pitch.pdf",
-    additionalExpectedText: ["Recent Files", "Metadata", "Name", "Where", "Type"]
+    additionalExpectedText: ["Recent Files", "Metadata", "Name", "Where", "Type", "Created", "Modified", "Open", "Quick Look"],
+    rejectMetadataFooterOverlap: true
   )
+  let filesCenteredX = double(frame(report)["x"])
+  let filesWidth = double(frame(report)["width"])
+  let filesHeight = double(frame(report)["height"])
+  report = try dragAndReset(
+    &report,
+    xFromLeft: filesWidth / 2,
+    yFromTop: 28,
+    name: "search field",
+    centeredX: filesCenteredX
+  )
+  report = try dragAndReset(
+    &report,
+    xFromLeft: 22,
+    yFromTop: 78,
+    name: "list padding",
+    centeredX: filesCenteredX
+  )
+  report = try dragAndReset(
+    &report,
+    xFromLeft: filesWidth * 0.72,
+    yFromTop: 150,
+    name: "preview",
+    centeredX: filesCenteredX
+  )
+  report = try dragAndReset(
+    &report,
+    xFromLeft: 36,
+    yFromTop: filesHeight - 16,
+    name: "footer",
+    centeredX: filesCenteredX
+  )
+  let corridorGuides = dragLauncher(
+    report,
+    xFromLeft: filesWidth / 2,
+    yFromTop: 28,
+    deltaX: 40,
+    deltaY: 24
+  )
+  report = try wait("dragging into the guide corridor snaps Files X to center") {
+    abs(double(frame($0)["x"]) - filesCenteredX) < 1
+      && bool(dictionary(dictionary($0["settings"])["launcherPosition"])["centered"])
+  }
+  try require(corridorGuides, "corridor snap drag displays center guides")
+  try sendRuntimeCommand("resetLauncherPosition")
+  report = try wait("Files panel recenters after corridor snap") {
+    abs(double(frame($0)["x"]) - filesCenteredX) < 80
+      && string(launcher($0)["mode"]) == "files"
+      && string(launcher($0)["fileSelectedName"]) == "Ember_Individual_Pitch.pdf"
+  }
   postKey(125)
   report = try wait("Down updates the recents preview to the seeded image") {
     string(launcher($0)["fileSelectedName"]) == "Photon_Recent_Image.png"
