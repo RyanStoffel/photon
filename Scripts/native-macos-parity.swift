@@ -860,13 +860,10 @@ do {
   )
 
   try require(bool(launcher(report)["key"]), "launcher remains the key-event target")
-  try require(setPhotonTextFieldValue(pid: pid, value: "files"), "Accessibility searches for Files command")
-  _ = try wait("launcher visibly displays Search Files") {
-    displayedTitles($0).contains("Search Files")
-  }
-  try require(confirmPhotonTextField(pid: pid), "Accessibility invokes Search Files")
+  try require(setPhotonTextFieldValue(pid: pid, value: ""), "Accessibility clears Files query for recents")
   report = try wait("empty Files mode shows seeded recents and selects the PDF") {
     string(launcher($0)["mode"]) == "files"
+      && string(launcher($0)["query"]).isEmpty
       && bool(launcher($0)["key"])
       && displayedTitles($0).contains("Ember_Individual_Pitch.pdf")
       && displayedTitles($0).contains("Photon_Recent_Image.png")
