@@ -225,7 +225,7 @@ func requireMetadataDoesNotOverlapFooter(at url: URL, name: String, renderedText
       let overlapHeight = min(meta.maxY, footer.maxY) - max(meta.minY, footer.minY)
       try require(
         overlapHeight < 0.012,
-        "\(name).png metadata \(meta) overlaps footer shortcut \(footer)"
+        "\(name).png metadata dates stay above footer shortcuts"
       )
     }
   }

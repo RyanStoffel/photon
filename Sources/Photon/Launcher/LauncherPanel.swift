@@ -11,9 +11,6 @@ final class LauncherPanel: NSPanel {
   /// Starts a window drag after movement exceeds `LauncherLayout.panelDragSlop`.
   var mouseDownHandler: ((NSEvent) -> Bool)?
 
-  private var potentialDragStart: NSPoint?
-  private var panelDragInProgress = false
-
   override var canBecomeKey: Bool {
     true
   }
@@ -26,36 +23,37 @@ final class LauncherPanel: NSPanel {
     if event.type == .keyDown, keyDownHandler?(event) == true {
       return
     }
-
-    switch event.type {
-    case .leftMouseDown:
-      potentialDragStart = event.locationInWindow
-      panelDragInProgress = false
-      super.sendEvent(event)
+    if event.type == .leftMouseDown, handlePotentialPanelDrag(event) {
       return
-    case .leftMouseDragged:
-      if !panelDragInProgress, let start = potentialDragStart {
-        let delta = hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y)
-        if delta >= LauncherLayout.panelDragSlop {
-          panelDragInProgress = true
-          if mouseDownHandler?(event) == true {
-            potentialDragStart = nil
-            panelDragInProgress = false
-            return
-          }
-        }
-      }
-      if panelDragInProgress {
-        return
-      }
-    case .leftMouseUp:
-      potentialDragStart = nil
-      panelDragInProgress = false
-    default:
-      break
     }
-
     super.sendEvent(event)
+  }
+
+  /// Holds the mouse-down until slop decides click vs window drag, so the
+  /// search field and list cannot swallow a panel move.
+  private func handlePotentialPanelDrag(_ down: NSEvent) -> Bool {
+    let start = down.locationInWindow
+    while true {
+      let next = nextEvent(
+        matching: [.leftMouseDragged, .leftMouseUp],
+        until: Date.distantFuture,
+        inMode: .eventTracking,
+        dequeue: true
+      )
+      guard let next else {
+        super.sendEvent(down)
+        return true
+      }
+      if next.type == .leftMouseUp {
+        super.sendEvent(down)
+        super.sendEvent(next)
+        return true
+      }
+      let delta = hypot(next.locationInWindow.x - start.x, next.locationInWindow.y - start.y)
+      if delta >= LauncherLayout.panelDragSlop {
+        return mouseDownHandler?(next) == true
+      }
+    }
   }
 
   /// These NSObject category methods are nonisolated; Quick Look calls them on
