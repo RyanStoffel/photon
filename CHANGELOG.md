@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-09-17
+
+Ryan shared-panel sizing and instant expansion release.
+
+### Fixed
+
+- The default launcher is modestly wider at 760 points, while pressing Down keeps that width unchanged and expands only vertically.
+- Launcher recommendations, Files, and expanded Clipboard History now use the exact same 760 × 502-point default outer dimensions.
+- Files and clipboard retain their side-by-side list/detail split inside the shared panel size.
+- Launcher size changes are instant; the previous 150ms expansion animation was removed.
+- Packaged macOS parity compares the launcher-recommendations, Files, and clipboard frames for exact equality and captures each expanded layout.
+
 ## [0.3.6] - 2026-09-17
 
 Ryan layout, animation, clipboard selection, and smoke-harness release.
@@ -195,7 +207,8 @@ First public build. Photon is a menu-bar launcher for macOS 14 and later; it has
 - The Intel slice of the universal binary has only been compiled, not run.
 - The Hyper key and window management need Accessibility access. The Caps Lock remap uses a per-login-session `hidutil` mapping; Settings > Keybinds > Reset Key Mapping restores the key if Photon quits abnormally.
 
-[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.3.6...HEAD
+[Unreleased]: https://github.com/RyanStoffel/photon/compare/v0.3.7...HEAD
+[0.3.7]: https://github.com/RyanStoffel/photon/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/RyanStoffel/photon/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/RyanStoffel/photon/compare/v0.3.4...v0.3.5
 [0.3.1]: https://github.com/RyanStoffel/photon/compare/v0.3.0...v0.3.1
