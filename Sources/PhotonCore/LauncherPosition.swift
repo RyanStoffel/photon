@@ -58,7 +58,6 @@ public struct LauncherStoredPosition: Equatable, Codable, Sendable {
 
 /// Default placement and snap geometry for the launcher panel.
 public enum LauncherPosition {
-
   /// Spotlight-like default: centred horizontally, top edge ~74% up the visible frame.
   public static func defaultOrigin(panelSize: PanelSize, visible: ScreenVisibleFrame) -> PanelOrigin {
     let top = min(visible.minY + visible.height * 0.74, visible.maxY - 8)
@@ -148,12 +147,7 @@ public enum LauncherPosition {
       startMouse: startMouse,
       currentMouse: currentMouse
     )
-    let horizontal = resolveHorizontalSnap(
-      panelMidX: raw.x + panelWidth / 2,
-      panelWidth: panelWidth,
-      visible: visible
-    )
-    return PanelOrigin(x: horizontal.originX, y: raw.y)
+    return clampedOrigin(raw, panelSize: PanelSize(width: panelWidth, height: 0), visible: visible)
   }
 
   public static func storedPosition(
