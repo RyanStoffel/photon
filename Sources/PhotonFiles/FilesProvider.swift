@@ -173,7 +173,9 @@ public final class FilesProvider: CommandProvider, @unchecked Sendable {
   }
 
   private func cancelInlineSearch() {
-    prepareForFullSession()
+    Task { @MainActor [weak self] in
+      self?.prepareForFullSession()
+    }
   }
 
   private func synchronized<T>(_ body: () throws -> T) rethrows -> T {
