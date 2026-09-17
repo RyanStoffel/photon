@@ -28,10 +28,10 @@ final class LauncherPanel: NSPanel {
 
     if event.type == .leftMouseDown {
       let distanceFromTop = frame.height - event.locationInWindow.y
-      if distanceFromTop <= LauncherLayout.searchFieldHeight,
-         handleSearchFieldDragOrClick(event)
-      {
-        return
+      if distanceFromTop <= LauncherLayout.searchFieldHeight {
+        if handleSearchFieldDragOrClick(event) {
+          return
+        }
       }
       potentialDragStart = event.locationInWindow
     } else if event.type == .leftMouseDragged, let start = potentialDragStart {
@@ -54,8 +54,8 @@ final class LauncherPanel: NSPanel {
     while true {
       let next = nextEvent(
         matching: [.leftMouseDragged, .leftMouseUp],
-        until: Date().addingTimeInterval(0.3),
-        inMode: .common,
+        until: Date.distantFuture,
+        inMode: .eventTracking,
         dequeue: true
       )
       guard let next else {
