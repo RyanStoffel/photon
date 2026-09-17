@@ -22,12 +22,17 @@ extension LauncherPanelController {
     guard !isDraggingLauncher else {
       return true
     }
-    isDraggingLauncher = true
     chromeMouseDownCount += 1
     acceptedChromeDragCount += 1
-    showCenterGuides(for: panel)
-    panel.performWindowDrag(with: event)
-    finishLiveDrag(panel: panel)
+    let selector = Selector(("performWindowDragWithEvent:"))
+    if panel.responds(to: selector) {
+      isDraggingLauncher = true
+      showCenterGuides(for: panel)
+      panel.perform(selector, with: event)
+      finishLiveDrag(panel: panel)
+      return true
+    }
+    trackLiveDrag(panel: panel)
     return true
   }
 
