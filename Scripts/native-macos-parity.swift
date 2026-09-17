@@ -421,12 +421,17 @@ func dragAndReset(
 ) throws -> [String: Any] {
   let startX = double(frame(report)["x"])
   let startY = double(frame(report)["y"])
+  let screen = NSScreen.main?.visibleFrame ?? .zero
+  let roomDown = startY - screen.minY
+  // Expanded Files sits near the bottom of GitHub's Mac display. Dragging
+  // down is clamped, and a 90pt X move stays inside the snap corridor.
+  let deltaY: Double = roomDown > 80 ? 55 : -70
   let guides = dragLauncher(
     report,
     xFromLeft: xFromLeft,
     yFromTop: yFromTop,
     deltaX: 90,
-    deltaY: 55
+    deltaY: deltaY
   )
   report = try wait("\(name) drag moves the panel") {
     abs(double(frame($0)["x"]) - startX) > 15 || abs(double(frame($0)["y"]) - startY) > 12
@@ -1286,7 +1291,7 @@ do {
   let filesHeight = double(frame(report)["height"])
   report = try dragAndReset(
     &report,
-    xFromLeft: 16,
+    xFromLeft: filesWidth / 2,
     yFromTop: 28,
     name: "search field",
     centeredX: filesCenteredX
@@ -1314,7 +1319,7 @@ do {
   )
   let corridorGuides = dragLauncher(
     report,
-    xFromLeft: 16,
+    xFromLeft: filesWidth / 2,
     yFromTop: 28,
     deltaX: 40,
     deltaY: 24
