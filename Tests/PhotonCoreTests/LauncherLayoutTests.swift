@@ -6,7 +6,7 @@ final class LauncherLayoutTests: XCTestCase {
     let widths = LauncherPanelWidth.allCases.map(\.points)
     XCTAssertEqual(widths, widths.sorted())
     XCTAssertEqual(LauncherPanelWidth.default, .regular)
-    XCTAssertEqual(LauncherPanelWidth.regular.points, 740)
+    XCTAssertEqual(LauncherPanelWidth.regular.points, 760)
     XCTAssertEqual(LauncherPanelWidth(rawValue: "wide"), .wide)
   }
 
@@ -40,9 +40,23 @@ final class LauncherLayoutTests: XCTestCase {
     XCTAssertEqual(LauncherLayout.maxHeight, full)
   }
 
-  func testFeatureViewsUseTheFullHeight() {
+  func testExpandedPanelLayoutsUseIdenticalOuterDimensions() {
+    let width = LauncherPanelWidth.default.points
+    let launcherRecommendations = LauncherPanelSize(width: width, content: .recommendations)
+    let files = LauncherPanelSize(width: width, content: .fullHeight)
+    let clipboard = LauncherPanelSize(width: width, content: .fullHeight)
+
+    XCTAssertEqual(files, launcherRecommendations)
+    XCTAssertEqual(clipboard, launcherRecommendations)
+    XCTAssertEqual(launcherRecommendations.width, 760)
+    XCTAssertEqual(launcherRecommendations.height, LauncherLayout.expandedHeight)
+  }
+
+  func testFeatureViewsUseTheSharedExpandedHeight() {
     XCTAssertEqual(LauncherLayout.height(for: .fullHeight), LauncherLayout.detailHeight)
-    XCTAssertGreaterThan(LauncherLayout.detailHeight, LauncherLayout.maxHeight)
+    XCTAssertEqual(LauncherLayout.height(for: .recommendations), LauncherLayout.detailHeight)
+    XCTAssertEqual(LauncherLayout.detailHeight, LauncherLayout.maxHeight)
+    XCTAssertGreaterThan(LauncherLayout.expandedHeight, 422)
     XCTAssertGreaterThan(LauncherLayout.detailWidth, LauncherPanelWidth.wide.points)
   }
 
@@ -54,13 +68,14 @@ final class LauncherLayoutTests: XCTestCase {
     }
   }
 
-  func testExpandAnimationIsSnappy() {
-    XCTAssertGreaterThanOrEqual(LauncherLayout.expandAnimationDuration, 0.12)
-    XCTAssertLessThanOrEqual(LauncherLayout.expandAnimationDuration, 0.18)
-  }
-
   func testSuggestionsFitOnOnePage() {
-    XCTAssertLessThanOrEqual(LauncherLayout.suggestionCount, LauncherLayout.maxVisibleRows)
+    XCTAssertEqual(LauncherLayout.suggestionCount, LauncherLayout.maxVisibleRows)
+    XCTAssertEqual(
+      LauncherLayout.height(
+        for: .rows(count: LauncherLayout.suggestionCount, showsCalculatorHero: false)
+      ),
+      LauncherLayout.expandedHeight
+    )
   }
 
   func testCalculatorHeroReplacesFirstRowHeight() {

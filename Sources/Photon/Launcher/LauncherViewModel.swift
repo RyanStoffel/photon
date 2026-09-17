@@ -411,6 +411,8 @@ final class LauncherViewModel: ObservableObject {
         }
       } else if query.isEmpty, !preferences.showsSuggestions, !revealsRecommendations {
         .searchOnly
+      } else if query.isEmpty {
+        .recommendations
       } else {
         .rows(count: results.count, showsCalculatorHero: calculatorHero != nil)
       }
