@@ -541,7 +541,8 @@ func axSelectedClipboardTitle(pid: pid_t, candidates: [String]) -> String? {
 }
 
 func meanLuminance(of image: CGImage, rect: CGRect) -> Double? {
-  let clamped = rect.intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
+  let imageRect = CGRect(x: 0, y: 0, width: Double(image.width), height: Double(image.height))
+  let clamped = rect.intersection(imageRect)
   guard clamped.width >= 2, clamped.height >= 2 else {
     return nil
   }
@@ -560,7 +561,15 @@ func meanLuminance(of image: CGImage, rect: CGRect) -> Double? {
     ) else {
       return false
     }
-    context.draw(image, in: CGRect(x: -clamped.minX, y: -clamped.minY, width: image.width, height: image.height))
+    context.draw(
+      image,
+      in: CGRect(
+        x: Double(-clamped.minX),
+        y: Double(-clamped.minY),
+        width: Double(image.width),
+        height: Double(image.height)
+      )
+    )
     return true
   }
   guard drawn else {
