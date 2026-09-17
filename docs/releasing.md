@@ -20,7 +20,7 @@ Do not edit `PhotonVersion.swift` by hand.
 | `APPLE_ID` | Notarization | Apple ID email of the developer account. |
 | `APPLE_TEAM_ID` | Notarization | 10-character Team ID from [developer.apple.com/account](https://developer.apple.com/account) (Membership details). |
 | `APPLE_APP_SPECIFIC_PASSWORD` | Notarization | App-specific password for `notarytool`, created at [account.apple.com](https://account.apple.com) under Sign-In and Security > App-Specific Passwords. |
-| `HOMEBREW_TAP_TOKEN` | Cask bump | Fine-grained PAT scoped to [RyanStoffel/homebrew-taps](https://github.com/RyanStoffel/homebrew-taps) with **Contents: read and write**. Create it at Settings > Developer settings > Fine-grained tokens. |
+| `HOMEBREW_TAP_TOKEN` | Cask bump | Fine-grained PAT scoped to [ryan-stoffel/homebrew-taps](https://github.com/ryan-stoffel/homebrew-taps) with **Contents: read and write**. Create it at Settings > Developer settings > Fine-grained tokens. |
 
 All five Apple secrets are needed for a notarized build. With only the two certificate secrets the app is Developer ID signed but not notarized, and the notes say so. With none of them the app is ad-hoc signed.
 
@@ -31,7 +31,7 @@ The tap token is **not** the default `GITHUB_TOKEN`. A workflow in `photon` cann
 Before tagging, run the release workflow by hand: **Actions > Release > Run workflow** (pick `develop` or the release branch), or
 
 ```sh
-gh workflow run release.yml -R RyanStoffel/photon --ref develop
+gh workflow run release.yml -R ryan-stoffel/photon --ref develop
 ```
 
 A manual run builds, signs, packages, smoke-tests, and writes the release notes exactly like a tag build, then uploads `Photon-<version>-dry-run` (zip, dmg, `SHA256SUMS`, `RELEASE_NOTES.md`) as a workflow artifact. It creates no tag, no GitHub Release, and no cask commit. Download the artifact, read `RELEASE_NOTES.md`, and open the app on a Mac if one is available.
@@ -65,7 +65,7 @@ The workflow:
 4. Writes `Photon-<version>.zip`, `Photon-<version>.dmg`, and `SHA256SUMS`.
 5. Unpacks the zip and runs `Scripts/smoke-test.sh` against it (see below).
 6. Creates a GitHub Release from `CHANGELOG.md` plus a signing section and install instructions (`Scripts/release-notes.sh`). Versions `0.y.z` are published as **pre-releases**.
-7. If `HOMEBREW_TAP_TOKEN` is set, clones `RyanStoffel/homebrew-taps` and updates `Casks/photon.rb` (`version`, `sha256`, URL `Photon-#{version}.zip`). Otherwise it logs a notice and skips.
+7. If `HOMEBREW_TAP_TOKEN` is set, clones `ryan-stoffel/homebrew-taps` and updates `Casks/photon.rb` (`version`, `sha256`, URL `Photon-#{version}.zip`). Otherwise it logs a notice and skips.
 
 After the release, open a PR that merges `main` back into `develop` if `main` received anything `develop` does not have (the squash commit itself is fine to leave).
 
@@ -77,17 +77,28 @@ It does not click anything. Hotkeys, the launcher panel, clipboard capture, and 
 
 ## Homebrew
 
-Install line:
+Fresh install:
 
 ```sh
-brew tap ryanstoffel/taps
-brew install --cask ryanstoffel/taps/photon
+brew tap ryan-stoffel/taps
+brew trust ryan-stoffel/taps          # Homebrew 7+
+brew install --cask ryan-stoffel/taps/photon
 ```
 
-The cask token is `photon`. The tap repository is [RyanStoffel/homebrew-taps](https://github.com/RyanStoffel/homebrew-taps) (`brew tap ryanstoffel/taps`).
+To repair an existing installation that still references the retired singular tap:
 
-Homebrew 7 introduced tap trust: casks from third-party taps load only when the tap (or cask) has been trusted with `brew trust`, or when the fully qualified name is on the command line. The install line above therefore works untrusted, while `brew install --cask photon` and `brew upgrade` need `brew trust ryanstoffel/taps` first. `brew tap` itself succeeds untrusted on macOS.
+```sh
+brew untap ryanstoffel/homebrew-tap   # only if that stale tap is present
+brew tap ryan-stoffel/taps
+brew trust ryan-stoffel/taps          # Homebrew 7+
+brew update
+brew upgrade --cask ryan-stoffel/taps/photon
+```
 
-Checks that work without a Mac (Homebrew on Linux cannot install casks): `brew readall ryanstoffel/taps`, `brew style ryanstoffel/taps`, and `brew audit --cask --strict --online ryanstoffel/taps/photon` (the audit needs a `plutil` on `PATH`; on Linux a small `plistlib` shim is enough). The strict audit reports that the version is a GitHub pre-release; that rule is written for homebrew/cask and is expected here while releases are `0.y.z`.
+The cask token is `photon`. The tap repository is [ryan-stoffel/homebrew-taps](https://github.com/ryan-stoffel/homebrew-taps) (`brew tap ryan-stoffel/taps`). Ryan's GitHub account was renamed from `RyanStoffel` to `ryan-stoffel`; GitHub redirects old repository links, but Homebrew records trust by tap name.
+
+Homebrew 7 introduced tap trust: casks from third-party taps load only when the tap has been trusted with `brew trust`, or when the fully qualified name is on the command line. Trust `ryan-stoffel/taps` explicitly so both `brew upgrade` and short names can load it.
+
+Checks that work without a Mac (Homebrew on Linux cannot install casks): `brew readall ryan-stoffel/taps`, `brew style ryan-stoffel/taps`, and `brew audit --cask --strict --online ryan-stoffel/taps/photon` (the audit needs a `plutil` on `PATH`; on Linux a small `plistlib` shim is enough). The strict audit reports that the version is a GitHub pre-release; that rule is written for homebrew/cask and is expected here while releases are `0.y.z`.
 
 To bump by hand after a release: take the zip line from `SHA256SUMS` on the GitHub Release, then edit `version` and `sha256` in `Casks/photon.rb` and push (or let `Scripts/update-homebrew-cask.sh` do it with `HOMEBREW_TAP_TOKEN=<pat> VERSION=<x.y.z>` and `dist/SHA256SUMS` present).

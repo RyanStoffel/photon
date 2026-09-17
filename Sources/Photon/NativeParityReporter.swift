@@ -294,6 +294,8 @@ final class NativeParityReporter: NSObject {
     switch content {
     case .searchOnly:
       "searchOnly"
+    case .recommendations:
+      "recommendations"
     case .rows:
       "rows"
     case .fullHeight:
