@@ -30,6 +30,7 @@ final class FileSearchIntegration {
 
     registry.register(provider)
     launcher.filesProvider = provider
+    launcher.fileSearchController = controller
     launcher.register(mode: FileSearchMode(controller: controller))
     provider.onInlineResultsChanged = { [weak launcher] query, hasFileHits in
       guard let launcher else {
