@@ -942,11 +942,15 @@ do {
   let firstRecTitle = string(launcher(report)["selectedTitle"])
   try require(recCount > visibleRecs, "recommendations catalog is longer than one visible page")
   try require(firstRecIndex == 0, "recommendations start on the first row")
-  for _ in 0 ..< visibleRecs {
-    postKey(125)
+  try sendRuntimeCommand("selectLauncherIndex:\(visibleRecs - 1)")
+  report = try wait("recs selection can sit on the last visible row") {
+    int(launcher($0)["selectedIndex"]) == visibleRecs - 1
+      && string(launcher($0)["content"]) == "recommendations"
   }
+  try sendRuntimeCommand("moveLauncherSelection:1")
   report = try wait("Down past the last visible rec scrolls instead of wrapping") {
     int(launcher($0)["selectedIndex"]) == visibleRecs
+      && int(launcher($0)["selectedIndex"]) != 0
       && string(launcher($0)["selectedTitle"]) != firstRecTitle
       && string(launcher($0)["content"]) == "recommendations"
       && abs(double(frame($0)["width"]) - sharedExpandedWidth) < 0.5

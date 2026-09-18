@@ -137,7 +137,7 @@ struct LauncherView: View {
       }
       .onChange(of: model.selectedID) { _, newValue in
         if let newValue {
-          proxy.scrollTo(newValue)
+          proxy.scrollTo(newValue, anchor: .center)
         }
       }
     }

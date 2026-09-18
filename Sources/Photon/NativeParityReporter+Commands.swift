@@ -35,19 +35,38 @@ extension NativeParityReporter {
       runtime.launcher.hide()
     } else if command == "showLauncher" {
       runtime.launcher.show()
-    } else if command.hasPrefix("showFiles:") {
-      runtime.launcher.showFilesMode(query: String(command.dropFirst("showFiles:".count)))
-    } else if command.hasPrefix("setFilesQuery:") {
-      runtime.launcher.model.query = String(command.dropFirst("setFilesQuery:".count))
     } else if command == "resetLauncherPosition" {
       runtime.settings.resetLauncherPositionToCenter()
       if let panel = runtime.launcher.panel {
         runtime.launcher.position(panel)
       }
+    } else {
+      handleLauncherPrefixCommand(command, runtime: runtime)
+    }
+  }
+
+  private func handleLauncherPrefixCommand(_ command: String, runtime: AppRuntime) {
+    if command.hasPrefix("showFiles:") {
+      runtime.launcher.showFilesMode(query: String(command.dropFirst("showFiles:".count)))
+    } else if command.hasPrefix("setFilesQuery:") {
+      runtime.launcher.model.query = String(command.dropFirst("setFilesQuery:".count))
     } else if command.hasPrefix("requestFileAccess:") {
       let query = String(command.dropFirst("requestFileAccess:".count))
       runtime.fileSearch?.controller.update(query: query)
       runtime.fileSearch?.controller.requestFileAccess()
+    } else if command.hasPrefix("selectLauncherIndex:") {
+      let raw = String(command.dropFirst("selectLauncherIndex:".count))
+      guard let index = Int(raw) else {
+        return
+      }
+      let results = runtime.launcher.model.results
+      guard results.indices.contains(index) else {
+        return
+      }
+      runtime.launcher.model.selectedID = results[index].id
+    } else if command.hasPrefix("moveLauncherSelection:") {
+      let raw = String(command.dropFirst("moveLauncherSelection:".count))
+      runtime.launcher.model.moveSelection(Int(raw) ?? 0)
     }
   }
 }

@@ -28,8 +28,12 @@ final class MarkdownFormatTests: XCTestCase {
 
   func testMoveListItemDownSwapsNeighbors() {
     let text = "- one\n- two\n- three"
-    let edit = MarkdownFormat.moveListItem(in: text, at: 0, by: 1)
-    XCTAssertEqual(edit?.text, "- two\n- one\n- three")
+    let fromStart = MarkdownFormat.moveListItem(in: text, at: 0, by: 1)
+    XCTAssertEqual(fromStart?.text, "- two\n- one\n- three")
+    let fromMiddle = MarkdownFormat.moveListItem(in: text, at: 3, by: 1)
+    XCTAssertEqual(fromMiddle?.text, "- two\n- one\n- three")
+    let secondDown = MarkdownFormat.moveListItem(in: text, at: 8, by: 1)
+    XCTAssertEqual(secondDown?.text, "- one\n- three\n- two")
   }
 
   func testMoveListItemStopsAtTheListEdge() {

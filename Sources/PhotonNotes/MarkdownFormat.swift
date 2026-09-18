@@ -95,7 +95,7 @@ public enum MarkdownFormat {
       }
       neighbor = lineRange(at: current.location - 1, in: source)
     } else {
-      let nextStart = current.upperBound
+      let nextStart = lineEnd(of: current, in: source)
       guard nextStart < source.length else {
         return nil
       }
@@ -179,6 +179,15 @@ public enum MarkdownFormat {
       for: NSRange(location: min(location, source.length), length: 0)
     )
     return NSRange(location: start, length: contentsEnd - start)
+  }
+
+  /// Index just past this line's terminator, which is where the next line starts.
+  private static func lineEnd(of range: NSRange, in source: NSString) -> Int {
+    var start = 0
+    var end = 0
+    var contentsEnd = 0
+    source.getLineStart(&start, end: &end, contentsEnd: &contentsEnd, for: range)
+    return end
   }
 
   private static func isListItem(_ line: String) -> Bool {
