@@ -174,16 +174,14 @@ public enum MarkdownStyler {
     appendDelimited(
       strikethrough.matches(in: source, range: range),
       kind: .strikethrough,
-      left: 2,
-      right: 2,
+      markers: (2, 2),
       skipping: codeRanges,
       into: &result
     )
     appendDelimited(
       underline.matches(in: source, range: range),
       kind: .underline,
-      left: 3,
-      right: 4,
+      markers: (3, 4),
       skipping: codeRanges,
       into: &result
     )
@@ -192,14 +190,13 @@ public enum MarkdownStyler {
   private static func appendDelimited(
     _ matches: [NSTextCheckingResult],
     kind: MarkdownSpanKind,
-    left: Int,
-    right: Int,
+    markers: (left: Int, right: Int),
     skipping codeRanges: [NSRange],
     into result: inout [MarkdownSpan]
   ) {
     for match in matches where !codeRanges.contains(where: { overlaps($0, match.range) }) {
-      let leading = NSRange(location: match.range.location, length: left)
-      let trailing = NSRange(location: match.range.upperBound - right, length: right)
+      let leading = NSRange(location: match.range.location, length: markers.left)
+      let trailing = NSRange(location: match.range.upperBound - markers.right, length: markers.right)
       result.append(MarkdownSpan(range: leading, kind: .syntax))
       result.append(MarkdownSpan(range: match.range(at: 1), kind: kind))
       result.append(MarkdownSpan(range: trailing, kind: .syntax))

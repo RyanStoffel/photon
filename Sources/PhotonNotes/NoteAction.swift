@@ -3,7 +3,7 @@ import PhotonCore
 
 /// One row in the notes ⌘K actions palette.
 public struct NoteAction: Identifiable, Equatable, Sendable {
-  public enum ID: String, CaseIterable, Sendable {
+  public enum Kind: String, CaseIterable, Sendable {
     case newNote
     case duplicateNote
     case browseNotes
@@ -16,7 +16,7 @@ public struct NoteAction: Identifiable, Equatable, Sendable {
     case format
   }
 
-  public let id: ID
+  public let id: Kind
   public let title: String
   public let symbolName: String
   public let shortcut: String

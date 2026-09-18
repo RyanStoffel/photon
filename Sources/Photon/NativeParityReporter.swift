@@ -208,38 +208,7 @@ final class NativeParityReporter: NSObject {
     }
     let command = contents.trimmingCharacters(in: .whitespacesAndNewlines)
     try? FileManager.default.removeItem(at: commandURL)
-    if command == "hideLauncher" {
-      runtime.launcher.hide()
-    } else if command == "showLauncher" {
-      runtime.launcher.show()
-    } else if command == "showNotes" {
-      runtime.notes.controller.show(focus: true)
-    } else if command == "seedNotes" {
-      _ = runtime.notes.controller.createNote(content: "# JIRA API KEY\nsecret")
-      _ = runtime.notes.controller.createNote(content: "Test\n\nbla bla")
-    } else if command == "showNotesSwitcher" {
-      runtime.notes.controller.presentSwitcher()
-    } else if command == "showNotesActions" {
-      runtime.notes.controller.presentActions()
-    } else if command == "showNotesFormat" {
-      runtime.notes.controller.presentFormatBar()
-    } else if command == "hideNotes" {
-      runtime.notes.controller.hide()
-    } else if command.hasPrefix("showFiles:") {
-      let query = String(command.dropFirst("showFiles:".count))
-      runtime.launcher.showFilesMode(query: query)
-    } else if command.hasPrefix("setFilesQuery:") {
-      runtime.launcher.model.query = String(command.dropFirst("setFilesQuery:".count))
-    } else if command == "resetLauncherPosition" {
-      runtime.settings.resetLauncherPositionToCenter()
-      if let panel = runtime.launcher.panel {
-        runtime.launcher.position(panel)
-      }
-    } else if command.hasPrefix("requestFileAccess:") {
-      let query = String(command.dropFirst("requestFileAccess:".count))
-      runtime.fileSearch?.controller.update(query: query)
-      runtime.fileSearch?.controller.requestFileAccess()
-    }
+    dispatchParityCommand(command, runtime: runtime)
   }
 
   private func launcherReport(

@@ -31,29 +31,49 @@ public enum MarkdownFormat {
   public static func apply(_ style: MarkdownFormatStyle, to text: String, selection: NSRange) -> MarkdownEdit {
     let source = text as NSString
     let safe = clamped(selection, in: source)
+    if let markers = wrapMarkers(for: style) {
+      return wrap(source, selection: safe, left: markers.left, right: markers.right)
+    }
+    return applyBlock(style, in: source, selection: safe)
+  }
+
+  private static func wrapMarkers(for style: MarkdownFormatStyle) -> (left: String, right: String)? {
+    switch style {
+    case .bold:
+      ("**", "**")
+    case .italic:
+      ("*", "*")
+    case .strikethrough:
+      ("~~", "~~")
+    case .underline:
+      ("<u>", "</u>")
+    case .inlineCode:
+      ("`", "`")
+    default:
+      nil
+    }
+  }
+
+  private static func applyBlock(
+    _ style: MarkdownFormatStyle,
+    in source: NSString,
+    selection: NSRange
+  ) -> MarkdownEdit {
     switch style {
     case let .heading(level):
-      return applyHeading(level: max(1, min(level, 6)), in: source, selection: safe)
-    case .bold:
-      return wrap(source, selection: safe, left: "**", right: "**")
-    case .italic:
-      return wrap(source, selection: safe, left: "*", right: "*")
-    case .strikethrough:
-      return wrap(source, selection: safe, left: "~~", right: "~~")
-    case .underline:
-      return wrap(source, selection: safe, left: "<u>", right: "</u>")
-    case .inlineCode:
-      return wrap(source, selection: safe, left: "`", right: "`")
+      applyHeading(level: max(1, min(level, 6)), in: source, selection: selection)
     case .link:
-      return applyLink(in: source, selection: safe)
+      applyLink(in: source, selection: selection)
     case .quote:
-      return prefixLine(in: source, selection: safe, with: "> ")
+      prefixLine(in: source, selection: selection, with: "> ")
     case .bulletList:
-      return prefixLine(in: source, selection: safe, with: "- ")
+      prefixLine(in: source, selection: selection, with: "- ")
     case .numberedList:
-      return prefixLine(in: source, selection: safe, with: "1. ")
+      prefixLine(in: source, selection: selection, with: "1. ")
     case .checklist:
-      return prefixLine(in: source, selection: safe, with: "- [ ] ")
+      prefixLine(in: source, selection: selection, with: "- [ ] ")
+    default:
+      MarkdownEdit(text: source as String, selection: selection)
     }
   }
 

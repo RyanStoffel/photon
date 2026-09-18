@@ -185,11 +185,17 @@ public final class NotesController: NSObject {
   }
 
   public var windowWidth: Double {
-    window?.panel.frame.width ?? NotesLayout.panelWidth
+    if let width = window?.panel.frame.width {
+      return Double(width)
+    }
+    return NotesLayout.panelWidth
   }
 
   public var windowHeight: Double {
-    window?.panel.frame.height ?? NotesLayout.defaultHeight
+    if let height = window?.panel.frame.height {
+      return Double(height)
+    }
+    return NotesLayout.defaultHeight
   }
 
   public var windowNumber: Int {

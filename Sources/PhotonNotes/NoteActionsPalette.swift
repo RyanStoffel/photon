@@ -13,9 +13,9 @@ final class NoteActionsModel: ObservableObject {
   }
 
   @Published private(set) var results: [NoteAction] = NoteAction.catalog
-  @Published var selectedID: NoteAction.ID? = NoteAction.catalog.first?.id
+  @Published var selectedID: NoteAction.Kind? = NoteAction.catalog.first?.id
 
-  var onRun: ((NoteAction.ID) -> Void)?
+  var onRun: ((NoteAction.Kind) -> Void)?
 
   func moveSelection(_ delta: Int) {
     guard !results.isEmpty else {
