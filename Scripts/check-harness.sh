@@ -8,6 +8,7 @@ cd "$ROOT"
 echo "==> launcher compact layout, anchor and snap math"
 swift test --filter LauncherLayoutTests
 swift test --filter LauncherPositionTests
+swift test --filter SelectionNavigationTests
 
 echo "==> clipboard filtering, persistence and launcher entry"
 swift test --filter ClipboardSearchTests

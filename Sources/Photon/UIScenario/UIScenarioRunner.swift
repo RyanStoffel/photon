@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import PhotonNotes
 
 extension AppRuntime {
   func runUIScenarioIfNeeded() {
@@ -126,8 +127,7 @@ extension AppRuntime {
     guard let window = notesWindow else {
       return
     }
-    // The window's default size; anything narrower than 420 pt squeezes the sidebar below its minimum.
-    UIScenarioWindowLayout.position(window, size: NSSize(width: 720, height: 480))
+    UIScenarioWindowLayout.position(window, size: NotesLayout.defaultSize)
   }
 
   @MainActor

@@ -13,6 +13,8 @@ public enum MarkdownSpanKind: Equatable, Sendable {
   case checkbox(checked: Bool)
   case completedItem
   case syntax
+  case strikethrough
+  case underline
   /// The note's first non-blank line, shown as its title. Layered over the line's other spans.
   case title
 }
@@ -98,6 +100,8 @@ public enum MarkdownStyler {
   private static let listItem = Pattern("^[ \\t]*(?:[-*+]|\\d{1,9}[.)])[ \\t]+")
   private static let checkbox = Pattern("^\\[( |x|X)\\](?:[ \\t]+|$)")
   private static let inlineCode = Pattern("(`+)(.+?)\\1")
+  private static let strikethrough = Pattern("~~(.+?)~~")
+  private static let underline = Pattern("<u>(.+?)</u>")
   private static let emphasis = Pattern(
     "(\\*\\*\\*|___)(?=\\S)(.+?)(?<=\\S)\\1"
       + "|(\\*\\*|__)(?=\\S)(.+?)(?<=\\S)\\3"
@@ -166,6 +170,39 @@ public enum MarkdownStyler {
       result.append(MarkdownSpan(range: opening, kind: .syntax))
       result.append(MarkdownSpan(range: match.range(at: 2), kind: .inlineCode))
       result.append(MarkdownSpan(range: closing, kind: .syntax))
+    }
+    appendDelimited(
+      strikethrough.matches(in: source, range: range),
+      kind: .strikethrough,
+      left: 2,
+      right: 2,
+      skipping: codeRanges,
+      into: &result
+    )
+    appendDelimited(
+      underline.matches(in: source, range: range),
+      kind: .underline,
+      left: 3,
+      right: 4,
+      skipping: codeRanges,
+      into: &result
+    )
+  }
+
+  private static func appendDelimited(
+    _ matches: [NSTextCheckingResult],
+    kind: MarkdownSpanKind,
+    left: Int,
+    right: Int,
+    skipping codeRanges: [NSRange],
+    into result: inout [MarkdownSpan]
+  ) {
+    for match in matches where !codeRanges.contains(where: { overlaps($0, match.range) }) {
+      let leading = NSRange(location: match.range.location, length: left)
+      let trailing = NSRange(location: match.range.upperBound - right, length: right)
+      result.append(MarkdownSpan(range: leading, kind: .syntax))
+      result.append(MarkdownSpan(range: match.range(at: 1), kind: kind))
+      result.append(MarkdownSpan(range: trailing, kind: .syntax))
     }
   }
 

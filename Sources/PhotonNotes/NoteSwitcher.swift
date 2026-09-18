@@ -1,7 +1,64 @@
 import PhotonCore
 import SwiftUI
 
-/// Backing model for the ⌘P switcher: fuzzy filter over titles, keyboard selection, create-on-miss.
+/// One row in the notes switcher overlay.
+public struct NoteSwitcherItem: Identifiable, Equatable, Sendable {
+  public let id: String
+  public let title: String
+  public let subtitle: String
+  public let isCurrent: Bool
+  public let isPinned: Bool
+  public let characterCount: Int
+
+  public init(
+    id: String,
+    title: String,
+    subtitle: String,
+    isCurrent: Bool,
+    isPinned: Bool,
+    characterCount: Int
+  ) {
+    self.id = id
+    self.title = title
+    self.subtitle = subtitle
+    self.isCurrent = isCurrent
+    self.isPinned = isPinned
+    self.characterCount = characterCount
+  }
+
+  public static func items(
+    from notes: [Note],
+    currentID: String?,
+    pinned: Set<String>,
+    now: Date = Date()
+  ) -> [NoteSwitcherItem] {
+    let formatter = RelativeDateTimeFormatter()
+    formatter.unitsStyle = .full
+    let pinnedNotes = notes.filter { pinned.contains($0.id) }
+    let rest = notes.filter { !pinned.contains($0.id) }
+    return (pinnedNotes + rest).map { note in
+      let count = note.characterCount
+      let countLabel = NotesLayout.characterCountLabel(count, capitalized: true)
+      let subtitle: String
+      if note.id == currentID {
+        subtitle = "Current • \(countLabel)"
+      } else {
+        let opened = formatter.localizedString(for: note.modifiedAt, relativeTo: now)
+        subtitle = "Opened \(opened) • \(countLabel)"
+      }
+      return NoteSwitcherItem(
+        id: note.id,
+        title: note.title,
+        subtitle: subtitle,
+        isCurrent: note.id == currentID,
+        isPinned: pinned.contains(note.id),
+        characterCount: count
+      )
+    }
+  }
+}
+
+/// Backing model for the ⌘P switcher: fuzzy filter, pin, delete, keyboard selection.
 @MainActor
 final class NoteSwitcherModel: ObservableObject {
   @Published var query = "" {
@@ -12,25 +69,25 @@ final class NoteSwitcherModel: ObservableObject {
     }
   }
 
-  @Published private(set) var results: [Note] = []
+  @Published private(set) var results: [NoteSwitcherItem] = []
   @Published var selectedID: String?
 
   var onOpen: ((String) -> Void)?
-  var onCreate: ((String) -> Void)?
+  var onPin: ((String) -> Void)?
+  var onDelete: ((String) -> Void)?
 
-  private var all: [Note] = []
+  private var all: [NoteSwitcherItem] = []
 
-  var trimmedQuery: String {
-    query.trimmingCharacters(in: .whitespacesAndNewlines)
+  var totalCount: Int {
+    all.count
   }
 
-  var canCreate: Bool {
-    results.isEmpty && !trimmedQuery.isEmpty
-  }
-
-  func update(notes: [Note]) {
-    all = notes
+  func update(items: [NoteSwitcherItem], selectedID: String?) {
+    all = items
     refilter()
+    if selectedID != nil {
+      self.selectedID = selectedID
+    }
   }
 
   func moveSelection(_ delta: Int) {
@@ -38,34 +95,34 @@ final class NoteSwitcherModel: ObservableObject {
       return
     }
     let index = results.firstIndex { $0.id == selectedID } ?? 0
-    let next = (index + delta + results.count) % results.count
+    let next = SelectionNavigation.moving(from: index, by: delta, count: results.count)
     selectedID = results[next].id
   }
 
   func openSelection() {
     if let selectedID, results.contains(where: { $0.id == selectedID }) {
       onOpen?(selectedID)
-    } else if canCreate {
-      onCreate?(trimmedQuery)
     }
   }
 
-  private struct Scored {
-    let note: Note
-    let score: Double
+  func pinSelection() {
+    if let selectedID {
+      onPin?(selectedID)
+    }
+  }
+
+  func deleteSelection() {
+    if let selectedID {
+      onDelete?(selectedID)
+    }
   }
 
   private func refilter() {
-    let needle = trimmedQuery
+    let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
     if needle.isEmpty {
       results = all
     } else {
-      results = all
-        .compactMap { note in
-          FuzzyMatcher.score(query: needle, candidate: note.title).map { Scored(note: note, score: $0) }
-        }
-        .sorted { $0.score > $1.score }
-        .map(\.note)
+      results = all.filter { FuzzyMatcher.matches(query: needle, candidate: $0.title) }
     }
     if !results.contains(where: { $0.id == selectedID }) {
       selectedID = results.first?.id
@@ -80,40 +137,63 @@ struct NoteSwitcherView: View {
   var body: some View {
     VStack(spacing: 0) {
       searchField
-      Divider()
+      header
       if model.results.isEmpty {
         emptyState
       } else {
         list
       }
     }
-    .frame(width: 320, height: 380)
+    .frame(width: NotesLayout.overlayCardWidth)
+    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    .overlay(
+      RoundedRectangle(cornerRadius: 14, style: .continuous)
+        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+    )
     .onAppear {
       searchFocused = true
     }
   }
 
   private var searchField: some View {
-    HStack(spacing: 8) {
-      Image(systemName: "magnifyingglass")
+    TextField("Search for notes…", text: $model.query)
+      .textFieldStyle(.plain)
+      .font(.system(size: 15))
+      .focused($searchFocused)
+      .padding(.horizontal, 14)
+      .padding(.vertical, 12)
+  }
+
+  private var header: some View {
+    HStack {
+      Text("Notes")
+        .font(.system(size: 12, weight: .semibold))
         .foregroundStyle(.secondary)
-      TextField("Search notes", text: $model.query)
-        .textFieldStyle(.plain)
-        .focused($searchFocused)
+      Spacer()
+      Text("\(model.results.count)/\(max(model.totalCount, 1)) Notes")
+        .font(.system(size: 12, weight: .medium))
+        .foregroundStyle(.secondary)
+      Image(systemName: "info.circle")
+        .font(.system(size: 12))
+        .foregroundStyle(.tertiary)
     }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 10)
+    .padding(.horizontal, 14)
+    .padding(.bottom, 6)
   }
 
   private var list: some View {
     ScrollViewReader { proxy in
-      List(model.results, selection: $model.selectedID) { note in
-        row(note)
-          .tag(note.id)
-          .id(note.id)
+      ScrollView {
+        LazyVStack(spacing: 2) {
+          ForEach(model.results) { item in
+            row(item)
+              .id(item.id)
+          }
+        }
+        .padding(.horizontal, 8)
+        .padding(.bottom, 8)
       }
-      .listStyle(.plain)
-      .scrollContentBackground(.hidden)
+      .frame(maxHeight: 280)
       .onChange(of: model.selectedID) { _, newValue in
         if let newValue {
           proxy.scrollTo(newValue)
@@ -122,45 +202,61 @@ struct NoteSwitcherView: View {
     }
   }
 
-  @ViewBuilder
   private var emptyState: some View {
-    if model.canCreate {
-      Button {
-        model.openSelection()
-      } label: {
-        Label("Create “\(model.trimmedQuery)”", systemImage: "plus.circle")
-          .frame(maxWidth: .infinity, alignment: .leading)
-      }
-      .buttonStyle(.plain)
-      .padding(12)
-      Spacer()
-    } else {
-      Text("No notes yet")
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
+    Text("No notes")
+      .foregroundStyle(.secondary)
+      .frame(maxWidth: .infinity)
+      .padding(24)
   }
 
-  private func row(_ note: Note) -> some View {
-    VStack(alignment: .leading, spacing: 2) {
-      Text(note.title)
-        .font(.body.weight(.medium))
-        .lineLimit(1)
-      HStack(spacing: 6) {
-        Text(note.modifiedAt, format: .relative(presentation: .named))
-        if !note.preview.isEmpty {
-          Text("·")
-          Text(note.preview)
+  private func row(_ item: NoteSwitcherItem) -> some View {
+    let selected = item.id == model.selectedID
+    return HStack(spacing: 8) {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(item.title)
+          .font(.system(size: 13, weight: .semibold))
+          .lineLimit(1)
+        HStack(spacing: 6) {
+          if item.isCurrent {
+            Circle()
+              .fill(Color.orange)
+              .frame(width: 6, height: 6)
+          }
+          Text(item.subtitle)
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
             .lineLimit(1)
         }
       }
-      .font(.caption)
-      .foregroundStyle(.secondary)
+      Spacer(minLength: 8)
+      if selected {
+        Button {
+          model.pinSelection()
+        } label: {
+          Image(systemName: item.isPinned ? "pin.fill" : "pin")
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .help(item.isPinned ? "Unpin" : "Pin")
+        Button {
+          model.deleteSelection()
+        } label: {
+          Image(systemName: "trash")
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .help("Delete")
+      }
     }
-    .padding(.vertical, 3)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 8)
+    .background(
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
+        .fill(selected ? Color.primary.opacity(0.1) : Color.clear)
+    )
     .contentShape(Rectangle())
     .onTapGesture {
-      model.selectedID = note.id
+      model.selectedID = item.id
       model.openSelection()
     }
   }

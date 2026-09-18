@@ -65,6 +65,11 @@ final class MarkdownStylerTests: XCTestCase {
     XCTAssertFalse(MarkdownStyler.requiresFullPass("plain"))
   }
 
+  func testStrikethroughAndUnderline() {
+    XCTAssertEqual(spans("~~old~~", .strikethrough), ["old"])
+    XCTAssertEqual(spans("see <u>this</u>", .underline), ["this"])
+  }
+
   func testPartialRangeOnlyStylesIntersectingLines() {
     let text = "# One\n**two**\n# Three"
     let nsText = text as NSString

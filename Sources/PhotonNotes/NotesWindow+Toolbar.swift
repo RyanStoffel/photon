@@ -1,14 +1,11 @@
 import AppKit
 
 extension NSToolbarItem.Identifier {
-  static let newNote = NSToolbarItem.Identifier("photon.notes.new")
-  static let noteActions = NSToolbarItem.Identifier("photon.notes.actions")
+  static let notesCommandPalette = NSToolbarItem.Identifier("photon.notes.commands")
+  static let notesBrowse = NSToolbarItem.Identifier("photon.notes.browse")
+  static let notesNew = NSToolbarItem.Identifier("photon.notes.new")
 }
 
-// MARK: - Toolbar
-
-/// Unified toolbar laid out like Notes: the standard sidebar toggle and "New Note" over the sidebar,
-/// a tracking separator on the sidebar's edge, then the window title and the actions menu.
 extension NotesWindow: NSToolbarDelegate {
   func configureToolbar() {
     let toolbar = NSToolbar(identifier: "photon.notes.toolbar")
@@ -19,7 +16,7 @@ extension NotesWindow: NSToolbarDelegate {
   }
 
   func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
-    [.toggleSidebar, .newNote, .sidebarTrackingSeparator, .flexibleSpace, .noteActions]
+    [.flexibleSpace, .notesCommandPalette, .notesBrowse, .notesNew]
   }
 
   func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -32,26 +29,31 @@ extension NotesWindow: NSToolbarDelegate {
     willBeInsertedIntoToolbar _: Bool
   ) -> NSToolbarItem? {
     switch identifier {
-    case .newNote:
-      let item = makeItem(
+    case .notesCommandPalette:
+      return makeItem(
         identifier,
-        symbol: "square.and.pencil",
-        label: "New Note",
-        action: #selector(newNoteFromToolbar)
+        symbol: "command",
+        label: "Commands",
+        action: #selector(showCommandsFromToolbar),
+        tooltip: "Search for actions (⌘K)"
       )
-      item.toolTip = "New note (⌘N)"
-      return item
-    case .noteActions:
-      let item = NSMenuToolbarItem(itemIdentifier: identifier)
-      item.image = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: "More")
-      item.label = "More"
-      item.paletteLabel = "More"
-      item.showsIndicator = false
-      item.menu = actionsMenu()
-      return item
+    case .notesBrowse:
+      return makeItem(
+        identifier,
+        symbol: "list.bullet.rectangle",
+        label: "Browse Notes",
+        action: #selector(showSwitcherFromToolbar),
+        tooltip: "Browse notes (⌘P)"
+      )
+    case .notesNew:
+      return makeItem(
+        identifier,
+        symbol: "plus",
+        label: "New Note",
+        action: #selector(newNoteFromToolbar),
+        tooltip: "New note (⌘N)"
+      )
     default:
-      // `.toggleSidebar` and `.sidebarTrackingSeparator` are standard items AppKit builds and links
-      // to the split view controller itself.
       return nil
     }
   }
@@ -60,7 +62,8 @@ extension NotesWindow: NSToolbarDelegate {
     _ identifier: NSToolbarItem.Identifier,
     symbol: String,
     label: String,
-    action: Selector
+    action: Selector,
+    tooltip: String
   ) -> NSToolbarItem {
     let item = NSToolbarItem(itemIdentifier: identifier)
     item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
@@ -69,53 +72,22 @@ extension NotesWindow: NSToolbarDelegate {
     item.isBordered = true
     item.target = self
     item.action = action
+    item.toolTip = tooltip
     return item
   }
 
-  private func actionsMenu() -> NSMenu {
-    let menu = NSMenu()
-    let float = addMenuItem(to: menu, title: "Float on Top", action: #selector(toggleFloatOnTop))
-    float.state = controller.preferences.floatsAboveOtherWindows ? .on : .off
-    floatOnTopItem = float
-    menu.addItem(.separator())
-    addMenuItem(to: menu, title: "Reveal in Finder", action: #selector(revealInFinder))
-    menu.addItem(.separator())
-    addMenuItem(to: menu, title: "Delete Note…", action: #selector(deleteNote))
-    return menu
-  }
-
-  @discardableResult
-  private func addMenuItem(to menu: NSMenu, title: String, action: Selector) -> NSMenuItem {
-    let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-    item.target = self
-    menu.addItem(item)
-    return item
-  }
-
-  /// Fallback target for the standard `toggleSidebar:` action when nothing inside the split view
-  /// is the first responder (the window delegate sits in the action chain after the window).
   @objc
-  func toggleSidebar(_: Any?) {
-    toggleSidebarVisibility()
+  private func showCommandsFromToolbar(_: Any?) {
+    presentActions()
+  }
+
+  @objc
+  private func showSwitcherFromToolbar(_: Any?) {
+    presentSwitcher()
   }
 
   @objc
   private func newNoteFromToolbar(_: Any?) {
     controller.createNote()
-  }
-
-  @objc
-  private func toggleFloatOnTop(_: Any?) {
-    controller.setFloatsAboveOtherWindows(!controller.preferences.floatsAboveOtherWindows)
-  }
-
-  @objc
-  private func revealInFinder(_: Any?) {
-    controller.revealInFinder()
-  }
-
-  @objc
-  private func deleteNote(_: Any?) {
-    controller.deleteCurrentNote()
   }
 }

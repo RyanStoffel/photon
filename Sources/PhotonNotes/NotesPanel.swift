@@ -24,6 +24,13 @@ final class NotesPanel: NSPanel {
     return performStandardEditingShortcut(event)
   }
 
+  override func keyDown(with event: NSEvent) {
+    if let shortcutHandler, shortcutHandler(event) {
+      return
+    }
+    super.keyDown(with: event)
+  }
+
   private func performStandardEditingShortcut(_ event: NSEvent) -> Bool {
     let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
     guard flags.contains(.command), !flags.contains(.option), !flags.contains(.control),
