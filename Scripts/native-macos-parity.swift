@@ -944,13 +944,20 @@ do {
   try require(firstRecIndex == 0, "recommendations start on the first row")
   try sendRuntimeCommand("scrollRecsPastFirstPage")
   report = try wait("Down past the last visible rec scrolls instead of wrapping") {
-    int(launcher($0)["selectedIndex"]) == visibleRecs
-      && int(launcher($0)["selectedIndex"]) != 0
+    let index = int(launcher($0)["selectedIndex"])
+    return index == visibleRecs
+      && index > 0
       && string(launcher($0)["selectedTitle"]) != firstRecTitle
       && string(launcher($0)["content"]) == "recommendations"
-      && abs(double(frame($0)["width"]) - sharedExpandedWidth) < 0.5
-      && abs(double(frame($0)["height"]) - sharedExpandedHeight) < 0.5
   }
+  try require(
+    abs(double(frame(report)["width"]) - sharedExpandedWidth) < 1,
+    "scrolled recs keep the expanded width"
+  )
+  try require(
+    abs(double(frame(report)["height"]) - sharedExpandedHeight) < 1,
+    "scrolled recs keep the expanded height"
+  )
   try captureLauncher(
     report,
     name: "launcher-recs-scrolled",

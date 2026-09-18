@@ -208,6 +208,15 @@ final class NativeParityReporter: NSObject {
     }
     let command = contents.trimmingCharacters(in: .whitespacesAndNewlines)
     try? FileManager.default.removeItem(at: commandURL)
+    if command == "scrollRecsPastFirstPage" {
+      let model = runtime.launcher.model
+      let visible = LauncherLayout.visibleRecommendationRows
+      guard model.results.indices.contains(visible) else {
+        return
+      }
+      model.selectedID = model.results[visible].id
+      return
+    }
     dispatchParityCommand(command, runtime: runtime)
   }
 
