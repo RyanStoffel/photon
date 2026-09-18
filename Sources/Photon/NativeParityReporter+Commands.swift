@@ -1,4 +1,5 @@
 import Foundation
+import PhotonCore
 import PhotonNotes
 
 extension NativeParityReporter {
@@ -16,6 +17,10 @@ extension NativeParityReporter {
     case "seedNotes":
       _ = notes.createNote(content: "# JIRA API KEY\nsecret")
       _ = notes.createNote(content: "Test\n\nbla bla")
+    case "seedAndShowNotes":
+      _ = notes.createNote(content: "# JIRA API KEY\nsecret")
+      _ = notes.createNote(content: "Test\n\nbla bla")
+      notes.show(focus: true)
     case "showNotesSwitcher":
       notes.presentSwitcher()
     case "showNotesActions":
@@ -40,9 +45,23 @@ extension NativeParityReporter {
       if let panel = runtime.launcher.panel {
         runtime.launcher.position(panel)
       }
+    } else if command == "scrollRecsPastFirstPage" {
+      scrollRecsPastFirstPage(runtime: runtime)
     } else {
       handleLauncherPrefixCommand(command, runtime: runtime)
     }
+  }
+
+  /// Down from the last on-screen rec, atomically, so the command file cannot
+  /// drop the follow-up key between two writes.
+  private func scrollRecsPastFirstPage(runtime: AppRuntime) {
+    let model = runtime.launcher.model
+    let visible = LauncherLayout.visibleRecommendationRows
+    guard model.results.count > visible else {
+      return
+    }
+    model.selectedID = model.results[visible - 1].id
+    model.moveSelection(1)
   }
 
   private func handleLauncherPrefixCommand(_ command: String, runtime: AppRuntime) {
