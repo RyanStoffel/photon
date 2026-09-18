@@ -71,6 +71,7 @@ public enum LauncherLayout {
       inset: listInset
     )
   }
+
   public static let hairline: Double = 1
   public static let cornerRadius: Double = 12
   public static let iconSize: Double = 28

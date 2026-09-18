@@ -30,7 +30,7 @@ extension NotesWindow: NSToolbarDelegate {
   ) -> NSToolbarItem? {
     switch identifier {
     case .notesCommandPalette:
-      return makeItem(
+      makeItem(
         identifier,
         symbol: "command",
         label: "Commands",
@@ -38,7 +38,7 @@ extension NotesWindow: NSToolbarDelegate {
         tooltip: "Search for actions (⌘K)"
       )
     case .notesBrowse:
-      return makeItem(
+      makeItem(
         identifier,
         symbol: "list.bullet.rectangle",
         label: "Browse Notes",
@@ -46,7 +46,7 @@ extension NotesWindow: NSToolbarDelegate {
         tooltip: "Browse notes (⌘P)"
       )
     case .notesNew:
-      return makeItem(
+      makeItem(
         identifier,
         symbol: "plus",
         label: "New Note",
@@ -54,7 +54,7 @@ extension NotesWindow: NSToolbarDelegate {
         tooltip: "New note (⌘N)"
       )
     default:
-      return nil
+      nil
     }
   }
 

@@ -38,16 +38,18 @@ final class NoteDeepLinkTests: XCTestCase {
     XCTAssertEqual(NoteDeepLink.noteID(from: url), "Note 2026-09-18 at 01.00.00")
   }
 
-  func testRejectsOtherSchemes() {
-    XCTAssertNil(NoteDeepLink.noteID(from: URL(string: "https://example.com/note/x")!))
-    XCTAssertNil(NoteDeepLink.noteID(from: URL(string: "photon://other/x")!))
+  func testRejectsOtherSchemes() throws {
+    let https = try XCTUnwrap(URL(string: "https://example.com/note/x"))
+    let other = try XCTUnwrap(URL(string: "photon://other/x"))
+    XCTAssertNil(NoteDeepLink.noteID(from: https))
+    XCTAssertNil(NoteDeepLink.noteID(from: other))
   }
 }
 
 final class NotePinStoreTests: XCTestCase {
-  func testToggleAndPersist() {
+  func testToggleAndPersist() throws {
     let suite = "photon-pin-\(UUID().uuidString)"
-    let defaults = UserDefaults(suiteName: suite)!
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
     defaults.removePersistentDomain(forName: suite)
     var store = NotePinStore(defaults: defaults)
     XCTAssertFalse(store.isPinned("a"))

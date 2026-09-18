@@ -29,7 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     NativeParityReporter.startIfRequested(runtime: runtime, statusItem: statusItemController)
   }
 
-  func application(_ application: NSApplication, open urls: [URL]) {
+  func application(_: NSApplication, open urls: [URL]) {
     runtime.openNotes(from: urls)
   }
 

@@ -91,7 +91,13 @@ public enum MarkdownFormat {
     let combined = NSMutableString(string: text)
     combined.replaceCharacters(in: second, with: firstText)
     combined.replaceCharacters(in: first, with: secondText)
-    let newSelection = delta < 0 ? first : NSRange(location: first.location + (secondText as NSString).length, length: 0)
+    let newSelection: NSRange
+    if delta < 0 {
+      newSelection = first
+    } else {
+      let offset = (secondText as NSString).length
+      newSelection = NSRange(location: first.location + offset, length: 0)
+    }
     return MarkdownEdit(text: combined as String, selection: newSelection)
   }
 
@@ -101,7 +107,8 @@ public enum MarkdownFormat {
       let replacement = left + inner + right
       let result = source.replacingCharacters(in: selection, with: replacement)
       let location = selection.location + (left as NSString).length
-      return MarkdownEdit(text: result, selection: NSRange(location: location, length: (inner as NSString).length))
+      let innerLength = (inner as NSString).length
+      return MarkdownEdit(text: result, selection: NSRange(location: location, length: innerLength))
     }
     let result = source.replacingCharacters(in: selection, with: left + right)
     return MarkdownEdit(

@@ -1,5 +1,5 @@
 import AppKit
-import SwiftUI
+import UniformTypeIdentifiers
 
 /// The floating notes panel: vibrancy editor, character count, switcher / actions overlays.
 @MainActor
@@ -182,7 +182,7 @@ final class NotesWindow: NSObject {
       return
     }
     let save = NSSavePanel()
-    save.allowedFileTypes = ["md", "markdown", "txt"]
+    save.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText]
     save.nameFieldStringValue = "\(note.title).md"
     save.beginSheetModal(for: panel) { [weak self] response in
       guard response == .OK, let url = save.url else {
@@ -269,7 +269,7 @@ final class NotesWindow: NSObject {
     panel.hasShadow = true
     panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
     panel.minSize = Self.minimumSize
-    panel.maxSize = NSSize(width: NotesLayout.panelWidth, height: 12_000)
+    panel.maxSize = NSSize(width: NotesLayout.panelWidth, height: CGFloat.greatestFiniteMagnitude)
     panel.animationBehavior = .utilityWindow
     panel.tabbingMode = .disallowed
     panel.delegate = self
