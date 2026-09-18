@@ -96,7 +96,18 @@ func wait(
     }
     RunLoop.current.run(until: Date().addingTimeInterval(0.1))
   }
-  throw ParityFailure.failed("Timed out: \(label)")
+    if let report = readReport() {
+      let state = launcher(report)
+      let index = int(state["selectedIndex"])
+      let count = int(state["resultCount"])
+      let content = string(state["content"])
+      let title = string(state["selectedTitle"])
+      let lastCommand = string(report["lastParityCommand"])
+      throw ParityFailure.failed(
+        "Timed out: \(label) selectedIndex=\(index) resultCount=\(count) content=\(content) title=\(title) lastCommand=\(lastCommand)"
+      )
+    }
+    throw ParityFailure.failed("Timed out: \(label)")
 }
 
 func require(_ condition: @autoclosure () -> Bool, _ label: String) throws {
@@ -934,8 +945,6 @@ do {
   let launcherRecommendationsFrame = frame(report)
   let sharedExpandedWidth = double(launcherRecommendationsFrame["width"])
   let sharedExpandedHeight = double(launcherRecommendationsFrame["height"])
-  try captureLauncher(report, name: "launcher-recs", expectedText: "Photon")
-
   let recCount = int(launcher(report)["resultCount"])
   let visibleRecs = int(launcher(report)["visibleRecommendationRows"])
   let firstRecIndex = int(launcher(report)["selectedIndex"])
@@ -963,6 +972,12 @@ do {
     name: "launcher-recs-scrolled",
     expectedText: string(launcher(report)["selectedTitle"])
   )
+  try sendRuntimeCommand("selectLauncherIndex:0")
+  report = try wait("recs selection returns to the first row for the un-scrolled shot") {
+    int(launcher($0)["selectedIndex"]) == 0
+      && string(launcher($0)["content"]) == "recommendations"
+  }
+  try captureLauncher(report, name: "launcher-recs", expectedText: "Photon")
 
   try sendRuntimeCommand("hideLauncher")
   _ = try wait("launcher recommendations close before drag checks") {

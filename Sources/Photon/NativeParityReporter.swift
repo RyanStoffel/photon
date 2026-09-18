@@ -23,6 +23,7 @@ final class NativeParityReporter: NSObject {
   private var commandURL: URL?
   private var timer: Timer?
   private var appIconProbeCount = 0
+  private var lastParityCommand = ""
 
   static func startIfRequested(runtime: AppRuntime, statusItem: StatusItemController?) {
     guard isRequested,
@@ -174,6 +175,7 @@ final class NativeParityReporter: NSObject {
       "clipboardCaptureCount": runtime.clipboard.items.count,
       "clipboardAccessibilityTrusted": runtime.clipboard.isAccessibilityTrusted,
       "appIconProbeCount": appIconProbeCount,
+      "lastParityCommand": lastParityCommand,
       "fileAccess": [
         "grantCount": runtime.fileAccess.grants.count,
         "folders": runtime.fileAccess.folders,
@@ -208,6 +210,7 @@ final class NativeParityReporter: NSObject {
     }
     let command = contents.trimmingCharacters(in: .whitespacesAndNewlines)
     try? FileManager.default.removeItem(at: commandURL)
+    lastParityCommand = command
     if command == "scrollRecsPastFirstPage" {
       let model = runtime.launcher.model
       let visible = LauncherLayout.visibleRecommendationRows
