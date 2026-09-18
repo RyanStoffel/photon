@@ -34,5 +34,16 @@
   <false/>
   <key>NSSupportsSuddenTermination</key>
   <false/>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>com.ryanstoffel.photon.note</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>photon</string>
+      </array>
+    </dict>
+  </array>
 </dict>
 </plist>

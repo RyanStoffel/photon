@@ -200,6 +200,14 @@ final class AppRuntime: ObservableObject {
     notes.controller.toggle()
   }
 
+  func openNotes(from urls: [URL]) {
+    for url in urls {
+      if let id = NoteDeepLink.noteID(from: url) {
+        try? notes.controller.open(noteID: id)
+      }
+    }
+  }
+
   func openSettings() {
     NSApp.activate(ignoringOtherApps: true)
     if settingsWindowController == nil {

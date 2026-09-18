@@ -77,10 +77,10 @@ func matchesScenario(_ candidate: WindowCandidate, scenario: String) -> Bool {
     }
     return false
   case "notes":
-    if candidate.title == "Screenshot sample" || candidate.title == "Notes" {
+    if candidate.title == "Screenshot sample" || candidate.title == "Notes" || candidate.title == "Untitled" {
       return true
     }
-    return candidate.width >= 260 && candidate.width <= 460 && candidate.height >= 200
+    return candidate.width >= 640 && candidate.width <= 720 && candidate.height >= 300
   default:
     return true
   }

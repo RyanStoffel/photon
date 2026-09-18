@@ -26,6 +26,10 @@ public struct Note: Identifiable, Hashable, Sendable {
   public var isBlank: Bool {
     content.allSatisfy(\.isWhitespace)
   }
+
+  public var characterCount: Int {
+    content.count
+  }
 }
 
 /// Lightweight, launcher-facing view of a note.

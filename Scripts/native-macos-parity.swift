@@ -96,6 +96,17 @@ func wait(
     }
     RunLoop.current.run(until: Date().addingTimeInterval(0.1))
   }
+  if let report = readReport() {
+    let state = launcher(report)
+    let index = int(state["selectedIndex"])
+    let count = int(state["resultCount"])
+    let content = string(state["content"])
+    let title = string(state["selectedTitle"])
+    let lastCommand = string(report["lastParityCommand"])
+    throw ParityFailure.failed(
+      "Timed out: \(label) selectedIndex=\(index) resultCount=\(count) content=\(content) title=\(title) lastCommand=\(lastCommand)"
+    )
+  }
   throw ParityFailure.failed("Timed out: \(label)")
 }
 
@@ -108,6 +119,10 @@ func require(_ condition: @autoclosure () -> Bool, _ label: String) throws {
 
 func launcher(_ report: [String: Any]) -> [String: Any] {
   dictionary(report["launcher"])
+}
+
+func notes(_ report: [String: Any]) -> [String: Any] {
+  dictionary(report["notes"])
 }
 
 func frame(_ report: [String: Any]) -> [String: Any] {
@@ -203,6 +218,56 @@ func ocrContains(_ rendered: String, _ expected: String) -> Bool {
     return hasFirst && hasLast
   }
   return false
+}
+
+func captureNotes(
+  _ report: [String: Any],
+  name: String,
+  expectedText: String,
+  additionalExpectedText: [String] = []
+) throws {
+  try FileManager.default.createDirectory(
+    at: screenshotDirectory,
+    withIntermediateDirectories: true
+  )
+  RunLoop.current.run(until: Date().addingTimeInterval(0.75))
+  let destination = screenshotDirectory.appendingPathComponent(name + ".png")
+  let process = Process()
+  process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+  process.arguments = [
+    "-x",
+    "-l",
+    String(int(notes(report)["windowNumber"])),
+    destination.path,
+  ]
+  try process.run()
+  let captureDeadline = Date().addingTimeInterval(8)
+  while process.isRunning, Date() < captureDeadline {
+    RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+  }
+  if process.isRunning {
+    process.terminate()
+    throw ParityFailure.failed("screencapture timed out for \(name).png")
+  }
+  let size = (try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+  try require(process.terminationStatus == 0 && size > 0, "captured \(name).png")
+  let recognition = VNRecognizeTextRequest()
+  recognition.recognitionLevel = .accurate
+  let handler = VNImageRequestHandler(url: destination)
+  try handler.perform([recognition])
+  let renderedText = (recognition.results ?? [])
+    .compactMap { $0.topCandidates(1).first?.string }
+    .joined(separator: "\n")
+  try require(
+    ocrContains(renderedText, expectedText),
+    "\(name).png visibly contains \(expectedText)"
+  )
+  for expected in additionalExpectedText {
+    try require(
+      ocrContains(renderedText, expected),
+      "\(name).png visibly contains \(expected)"
+    )
+  }
 }
 
 func requireMetadataDoesNotOverlapFooter(at url: URL, name: String, renderedText: String) throws {
@@ -880,12 +945,70 @@ do {
   let launcherRecommendationsFrame = frame(report)
   let sharedExpandedWidth = double(launcherRecommendationsFrame["width"])
   let sharedExpandedHeight = double(launcherRecommendationsFrame["height"])
+  let recCount = int(launcher(report)["resultCount"])
+  let visibleRecs = int(launcher(report)["visibleRecommendationRows"])
+  let firstRecIndex = int(launcher(report)["selectedIndex"])
+  let firstRecTitle = string(launcher(report)["selectedTitle"])
+  try require(recCount > visibleRecs, "recommendations catalog is longer than one visible page")
+  try require(firstRecIndex == 0, "recommendations start on the first row")
+  try sendRuntimeCommand("scrollRecsPastFirstPage")
+  report = try wait("Down past the last visible rec scrolls instead of wrapping") {
+    let index = int(launcher($0)["selectedIndex"])
+    return index >= visibleRecs
+      && index > 0
+      && string(launcher($0)["selectedTitle"]) != firstRecTitle
+      && string(launcher($0)["content"]) == "recommendations"
+  }
+  try require(
+    abs(double(frame(report)["width"]) - sharedExpandedWidth) < 1,
+    "scrolled recs keep the expanded width"
+  )
+  try require(
+    abs(double(frame(report)["height"]) - sharedExpandedHeight) < 1,
+    "scrolled recs keep the expanded height"
+  )
+  try captureLauncher(
+    report,
+    name: "launcher-recs-scrolled",
+    expectedText: string(launcher(report)["selectedTitle"])
+  )
+  try sendRuntimeCommand("selectLauncherIndex:0")
+  report = try wait("recs selection returns to the first row for the un-scrolled shot") {
+    int(launcher($0)["selectedIndex"]) == 0
+      && string(launcher($0)["content"]) == "recommendations"
+  }
   try captureLauncher(report, name: "launcher-recs", expectedText: "Photon")
 
   try sendRuntimeCommand("hideLauncher")
   _ = try wait("launcher recommendations close before drag checks") {
     !bool(launcher($0)["visible"])
   }
+
+  try sendRuntimeCommand("seedAndShowNotes")
+  report = try wait("notes window opens at the fixed width") {
+    bool(notes($0)["visible"])
+      && abs(double(notes($0)["width"]) - 680) < 1
+      && string(notes($0)["overlay"]) == "none"
+  }
+  let notesWidth = double(notes(report)["width"])
+  try captureNotes(report, name: "notes-editor", expectedText: "Test")
+  try sendRuntimeCommand("showNotesSwitcher")
+  report = try wait("notes switcher overlay is visible") {
+    string(notes($0)["overlay"]) == "switcher"
+      && abs(double(notes($0)["width"]) - notesWidth) < 0.5
+  }
+  try captureNotes(report, name: "notes-switcher", expectedText: "Search for notes")
+  try sendRuntimeCommand("showNotesActions")
+  report = try wait("notes actions palette is visible") {
+    string(notes($0)["overlay"]) == "actions"
+      && abs(double(notes($0)["width"]) - notesWidth) < 0.5
+  }
+  try captureNotes(report, name: "notes-actions", expectedText: "New Note")
+  try sendRuntimeCommand("hideNotes")
+  _ = try wait("notes window hides before drag checks") {
+    !bool(notes($0)["visible"])
+  }
+
   try sendRuntimeCommand("showLauncher")
   report = try wait("drag checks reopen the compact launcher") {
     bool(launcher($0)["visible"])

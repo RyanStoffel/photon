@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import PhotonCore
 import PhotonFiles
+import PhotonNotes
 
 /// Writes live state from the packaged app for the macOS runtime parity harness.
 /// It is completely inert outside CI's explicit `PHOTON_NATIVE_PARITY_REPORT_PATH`.
@@ -22,6 +23,7 @@ final class NativeParityReporter: NSObject {
   private var commandURL: URL?
   private var timer: Timer?
   private var appIconProbeCount = 0
+  private var lastParityCommand = ""
 
   static func startIfRequested(runtime: AppRuntime, statusItem: StatusItemController?) {
     guard isRequested,
@@ -173,6 +175,7 @@ final class NativeParityReporter: NSObject {
       "clipboardCaptureCount": runtime.clipboard.items.count,
       "clipboardAccessibilityTrusted": runtime.clipboard.isAccessibilityTrusted,
       "appIconProbeCount": appIconProbeCount,
+      "lastParityCommand": lastParityCommand,
       "fileAccess": [
         "grantCount": runtime.fileAccess.grants.count,
         "folders": runtime.fileAccess.folders,
@@ -180,6 +183,7 @@ final class NativeParityReporter: NSObject {
         "requesting": runtime.fileAccess.isRequestingAccess
           || runtime.fileSearch?.controller.isRequestingAccess == true,
       ],
+      "notes": notesReport(runtime.notes.controller),
       "settings": [
         "appearance": runtime.settings.appearance.rawValue,
         "launcherHotkey": "\(launcherHotkey.keyCode):\(launcherHotkey.carbonModifiers)",
@@ -206,25 +210,19 @@ final class NativeParityReporter: NSObject {
     }
     let command = contents.trimmingCharacters(in: .whitespacesAndNewlines)
     try? FileManager.default.removeItem(at: commandURL)
-    if command == "hideLauncher" {
-      runtime.launcher.hide()
-    } else if command == "showLauncher" {
-      runtime.launcher.show()
-    } else if command.hasPrefix("showFiles:") {
-      let query = String(command.dropFirst("showFiles:".count))
-      runtime.launcher.showFilesMode(query: query)
-    } else if command.hasPrefix("setFilesQuery:") {
-      runtime.launcher.model.query = String(command.dropFirst("setFilesQuery:".count))
-    } else if command == "resetLauncherPosition" {
-      runtime.settings.resetLauncherPositionToCenter()
-      if let panel = runtime.launcher.panel {
-        runtime.launcher.position(panel)
+    lastParityCommand = command
+    if command == "scrollRecsPastFirstPage" {
+      let model = runtime.launcher.model
+      let visible = LauncherLayout.visibleRecommendationRows
+      if let index = model.results.indices.first(where: { candidate in
+        candidate >= visible
+          && model.results.firstIndex { $0.id == model.results[candidate].id } == candidate
+      }) {
+        model.selectedID = model.results[index].id
       }
-    } else if command.hasPrefix("requestFileAccess:") {
-      let query = String(command.dropFirst("requestFileAccess:".count))
-      runtime.fileSearch?.controller.update(query: query)
-      runtime.fileSearch?.controller.requestFileAccess()
+      return
     }
+    dispatchParityCommand(command, runtime: runtime)
   }
 
   private func launcherReport(
@@ -277,6 +275,9 @@ final class NativeParityReporter: NSObject {
       "panelWidth": model.panelWidth,
       "resultCount": model.results.count,
       "displayedRowTitles": displayedTitles,
+      "selectedIndex": model.results.firstIndex { $0.id == model.selectedID } ?? -1,
+      "selectedTitle": model.selectedRow?.title ?? "",
+      "visibleRecommendationRows": LauncherLayout.visibleRecommendationRows,
       "fileSelectedName": runtime?.fileSearch?.controller.selected?.displayName ?? "",
       "fileSelectedType": runtime?.fileSearch?.controller.selected?.contentType ?? "",
       "fileControllerQuery": runtime?.fileSearch?.controller.currentQuery ?? "",
@@ -290,6 +291,18 @@ final class NativeParityReporter: NSObject {
       "resolvedAppIconCount": resolvedAppIcons,
       "fileStatus": fileStatus(runtime?.fileSearch?.controller.status),
       "fileRequestingAccess": runtime?.fileSearch?.controller.isRequestingAccess == true,
+    ]
+  }
+
+  private func notesReport(_ controller: NotesController) -> [String: Any] {
+    [
+      "visible": controller.isWindowVisible,
+      "width": controller.windowWidth,
+      "height": controller.windowHeight,
+      "windowNumber": controller.windowNumber,
+      "overlay": controller.overlayName,
+      "title": controller.screenshotWindow?.title ?? "",
+      "characterCount": controller.currentNote?.characterCount ?? 0,
     ]
   }
 

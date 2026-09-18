@@ -78,6 +78,19 @@ final class LauncherLayoutTests: XCTestCase {
     )
   }
 
+  func testRecommendationCatalogIsTallerThanOneVisiblePage() {
+    XCTAssertGreaterThan(LauncherLayout.recommendationCatalogLimit, LauncherLayout.visibleRecommendationRows)
+    XCTAssertEqual(LauncherLayout.height(for: .recommendations), LauncherLayout.expandedHeight)
+    XCTAssertEqual(
+      LauncherLayout.visibleRecommendationRows,
+      SelectionNavigation.visibleRowCount(
+        listHeight: LauncherLayout.expandedListHeight,
+        rowHeight: LauncherLayout.rowHeight,
+        inset: LauncherLayout.listInset
+      )
+    )
+  }
+
   func testCalculatorHeroReplacesFirstRowHeight() {
     let rowOnly = LauncherLayout.listHeight(rowCount: 1)
     let heroOnly = LauncherLayout.listHeight(rowCount: 1, showsCalculatorHero: true)
