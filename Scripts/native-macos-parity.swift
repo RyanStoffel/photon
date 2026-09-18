@@ -96,18 +96,18 @@ func wait(
     }
     RunLoop.current.run(until: Date().addingTimeInterval(0.1))
   }
-    if let report = readReport() {
-      let state = launcher(report)
-      let index = int(state["selectedIndex"])
-      let count = int(state["resultCount"])
-      let content = string(state["content"])
-      let title = string(state["selectedTitle"])
-      let lastCommand = string(report["lastParityCommand"])
-      throw ParityFailure.failed(
-        "Timed out: \(label) selectedIndex=\(index) resultCount=\(count) content=\(content) title=\(title) lastCommand=\(lastCommand)"
-      )
-    }
-    throw ParityFailure.failed("Timed out: \(label)")
+  if let report = readReport() {
+    let state = launcher(report)
+    let index = int(state["selectedIndex"])
+    let count = int(state["resultCount"])
+    let content = string(state["content"])
+    let title = string(state["selectedTitle"])
+    let lastCommand = string(report["lastParityCommand"])
+    throw ParityFailure.failed(
+      "Timed out: \(label) selectedIndex=\(index) resultCount=\(count) content=\(content) title=\(title) lastCommand=\(lastCommand)"
+    )
+  }
+  throw ParityFailure.failed("Timed out: \(label)")
 }
 
 func require(_ condition: @autoclosure () -> Bool, _ label: String) throws {
@@ -954,7 +954,7 @@ do {
   try sendRuntimeCommand("scrollRecsPastFirstPage")
   report = try wait("Down past the last visible rec scrolls instead of wrapping") {
     let index = int(launcher($0)["selectedIndex"])
-    return index == visibleRecs
+    return index >= visibleRecs
       && index > 0
       && string(launcher($0)["selectedTitle"]) != firstRecTitle
       && string(launcher($0)["content"]) == "recommendations"

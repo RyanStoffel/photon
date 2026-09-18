@@ -393,7 +393,17 @@ final class LauncherViewModel: ObservableObject {
       }
     }
     if isSuggestions {
-      return Array(primary.prefix(LauncherLayout.recommendationCatalogLimit))
+      var seen = Set<String>()
+      var unique: [RankedCommand] = []
+      for item in primary {
+        if seen.insert(item.id).inserted {
+          unique.append(item)
+        }
+        if unique.count == LauncherLayout.recommendationCatalogLimit {
+          break
+        }
+      }
+      return unique
     }
     return Array(primary.prefix(limit)) + Array(trailing.prefix(trailingLimit))
   }

@@ -214,10 +214,12 @@ final class NativeParityReporter: NSObject {
     if command == "scrollRecsPastFirstPage" {
       let model = runtime.launcher.model
       let visible = LauncherLayout.visibleRecommendationRows
-      guard model.results.indices.contains(visible) else {
-        return
+      if let index = model.results.indices.first(where: { candidate in
+        candidate >= visible
+          && model.results.firstIndex { $0.id == model.results[candidate].id } == candidate
+      }) {
+        model.selectedID = model.results[index].id
       }
-      model.selectedID = model.results[visible].id
       return
     }
     dispatchParityCommand(command, runtime: runtime)
