@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-09-18
+
+Ryan Notes chrome and launcher recs-scroll release.
+
+### Changed
+
+- Notes drop the persistent sidebar for Raycast-style chrome: vibrancy editor, centered title, traffic lights, character count, switcher overlay (⌘P), ⌘K actions (New, Duplicate, Browse, Find, Copy, Deeplink, Export, list-item move, Format), and a formatting toolbar. Width is a constant **680pt**; height can grow.
+- Empty-query launcher recommendations list the full unique catalog (up to 250 apps, recs, and shortcuts) instead of wrapping at the first visible page.
+
+### Fixed
+
+- Down on the last on-screen recommendation scrolls the list instead of jumping to the first row. The expanded launcher stays **760 × 502**. Notes, Files, clipboard, drag, paste, and ember ranking are otherwise unchanged.
+
 ## [0.3.8] - 2026-09-17
 
 Ryan Files footer, folder grants, panel drag, and center-snap release.
