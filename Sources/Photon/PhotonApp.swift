@@ -29,6 +29,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     NativeParityReporter.startIfRequested(runtime: runtime, statusItem: statusItemController)
   }
 
+  func application(_: NSApplication, open urls: [URL]) {
+    runtime.openNotes(from: urls)
+  }
+
   func applicationWillTerminate(_: Notification) {
     NativeParityReporter.stop()
     runtime.stop()

@@ -9,8 +9,8 @@ extension NotesWindow {
     scrollView.hasVerticalScroller = true
     scrollView.hasHorizontalScroller = false
     scrollView.autohidesScrollers = true
-    scrollView.drawsBackground = true
-    scrollView.backgroundColor = .textBackgroundColor
+    scrollView.drawsBackground = false
+    scrollView.backgroundColor = .clear
     scrollView.borderType = .noBorder
     scrollView.translatesAutoresizingMaskIntoConstraints = false
 
@@ -32,9 +32,12 @@ extension NotesWindow {
     textView.isHorizontallyResizable = false
     textView.autoresizingMask = [.width]
     // Roughly the Notes editor margins; the container padding brings the text to 20 pt from the edge.
-    textView.textContainerInset = NSSize(width: 18, height: 16)
-    textView.drawsBackground = true
-    textView.backgroundColor = .textBackgroundColor
+    textView.textContainerInset = NSSize(
+      width: NotesLayout.editorHorizontalInset,
+      height: NotesLayout.editorVerticalInset
+    )
+    textView.drawsBackground = false
+    textView.backgroundColor = .clear
     textView.isRichText = false
     textView.importsGraphics = false
     textView.allowsUndo = true
@@ -94,6 +97,7 @@ extension NotesWindow: NSTextViewDelegate {
       textView.needsDisplay = true
     }
     controller.editorDidChange(text)
+    updateCharacterCount()
   }
 }
 

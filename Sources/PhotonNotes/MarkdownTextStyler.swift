@@ -103,6 +103,10 @@ struct MarkdownTextStyler {
       ]
     case .inlineCode:
       [.backgroundColor: NSColor.quaternarySystemFill]
+    case .strikethrough:
+      [.strikethroughStyle: NSUnderlineStyle.single.rawValue]
+    case .underline:
+      [.underlineStyle: NSUnderlineStyle.single.rawValue]
     default:
       [:]
     }

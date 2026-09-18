@@ -4,7 +4,7 @@ import AppKit
 /// and draws a placeholder while empty. Styling is applied by the owner through the text storage.
 @MainActor
 final class MarkdownTextView: NSTextView {
-  var placeholder = "Start typing. The first line becomes the title."
+  var placeholder = "Start writing…"
 
   override func mouseDown(with event: NSEvent) {
     let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)

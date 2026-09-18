@@ -25,6 +25,11 @@ public final class NotesController: NSObject {
   }
 
   public private(set) var currentNoteID: String?
+  public private(set) var pinStore = NotePinStore()
+
+  public var pinnedIDs: Set<String> {
+    pinStore.pinnedIDs
+  }
 
   let store: NoteStore
   private let debouncer: Debouncer
@@ -39,6 +44,7 @@ public final class NotesController: NSObject {
     store = NoteStore(directory: directory)
     debouncer = Debouncer(delay: Self.autosaveDelay)
     super.init()
+    pinStore = NotePinStore(defaults: .standard)
     let center = NotificationCenter.default
     center.addObserver(
       self,
@@ -108,6 +114,94 @@ public final class NotesController: NSObject {
     presentWindow().show(focus: true)
   }
 
+  public func openFromSwitcher(_ id: String) {
+    try? open(noteID: id)
+  }
+
+  public func togglePin(_ id: String) {
+    pinStore.toggle(id)
+    pinStore.save(to: .standard)
+    window?.notesDidChange()
+  }
+
+  public func deleteNote(id: String) {
+    loadIfNeeded()
+    guard let note = store.note(id: id) else {
+      return
+    }
+    flush()
+    let window = presentWindow()
+    Task {
+      if await window.confirmDelete(of: note.title) {
+        performDelete(id)
+        window.notesDidChange()
+      }
+    }
+  }
+
+  @discardableResult
+  public func duplicateCurrentNote() -> Note? {
+    flush()
+    let content = pendingContent ?? currentNote?.content ?? ""
+    return createNote(content: content)
+  }
+
+  public func copyCurrentNote() {
+    flush()
+    let content = pendingContent ?? currentNote?.content ?? ""
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    pasteboard.setString(content, forType: .string)
+  }
+
+  public func copyDeepLink() {
+    guard let id = currentNoteID, let url = NoteDeepLink.url(for: id) else {
+      return
+    }
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    pasteboard.setString(url.absoluteString, forType: .string)
+  }
+
+  public func presentSwitcher() {
+    let window = presentWindow()
+    window.notesDidChange()
+    window.show(focus: true)
+    window.presentSwitcher()
+  }
+
+  public func presentActions() {
+    presentWindow().show(focus: true)
+    presentWindow().presentActions()
+  }
+
+  public func presentFormatBar() {
+    presentWindow().show(focus: true)
+    presentWindow().presentFormatBar()
+  }
+
+  public var overlayName: String {
+    window?.overlayName ?? "none"
+  }
+
+  public var windowWidth: Double {
+    if let width = window?.panel.frame.width {
+      return Double(width)
+    }
+    return NotesLayout.panelWidth
+  }
+
+  public var windowHeight: Double {
+    if let height = window?.panel.frame.height {
+      return Double(height)
+    }
+    return NotesLayout.defaultHeight
+  }
+
+  public var windowNumber: Int {
+    window?.panel.windowNumber ?? 0
+  }
+
   @discardableResult
   public func createNote(content: String = "") -> Note? {
     loadIfNeeded()
@@ -174,7 +268,7 @@ public final class NotesController: NSObject {
 
   // MARK: Window callbacks
 
-  var currentNote: Note? {
+  public var currentNote: Note? {
     currentNoteID.flatMap { store.note(id: $0) }
   }
 
@@ -365,9 +459,9 @@ enum WelcomeNote {
 
   Notes are plain markdown files that save as you type.
 
-  - Press ⌘N for a new note and ⌘P to jump to the sidebar (⌃⌘S hides or shows it)
+  - Press ⌘N for a new note, ⌘P to browse notes, and ⌘K for actions
   - Type `notes` or `n <title>` in the launcher to jump straight to a note
-  - ⌘+ and ⌘- change the text size; the window remembers its size, position, and sidebar
+  - ⌘+ and ⌘- change the text size; the window keeps a fixed width and remembers its height
 
   ## Formatting
 

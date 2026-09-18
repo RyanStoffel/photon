@@ -230,7 +230,7 @@ final class LauncherViewModel: ObservableObject {
       return
     }
     let index = results.firstIndex(where: { $0.id == selectedID }) ?? 0
-    let next = (index + delta + results.count) % results.count
+    let next = SelectionNavigation.moving(from: index, by: delta, count: results.count)
     selectedID = results[next].id
   }
 
@@ -393,7 +393,17 @@ final class LauncherViewModel: ObservableObject {
       }
     }
     if isSuggestions {
-      return Array(primary.prefix(LauncherLayout.suggestionCount))
+      var seen = Set<String>()
+      var unique: [RankedCommand] = []
+      for item in primary {
+        if seen.insert(item.id).inserted {
+          unique.append(item)
+        }
+        if unique.count == LauncherLayout.recommendationCatalogLimit {
+          break
+        }
+      }
+      return unique
     }
     return Array(primary.prefix(limit)) + Array(trailing.prefix(trailingLimit))
   }
